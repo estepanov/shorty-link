@@ -5,13 +5,25 @@ on:
     branches:
       - main
     paths:
-      - "apps/admin/migrations/**"
+      - "migrations/**"
+      - "src/server/db/schema.ts"
+      - "drizzle.config.ts"
+      - "wrangler.jsonc"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - ".github/workflows/d1-production-migrations.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: production-d1-migrations-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   migrate:
-    name: Run D1 Migrations
+    name: Apply production D1 migrations
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +31,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 10.32.1
 
@@ -33,7 +45,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Apply migrations
-        run: pnpm --filter @shorty/admin exec wrangler d1 migrations apply DB --remote
+        run: pnpm db:migrate:remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

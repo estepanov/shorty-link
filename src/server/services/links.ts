@@ -1,4 +1,16 @@
-import { and, count, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+  type AnyColumn,
+} from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
 
 import type { AppDb } from "../db/client";
@@ -17,6 +29,17 @@ export { DEFAULT_HOSTNAME };
 
 export function now() {
   return Date.now();
+}
+
+function escapeLikePattern(value: string) {
+  return `%${value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("%", "\\%")
+    .replaceAll("_", "\\_")}%`;
+}
+
+function likeEscaped(column: AnyColumn, pattern: string) {
+  return sql`${column} like ${pattern} escape '\\'`;
 }
 
 export function isAdminRole(role: string | null | undefined) {
@@ -198,18 +221,23 @@ export async function getBootstrapState(db: AppDb) {
 
 export async function getDashboardData(db: AppDb) {
   const [domains, links, invites, events, counts] = await Promise.all([
-    db.select().from(managedDomains).orderBy(managedDomains.hostname),
-    db.select().from(shortLinks).orderBy(desc(shortLinks.updatedAt)),
+    db.select().from(managedDomains).orderBy(desc(managedDomains.createdAt)).limit(10),
+    db.select().from(shortLinks).orderBy(desc(shortLinks.createdAt)).limit(10),
     db
       .select()
       .from(adminInvites)
       .where(and(isNull(adminInvites.acceptedAt), gt(adminInvites.expiresAt, now())))
-      .orderBy(desc(adminInvites.createdAt)),
-    db.select().from(redirectEvents).orderBy(desc(redirectEvents.createdAt)).limit(100),
+      .orderBy(desc(adminInvites.createdAt))
+      .limit(10),
+    db.select().from(redirectEvents).orderBy(desc(redirectEvents.createdAt)).limit(10),
     Promise.all([
       db.select({ total: count() }).from(shortLinks),
       db.select({ total: count() }).from(redirectEvents),
       db.select({ total: count() }).from(managedDomains),
+      db
+        .select({ total: count() })
+        .from(adminInvites)
+        .where(and(isNull(adminInvites.acceptedAt), gt(adminInvites.expiresAt, now()))),
     ]),
   ]);
 
@@ -222,7 +250,112 @@ export async function getDashboardData(db: AppDb) {
       links: Number(counts[0][0]?.total ?? 0),
       redirects: Number(counts[1][0]?.total ?? 0),
       domains: Number(counts[2][0]?.total ?? 0),
+      invites: Number(counts[3][0]?.total ?? 0),
     },
+  };
+}
+
+export async function listDomains(db: AppDb) {
+  return db.select().from(managedDomains).orderBy(managedDomains.hostname);
+}
+
+export async function getDomainById(db: AppDb, id: string) {
+  const domains = await db
+    .select()
+    .from(managedDomains)
+    .where(eq(managedDomains.id, id))
+    .limit(1);
+
+  return domains[0] ?? null;
+}
+
+export async function getLinkById(db: AppDb, id: string) {
+  const links = await db
+    .select()
+    .from(shortLinks)
+    .where(eq(shortLinks.id, id))
+    .limit(1);
+
+  return links[0] ?? null;
+}
+
+export async function listShortLinks(
+  db: AppDb,
+  input: {
+    active?: "active" | "inactive" | "all";
+    hostname?: string;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    statusCode?: 301 | 302 | "all";
+  },
+) {
+  const page = Math.max(1, Math.floor(input.page ?? 1));
+  const pageSize = Math.max(1, Math.min(Math.floor(input.pageSize ?? 25), 100));
+  const offset = (page - 1) * pageSize;
+  const filters = [];
+  const search = input.search?.trim();
+
+  if (search) {
+    const pattern = escapeLikePattern(search);
+    filters.push(
+      or(
+        likeEscaped(shortLinks.id, pattern),
+        likeEscaped(shortLinks.hostname, pattern),
+        likeEscaped(shortLinks.slug, pattern),
+        likeEscaped(shortLinks.targetUrl, pattern),
+        likeEscaped(shortLinks.title, pattern),
+        likeEscaped(shortLinks.notes, pattern),
+      ),
+    );
+  }
+
+  if (input.hostname && input.hostname !== "all") {
+    filters.push(eq(shortLinks.hostname, normalizeHostname(input.hostname)));
+  }
+
+  if (input.active === "active") {
+    filters.push(eq(shortLinks.isActive, true));
+  } else if (input.active === "inactive") {
+    filters.push(eq(shortLinks.isActive, false));
+  }
+
+  if (input.statusCode === 301 || input.statusCode === 302) {
+    filters.push(eq(shortLinks.statusCode, input.statusCode));
+  }
+
+  const where = filters.length ? and(...filters) : undefined;
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        createdAt: shortLinks.createdAt,
+        hitCount: shortLinks.hitCount,
+        hostname: shortLinks.hostname,
+        id: shortLinks.id,
+        isActive: shortLinks.isActive,
+        lastClickAt: shortLinks.lastClickAt,
+        notes: shortLinks.notes,
+        preserveQueryParams: shortLinks.preserveQueryParams,
+        slug: shortLinks.slug,
+        statusCode: shortLinks.statusCode,
+        targetUrl: shortLinks.targetUrl,
+        title: shortLinks.title,
+        updatedAt: shortLinks.updatedAt,
+      })
+      .from(shortLinks)
+      .where(where)
+      .orderBy(desc(shortLinks.createdAt))
+      .limit(pageSize)
+      .offset(offset),
+    db.select({ total: count() }).from(shortLinks).where(where),
+  ]);
+
+  return {
+    items: rows,
+    page,
+    pageSize,
+    total: Number(total ?? 0),
+    totalPages: Math.max(1, Math.ceil(Number(total ?? 0) / pageSize)),
   };
 }
 
@@ -257,6 +390,23 @@ export async function saveDomain(
   }
 
   if (input.id) {
+    const current = await db
+      .select({ hostname: managedDomains.hostname })
+      .from(managedDomains)
+      .where(eq(managedDomains.id, input.id))
+      .limit(1);
+
+    if (current[0] && current[0].hostname !== hostname) {
+      const [{ totalLinks }] = await db
+        .select({ totalLinks: count() })
+        .from(shortLinks)
+        .where(eq(shortLinks.hostname, current[0].hostname));
+
+      if (Number(totalLinks) > 0) {
+        throw new Error("errors.domainRenameHasLinks");
+      }
+    }
+
     await db
       .update(managedDomains)
       .set({
@@ -387,6 +537,137 @@ export async function deleteLink(db: AppDb, id: string) {
   await db.delete(shortLinks).where(eq(shortLinks.id, id));
 }
 
+const UTM_DIMENSIONS = [
+  "utmSource",
+  "utmMedium",
+  "utmCampaign",
+  "utmTerm",
+  "utmContent",
+] as const;
+
+export type UtmDimension = (typeof UTM_DIMENSIONS)[number];
+
+function startOfUtcDay(timestamp: number) {
+  const date = new Date(timestamp);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+export async function getLinkStats(
+  db: AppDb,
+  linkId: string,
+  options?: { days?: number; recentLimit?: number; breakdownLimit?: number },
+) {
+  const days = Math.max(1, Math.min(options?.days ?? 30, 180));
+  const recentLimit = Math.max(1, Math.min(options?.recentLimit ?? 20, 100));
+  const breakdownLimit = Math.max(1, Math.min(options?.breakdownLimit ?? 10, 50));
+  const windowStart = startOfUtcDay(now() - (days - 1) * 24 * 60 * 60 * 1000);
+
+  const linkColumn = eq(redirectEvents.linkId, linkId);
+  const windowFilter = and(linkColumn, gte(redirectEvents.createdAt, windowStart));
+  const dayExpr = sql<number>`(${redirectEvents.createdAt} / 86400000) * 86400000`;
+
+  const totalsQuery = db
+    .select({ total: count() })
+    .from(redirectEvents)
+    .where(linkColumn);
+
+  const windowTotalsQuery = db
+    .select({ total: count() })
+    .from(redirectEvents)
+    .where(windowFilter);
+
+  const histogramQuery = db
+    .select({
+      day: dayExpr.as("day"),
+      total: count(),
+    })
+    .from(redirectEvents)
+    .where(windowFilter)
+    .groupBy(dayExpr)
+    .orderBy(dayExpr);
+
+  const columnByDimension = {
+    utmSource: redirectEvents.utmSource,
+    utmMedium: redirectEvents.utmMedium,
+    utmCampaign: redirectEvents.utmCampaign,
+    utmTerm: redirectEvents.utmTerm,
+    utmContent: redirectEvents.utmContent,
+  } as const;
+
+  const breakdownsQuery = Promise.all(
+    UTM_DIMENSIONS.map(async (dimension) => {
+      const column = columnByDimension[dimension];
+      const rows = await db
+        .select({ value: column, total: count() })
+        .from(redirectEvents)
+        .where(and(windowFilter, isNotNull(column)))
+        .groupBy(column)
+        .orderBy(desc(count()))
+        .limit(breakdownLimit);
+
+      const items = rows.map((row) => ({
+        value: row.value ?? null,
+        total: Number(row.total ?? 0),
+      }));
+
+      return [dimension, items] as const;
+    }),
+  );
+
+  const recentEventsQuery = db
+    .select({
+      id: redirectEvents.id,
+      createdAt: redirectEvents.createdAt,
+      country: redirectEvents.country,
+      referer: redirectEvents.referer,
+      utmSource: redirectEvents.utmSource,
+      utmMedium: redirectEvents.utmMedium,
+      utmCampaign: redirectEvents.utmCampaign,
+      utmTerm: redirectEvents.utmTerm,
+      utmContent: redirectEvents.utmContent,
+    })
+    .from(redirectEvents)
+    .where(linkColumn)
+    .orderBy(desc(redirectEvents.createdAt))
+    .limit(recentLimit);
+
+  const [[totalsRow], [windowRow], histogramRows, breakdownEntries, recentEvents] =
+    await Promise.all([
+      totalsQuery,
+      windowTotalsQuery,
+      histogramQuery,
+      breakdownsQuery,
+      recentEventsQuery,
+    ]);
+
+  const histogramMap = new Map<number, number>(
+    histogramRows.map((row) => [Number(row.day), Number(row.total)]),
+  );
+  const histogram: Array<{ day: number; total: number }> = [];
+  for (let index = 0; index < days; index += 1) {
+    const day = windowStart + index * 24 * 60 * 60 * 1000;
+    histogram.push({ day, total: histogramMap.get(day) ?? 0 });
+  }
+
+  const breakdowns = Object.fromEntries(breakdownEntries) as Record<
+    UtmDimension,
+    Array<{ value: string | null; total: number }>
+  >;
+
+  return {
+    totals: {
+      allTime: Number(totalsRow?.total ?? 0),
+      window: Number(windowRow?.total ?? 0),
+    },
+    windowDays: days,
+    windowStart,
+    histogram,
+    breakdowns,
+    recentEvents,
+  };
+}
+
 export async function createInvite(
   db: AppDb,
   input: {
@@ -488,6 +769,32 @@ export async function resolveRedirect(
   return fallback[0] ?? null;
 }
 
+export function extractUtmParams(requestUrl: string) {
+  try {
+    const params = new URL(requestUrl).searchParams;
+    const read = (key: string) => {
+      const value = params.get(key)?.trim();
+      return value ? value.slice(0, 256) : null;
+    };
+
+    return {
+      utmSource: read("utm_source"),
+      utmMedium: read("utm_medium"),
+      utmCampaign: read("utm_campaign"),
+      utmTerm: read("utm_term"),
+      utmContent: read("utm_content"),
+    };
+  } catch {
+    return {
+      utmSource: null,
+      utmMedium: null,
+      utmCampaign: null,
+      utmTerm: null,
+      utmContent: null,
+    };
+  }
+}
+
 export async function recordRedirectEvent(
   db: AppDb,
   input: {
@@ -502,6 +809,11 @@ export async function recordRedirectEvent(
     referer?: string | null;
     userAgent?: string | null;
     ipHash?: string | null;
+    utmSource?: string | null;
+    utmMedium?: string | null;
+    utmCampaign?: string | null;
+    utmTerm?: string | null;
+    utmContent?: string | null;
   },
 ) {
   const timestamp = now();
@@ -519,6 +831,11 @@ export async function recordRedirectEvent(
     referer: input.referer ?? null,
     userAgent: input.userAgent ?? null,
     ipHash: input.ipHash ?? null,
+    utmSource: input.utmSource ?? null,
+    utmMedium: input.utmMedium ?? null,
+    utmCampaign: input.utmCampaign ?? null,
+    utmTerm: input.utmTerm ?? null,
+    utmContent: input.utmContent ?? null,
     createdAt: timestamp,
   });
 
@@ -526,6 +843,7 @@ export async function recordRedirectEvent(
     .update(shortLinks)
     .set({
       hitCount: sql`${shortLinks.hitCount} + 1`,
+      lastClickAt: timestamp,
       updatedAt: timestamp,
     })
     .where(eq(shortLinks.id, input.linkId));

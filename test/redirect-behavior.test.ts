@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildAnalyticsTarget,
   buildRedirectTarget,
+  extractUtmParams,
   normalizeHostname,
   normalizeSlug,
   normalizeTargetUrl,
@@ -23,6 +24,18 @@ describe("redirect behavior", () => {
         true,
       ),
     ).toBe("https://example.com/path?source=configured&utm_campaign=spring");
+  });
+
+  it("extracts UTM params from the incoming request URL", () => {
+    const utm = extractUtmParams(
+      "https://go.example.com/slug?utm_source=newsletter&utm_medium=email&other=1",
+    );
+
+    expect(utm.utmSource).toBe("newsletter");
+    expect(utm.utmMedium).toBe("email");
+    expect(utm.utmCampaign).toBeNull();
+    expect(utm.utmTerm).toBeNull();
+    expect(utm.utmContent).toBeNull();
   });
 
   it("limits analytics query persistence to UTM keys", () => {

@@ -1,0 +1,394 @@
+import { useForm } from "@tanstack/react-form";
+import { useEffect, useState } from "react";
+
+import { Button, FieldLabel, Input, Notice, Select, TextArea } from "@/components/ui";
+import type { AdminDomain, AdminLink } from "@/lib/admin-types";
+import { getTreaty, unwrap } from "@/lib/eden";
+import { createTranslator } from "@/lib/i18n";
+
+export type CreatedInvite = {
+  id: string;
+  inviteUrl: string;
+  token: string;
+};
+
+export function LinkForm({
+  domains,
+  initialLink,
+  onSaved,
+  t,
+}: {
+  domains: AdminDomain[];
+  initialLink?: AdminLink | null;
+  onSaved: () => Promise<void> | void;
+  t: ReturnType<typeof createTranslator>;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const selectedHostname =
+    initialLink?.hostname === "__default__" ? "" : (initialLink?.hostname ?? "");
+  const hasSelectedManagedHostname = domains.some(
+    (domain) => domain.hostname === selectedHostname,
+  );
+  const form = useForm({
+    defaultValues: {
+      hostname: selectedHostname,
+      isActive: initialLink?.isActive ?? true,
+      notes: initialLink?.notes ?? "",
+      preserveQueryParams: initialLink?.preserveQueryParams ?? false,
+      slug: initialLink?.slug ?? "",
+      statusCode: initialLink?.statusCode ?? 302,
+      targetUrl: initialLink?.targetUrl ?? "",
+      title: initialLink?.title ?? "",
+    },
+    onSubmit: async ({ value }) => {
+      setError(null);
+      try {
+        const api = getTreaty();
+        if (initialLink) {
+          await unwrap(await api.admin.links({ id: initialLink.id }).patch(value));
+        } else {
+          await unwrap(await api.admin.links.post(value));
+        }
+        await onSaved();
+      } catch (nextError) {
+        setError(nextError instanceof Error ? nextError.message : "errors.unknown");
+      }
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      hostname:
+        initialLink?.hostname === "__default__" ? "" : (initialLink?.hostname ?? ""),
+      isActive: initialLink?.isActive ?? true,
+      notes: initialLink?.notes ?? "",
+      preserveQueryParams: initialLink?.preserveQueryParams ?? false,
+      slug: initialLink?.slug ?? "",
+      statusCode: initialLink?.statusCode ?? 302,
+      targetUrl: initialLink?.targetUrl ?? "",
+      title: initialLink?.title ?? "",
+    });
+  }, [initialLink?.id]);
+
+  return (
+    <form
+      className="mt-6 grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <form.Field
+          name="hostname"
+          children={(field) => (
+            <FieldLabel>
+              {t("forms.hostname")}
+              <Select
+                onChange={(event) => field.handleChange(event.target.value)}
+                value={field.state.value}
+              >
+                <option value="">{t("domains.default")}</option>
+                {selectedHostname && !hasSelectedManagedHostname ? (
+                  <option value={selectedHostname}>
+                    {selectedHostname} ({t("domains.current")})
+                  </option>
+                ) : null}
+                {domains.map((domain) => (
+                  <option key={domain.id} value={domain.hostname}>
+                    {domain.hostname}
+                    {domain.label ? ` - ${domain.label}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </FieldLabel>
+          )}
+        />
+        <form.Field
+          name="statusCode"
+          children={(field) => (
+            <FieldLabel>
+              {t("forms.statusCode")}
+              <Select
+                onChange={(event) => field.handleChange(Number(event.target.value))}
+                value={field.state.value}
+              >
+                <option value={302}>302 temporary</option>
+                <option value={301}>301 permanent</option>
+              </Select>
+            </FieldLabel>
+          )}
+        />
+      </div>
+      <form.Field
+        name="targetUrl"
+        children={(field) => (
+          <FieldLabel>
+            {t("forms.destination")}
+            <Input
+              onChange={(event) => field.handleChange(event.target.value)}
+              placeholder={t("forms.placeholderDestination")}
+              required
+              value={field.state.value}
+            />
+          </FieldLabel>
+        )}
+      />
+      <form.Field
+        name="slug"
+        children={(field) => (
+          <FieldLabel>
+            {t("forms.slug")}
+            <Input
+              onChange={(event) => field.handleChange(event.target.value)}
+              placeholder={t("forms.placeholderSlug")}
+              value={field.state.value}
+            />
+          </FieldLabel>
+        )}
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <form.Field
+          name="title"
+          children={(field) => (
+            <FieldLabel>
+              {t("forms.title")}
+              <Input
+                onChange={(event) => field.handleChange(event.target.value)}
+                value={field.state.value}
+              />
+            </FieldLabel>
+          )}
+        />
+        <form.Field
+          name="notes"
+          children={(field) => (
+            <FieldLabel>
+              {t("forms.notes")}
+              <TextArea
+                onChange={(event) => field.handleChange(event.target.value)}
+                value={field.state.value}
+              />
+            </FieldLabel>
+          )}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <form.Field
+          name="preserveQueryParams"
+          children={(field) => (
+            <label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+              <input
+                checked={field.state.value}
+                onChange={(event) => field.handleChange(event.target.checked)}
+                type="checkbox"
+              />
+              {t("forms.preserveQuery")}
+            </label>
+          )}
+        />
+        <form.Field
+          name="isActive"
+          children={(field) => (
+            <label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+              <input
+                checked={field.state.value}
+                onChange={(event) => field.handleChange(event.target.checked)}
+                type="checkbox"
+              />
+              {t("forms.active")}
+            </label>
+          )}
+        />
+      </div>
+      <Button type="submit">
+        {initialLink ? t("forms.update") : t("forms.create")}
+      </Button>
+      {error ? <Notice tone="error">{t(error)}</Notice> : null}
+    </form>
+  );
+}
+
+export function DomainForm({
+  initialDomain,
+  onSaved,
+  t,
+}: {
+  initialDomain?: AdminDomain | null;
+  onSaved: () => Promise<void> | void;
+  t: ReturnType<typeof createTranslator>;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const form = useForm({
+    defaultValues: {
+      hostname: initialDomain?.hostname ?? "",
+      isActive: initialDomain?.isActive ?? true,
+      isPrimary: initialDomain?.isPrimary ?? false,
+      label: initialDomain?.label ?? "",
+    },
+    onSubmit: async ({ value }) => {
+      setError(null);
+      try {
+        const api = getTreaty();
+        if (initialDomain) {
+          await unwrap(await api.admin.domains({ id: initialDomain.id }).patch(value));
+        } else {
+          await unwrap(await api.admin.domains.post(value));
+        }
+        await onSaved();
+      } catch (nextError) {
+        setError(nextError instanceof Error ? nextError.message : "errors.unknown");
+      }
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      hostname: initialDomain?.hostname ?? "",
+      isActive: initialDomain?.isActive ?? true,
+      isPrimary: initialDomain?.isPrimary ?? false,
+      label: initialDomain?.label ?? "",
+    });
+  }, [initialDomain?.id]);
+
+  return (
+    <form
+      className="mt-6 grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <form.Field
+        name="hostname"
+        children={(field) => (
+          <FieldLabel>
+            {t("forms.hostname")}
+            <Input
+              onChange={(event) => field.handleChange(event.target.value)}
+              placeholder={t("forms.placeholderHostname")}
+              required
+              value={field.state.value}
+            />
+          </FieldLabel>
+        )}
+      />
+      <form.Field
+        name="label"
+        children={(field) => (
+          <FieldLabel>
+            {t("forms.label")}
+            <Input
+              onChange={(event) => field.handleChange(event.target.value)}
+              value={field.state.value}
+            />
+          </FieldLabel>
+        )}
+      />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <form.Field
+          name="isPrimary"
+          children={(field) => (
+            <label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+              <input
+                checked={field.state.value}
+                onChange={(event) => field.handleChange(event.target.checked)}
+                type="checkbox"
+              />
+              {t("forms.primary")}
+            </label>
+          )}
+        />
+        <form.Field
+          name="isActive"
+          children={(field) => (
+            <label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+              <input
+                checked={field.state.value}
+                onChange={(event) => field.handleChange(event.target.checked)}
+                type="checkbox"
+              />
+              {t("forms.active")}
+            </label>
+          )}
+        />
+      </div>
+      <Button type="submit">
+        {initialDomain ? t("forms.update") : t("forms.create")}
+      </Button>
+      {error ? <Notice tone="error">{t(error)}</Notice> : null}
+    </form>
+  );
+}
+
+export function InviteForm({
+  onSaved,
+  t,
+}: {
+  onSaved: (invite: CreatedInvite) => Promise<void> | void;
+  t: ReturnType<typeof createTranslator>;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const form = useForm({
+    defaultValues: {
+      email: "",
+      expiresInDays: 7,
+    },
+    onSubmit: async ({ value }) => {
+      setError(null);
+      try {
+        const api = getTreaty();
+        const invite = await unwrap<CreatedInvite>(await api.admin.invites.post(value));
+        form.reset();
+        await onSaved(invite);
+      } catch (nextError) {
+        setError(nextError instanceof Error ? nextError.message : "errors.unknown");
+      }
+    },
+  });
+
+  return (
+    <form
+      className="mt-6 grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void form.handleSubmit();
+      }}
+    >
+      <form.Field
+        name="email"
+        children={(field) => (
+          <FieldLabel>
+            {t("forms.email")}
+            <Input
+              onChange={(event) => field.handleChange(event.target.value)}
+              required
+              type="email"
+              value={field.state.value}
+            />
+          </FieldLabel>
+        )}
+      />
+      <form.Field
+        name="expiresInDays"
+        children={(field) => (
+          <FieldLabel>
+            {t("forms.expiresInDays")}
+            <Input
+              max={30}
+              min={1}
+              onChange={(event) => field.handleChange(Number(event.target.value))}
+              type="number"
+              value={field.state.value}
+            />
+          </FieldLabel>
+        )}
+      />
+      <Button type="submit">{t("forms.create")}</Button>
+      {error ? <Notice tone="error">{t(error)}</Notice> : null}
+    </form>
+  );
+}

@@ -43,7 +43,39 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/auth/")) {
-      return createAuth(request).handler(request);
+      const isPasskeyPath = url.pathname.toLowerCase().includes("passkey");
+      const friendly = () =>
+        Response.json(
+          {
+            code: "PASSKEY_VERIFY_FAILED",
+            message: "errors.passkeyVerifyFailed",
+          },
+          { status: 400 },
+        );
+
+      try {
+        const response = await createAuth(request).handler(request);
+        if (isPasskeyPath && response.status >= 500) {
+          const body = await response
+            .clone()
+            .text()
+            .catch(() => "");
+          console.error(
+            "auth handler 5xx",
+            url.pathname,
+            response.status,
+            body,
+          );
+          return friendly();
+        }
+        return response;
+      } catch (error) {
+        console.error("auth handler crashed", url.pathname, error);
+        if (isPasskeyPath) {
+          return friendly();
+        }
+        throw error;
+      }
     }
 
     if (shouldUseElysia(request)) {

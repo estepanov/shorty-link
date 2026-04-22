@@ -2,9 +2,10 @@ import { useForm } from "@tanstack/react-form";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { AppShell, Button, Card, FieldLabel, Input, Notice } from "@/components/ui";
+import { Button, Card, FieldLabel, Input, Notice } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
-import { createTranslator, defaultLocale } from "@/lib/i18n";
+import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { createTranslator } from "@/lib/i18n";
 
 export const Route = createFileRoute("/admin/api-keys")({
   component: ApiKeys,
@@ -21,10 +22,7 @@ type ApiKeyRecord = {
 };
 
 function ApiKeys() {
-  const { data: session } = authClient.useSession();
-  const locale =
-    (session?.user as { locale?: string } | undefined)?.locale ?? defaultLocale;
-  const t = createTranslator(locale);
+  const { session, isPending, t } = useAdminAuthGuard();
   const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,72 +68,95 @@ function ApiKeys() {
   }
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    if (session) {
+      void refresh();
+    }
+  }, [session?.user.id]);
+
+  if (isPending) {
+    return <Card>{t("loading.app")}</Card>;
+  }
+
+  if (!session) {
+    return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+  }
 
   return (
-    <AppShell locale={locale}>
-      <main className="mx-auto grid max-w-5xl gap-6 px-5 py-10">
-        <Card>
-          <h1 className="text-4xl font-black">{t("keys.title")}</h1>
-          <p className="mt-2 text-stone-700">
-            {t("keys.description")}
-          </p>
-          <form
-            className="mt-6 grid gap-4 md:grid-cols-[1fr_12rem_auto]"
-            onSubmit={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              void form.handleSubmit();
-            }}
-          >
-            <form.Field
-              name="name"
-              children={(field) => (
-                <FieldLabel>
-                  {t("forms.name")}
-                  <Input onChange={(event) => field.handleChange(event.target.value)} required value={field.state.value} />
-                </FieldLabel>
-              )}
-            />
-            <form.Field
-              name="expiresInDays"
-              children={(field) => (
-                <FieldLabel>
-                  {t("forms.expiresInDays")}
-                  <Input min={1} onChange={(event) => field.handleChange(Number(event.target.value))} type="number" value={field.state.value} />
-                </FieldLabel>
-              )}
-            />
-            <div className="flex items-end">
-              <Button type="submit">{t("keys.create")}</Button>
-            </div>
-          </form>
-          {createdKey ? (
-            <div className="mt-4">
-              <Notice tone="success">
-                <strong>{t("keys.created")}</strong>
-                <code className="mt-2 block break-all rounded-xl bg-stone-950 px-3 py-2 text-amber-100">
-                  {createdKey}
-                </code>
-              </Notice>
-            </div>
-          ) : null}
-          {error ? (
-            <div className="mt-4">
-              <Notice tone="error">{error}</Notice>
-            </div>
-          ) : null}
-        </Card>
-        <Card>
-          <div className="grid gap-3">
-            {keys.map((key) => (
-              <ApiKeyRow key={key.id} item={key} onChange={refresh} t={t} />
-            ))}
+    <div className="mx-auto grid w-full max-w-5xl gap-6">
+      <Card>
+        <h1 className="text-4xl font-black">{t("keys.title")}</h1>
+        <p className="mt-2 text-stone-700 dark:text-stone-300">
+          {t("keys.description")}
+        </p>
+        <form
+          className="mt-6 grid gap-4 md:grid-cols-[1fr_12rem_auto]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void form.handleSubmit();
+          }}
+        >
+          <form.Field
+            name="name"
+            children={(field) => (
+              <FieldLabel>
+                {t("forms.name")}
+                <Input
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  required
+                  value={field.state.value}
+                />
+              </FieldLabel>
+            )}
+          />
+          <form.Field
+            name="expiresInDays"
+            children={(field) => (
+              <FieldLabel>
+                {t("forms.expiresInDays")}
+                <Input
+                  min={1}
+                  onChange={(event) => field.handleChange(Number(event.target.value))}
+                  type="number"
+                  value={field.state.value}
+                />
+              </FieldLabel>
+            )}
+          />
+          <div className="flex items-end">
+            <Button type="submit">{t("keys.create")}</Button>
           </div>
-        </Card>
-      </main>
-    </AppShell>
+        </form>
+        {createdKey ? (
+          <div className="mt-4">
+            <Notice tone="success">
+              <strong>{t("keys.created")}</strong>
+              <code className="mt-2 block break-all rounded-xl bg-stone-950 px-3 py-2 text-amber-100 dark:bg-black/40 dark:text-amber-100">
+                {createdKey}
+              </code>
+            </Notice>
+          </div>
+        ) : null}
+        {error ? (
+          <div className="mt-4">
+            <Notice tone="error">{t(error)}</Notice>
+          </div>
+        ) : null}
+      </Card>
+      <Card>
+        <div className="grid gap-3">
+          {keys.length ? (
+            keys.map((key) => (
+              <ApiKeyRow key={key.id} item={key} onChange={refresh} t={t} />
+            ))
+          ) : (
+            <p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+              {t("keys.empty")}
+            </p>
+          )}
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -149,22 +170,28 @@ function ApiKeyRow({
   t: ReturnType<typeof createTranslator>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const form = useForm({
     defaultValues: {
       name: item.name ?? "",
     },
     onSubmit: async ({ value }) => {
-      await authClient.apiKey.update({
+      setError(null);
+      const result = await authClient.apiKey.update({
         keyId: item.id,
         name: value.name,
       });
+      if (result.error) {
+        setError(result.error.message ?? "errors.unknown");
+        return;
+      }
       setEditing(false);
       await onChange();
     },
   });
 
   return (
-    <div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4">
+    <div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
       {editing ? (
         <form
           className="flex flex-col gap-3 md:flex-row"
@@ -193,7 +220,7 @@ function ApiKeyRow({
         <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div>
             <p className="font-black">{item.name ?? t("keys.unnamed")}</p>
-            <p className="text-sm text-stone-600">
+            <p className="text-sm text-stone-600 dark:text-stone-300">
               {item.prefix ?? "sl_"}
               {item.start ?? "••••"} ·{" "}
               {item.enabled === false ? t("keys.disabled") : t("keys.enabled")}
@@ -205,7 +232,12 @@ function ApiKeyRow({
             </Button>
             <Button
               onClick={async () => {
-                await authClient.apiKey.delete({ keyId: item.id });
+                setError(null);
+                const result = await authClient.apiKey.delete({ keyId: item.id });
+                if (result.error) {
+                  setError(result.error.message ?? "errors.unknown");
+                  return;
+                }
                 await onChange();
               }}
               tone="danger"
@@ -216,6 +248,11 @@ function ApiKeyRow({
           </div>
         </div>
       )}
+      {error ? (
+        <div className="mt-3">
+          <Notice tone="error">{t(error)}</Notice>
+        </div>
+      ) : null}
     </div>
   );
 }

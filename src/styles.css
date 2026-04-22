@@ -1,10 +1,17 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   font-family: "Fraunces", "Aptos", "Segoe UI", ui-serif, Georgia, serif;
   background: #f8f2e8;
   color: #1d1b16;
+}
+
+html.dark {
+  background: #0f1117;
+  color: #f7f0e3;
 }
 
 html {
@@ -20,12 +27,21 @@ body {
     linear-gradient(135deg, #fffaf0 0%, #f7ead6 45%, #f4ddbd 100%);
 }
 
+html.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.18), transparent 32rem),
+    radial-gradient(circle at 85% 12%, rgba(20, 184, 166, 0.14), transparent 28rem),
+    linear-gradient(135deg, #0f1117 0%, #171b22 50%, #222018 100%);
+}
+
 * {
   box-sizing: border-box;
 }
 
-a {
-  color: inherit;
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 
 button,
@@ -38,4 +54,9 @@ textarea {
 ::selection {
   background: #1d4ed8;
   color: #fffaf0;
+}
+
+html.dark ::selection {
+  background: #fbbf24;
+  color: #111827;
 }

@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { AppShell, Button, Card, FieldLabel, Input, Notice, Select } from "@/components/ui";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/admin/invite/$token")({
 
 function Invite() {
   const { token } = Route.useParams();
+  const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const t = createTranslator(defaultLocale);
@@ -41,7 +42,7 @@ function Invite() {
         }
 
         await authClient.signIn.passkey({ autoFill: false });
-        window.location.assign("/admin");
+        await router.navigate({ to: "/admin" });
       } catch (nextError) {
         setError(nextError instanceof Error ? nextError.message : "errors.unknown");
       }
@@ -60,11 +61,11 @@ function Invite() {
     <AppShell>
       <main className="mx-auto max-w-2xl px-5 py-10">
         <Card>
-          <p className="text-sm font-black uppercase tracking-[0.24em] text-blue-800">
+          <p className="text-sm font-black uppercase tracking-[0.24em] text-blue-800 dark:text-blue-300">
             {t("auth.noPasswords")}
           </p>
           <h1 className="mt-4 text-4xl font-black">{t("auth.inviteTitle")}</h1>
-          <p className="mt-3 text-stone-700">
+          <p className="mt-3 text-stone-700 dark:text-stone-300">
             {email ? `${t("auth.inviteFor")} ${email}.` : t("auth.loadingInvite")}
           </p>
           <form

@@ -3,13 +3,16 @@ name: Check D1 Migrations
 on:
   pull_request:
     paths:
-      - "packages/core/**"
-      - "apps/admin/migrations/**"
+      - "src/server/db/schema.ts"
+      - "migrations/**"
       - "drizzle.config.ts"
       - "pnpm-lock.yaml"
       - "package.json"
       - ".github/workflows/check-d1-migrations.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -21,7 +24,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 10.32.1
 
@@ -38,4 +41,4 @@ jobs:
         run: pnpm db:generate
 
       - name: Ensure migrations are committed
-        run: git diff --exit-code -- apps/admin/migrations drizzle.config.ts
+        run: git diff --exit-code -- migrations drizzle.config.ts

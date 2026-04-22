@@ -1,0 +1,10 @@
+ALTER TABLE `redirect_event` ADD `utm_source` text;
+ALTER TABLE `redirect_event` ADD `utm_medium` text;
+ALTER TABLE `redirect_event` ADD `utm_campaign` text;
+ALTER TABLE `redirect_event` ADD `utm_term` text;
+ALTER TABLE `redirect_event` ADD `utm_content` text;
+CREATE INDEX `redirect_event_utm_source_idx` ON `redirect_event` (`link_id`, `utm_source`);
+CREATE INDEX `redirect_event_utm_medium_idx` ON `redirect_event` (`link_id`, `utm_medium`);
+CREATE INDEX `redirect_event_utm_campaign_idx` ON `redirect_event` (`link_id`, `utm_campaign`);
+CREATE INDEX `redirect_event_utm_term_idx` ON `redirect_event` (`link_id`, `utm_term`);
+CREATE INDEX `redirect_event_utm_content_idx` ON `redirect_event` (`link_id`, `utm_content`);

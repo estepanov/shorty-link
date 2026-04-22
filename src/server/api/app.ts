@@ -17,9 +17,15 @@ import {
   createInvite,
   deleteDomain,
   deleteLink,
+  extractUtmParams,
+  getDomainById,
   getBootstrapState,
   getDashboardData,
   getInviteByToken,
+  getLinkById,
+  getLinkStats,
+  listDomains,
+  listShortLinks,
   recordRedirectEvent,
   resolveRedirect,
   saveDomain,
@@ -283,6 +289,35 @@ export const app = new Elysia({
           }),
         },
       )
+      .get(
+        "/links",
+        async ({ db, query, request }) => {
+          await requireAdminOrError(request);
+          return listShortLinks(db, {
+            active: query.active,
+            hostname: query.hostname,
+            page: query.page,
+            pageSize: query.pageSize,
+            search: query.search,
+            statusCode:
+              query.statusCode === 301 || query.statusCode === 302
+                ? query.statusCode
+                : "all",
+          });
+        },
+        {
+          query: t.Object({
+            active: t.Optional(
+              t.Union([t.Literal("active"), t.Literal("inactive"), t.Literal("all")]),
+            ),
+            hostname: t.Optional(t.String()),
+            page: t.Optional(t.Number({ minimum: 1 })),
+            pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+            search: t.Optional(t.String()),
+            statusCode: t.Optional(t.Union([t.Literal(301), t.Literal(302)])),
+          }),
+        },
+      )
       .post(
         "/links",
         async ({ body, db, request }) => {
@@ -295,6 +330,43 @@ export const app = new Elysia({
           };
         },
         { body: linkBody },
+      )
+      .get(
+        "/links/:id",
+        async ({ db, params, request }) => {
+          await requireAdminOrError(request);
+          const link = await getLinkById(db, params.id);
+          if (!link) {
+            throw new Error("errors.linkMissing");
+          }
+
+          return link;
+        },
+        {
+          params: t.Object({ id: t.String({ minLength: 1 }) }),
+        },
+      )
+      .get(
+        "/links/:id/stats",
+        async ({ db, params, query, request }) => {
+          await requireAdminOrError(request);
+          const link = await getLinkById(db, params.id);
+          if (!link) {
+            throw new Error("errors.linkMissing");
+          }
+
+          const stats = await getLinkStats(db, params.id, {
+            days: query.days,
+          });
+
+          return { link, stats };
+        },
+        {
+          params: t.Object({ id: t.String({ minLength: 1 }) }),
+          query: t.Object({
+            days: t.Optional(t.Number({ minimum: 1, maximum: 180 })),
+          }),
+        },
       )
       .patch(
         "/links/:id",
@@ -324,6 +396,10 @@ export const app = new Elysia({
           params: t.Object({ id: t.String({ minLength: 1 }) }),
         },
       )
+      .get("/domains", async ({ db, request }) => {
+        await requireAdminOrError(request);
+        return listDomains(db);
+      })
       .post(
         "/domains",
         async ({ body, db, request }) => {
@@ -336,6 +412,21 @@ export const app = new Elysia({
           };
         },
         { body: domainBody },
+      )
+      .get(
+        "/domains/:id",
+        async ({ db, params, request }) => {
+          await requireAdminOrError(request);
+          const domain = await getDomainById(db, params.id);
+          if (!domain) {
+            throw new Error("errors.domainMissing");
+          }
+
+          return domain;
+        },
+        {
+          params: t.Object({ id: t.String({ minLength: 1 }) }),
+        },
       )
       .patch(
         "/domains/:id",
@@ -431,6 +522,8 @@ export const app = new Elysia({
     );
     const cf = request.cf;
 
+    const utm = extractUtmParams(request.url);
+
     waitUntil(
       (async () => {
         await recordRedirectEvent(db, {
@@ -445,6 +538,7 @@ export const app = new Elysia({
           ipHash: await hashIp(getClientIp(request)),
           referer: request.headers.get("referer"),
           userAgent: request.headers.get("user-agent"),
+          ...utm,
         });
       })(),
     );

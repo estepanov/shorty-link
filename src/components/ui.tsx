@@ -1,8 +1,49 @@
 import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { createTranslator, type Locale, type MessageKey } from "@/lib/i18n";
+
+type Theme = "light" | "dark";
+
+const themeStorageKey = "shorty-link-theme";
+
+function getStoredTheme(): Theme | null {
+  try {
+    const stored = window.localStorage.getItem(themeStorageKey);
+    return stored === "light" || stored === "dark" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function setStoredTheme(theme: Theme) {
+  try {
+    window.localStorage.setItem(themeStorageKey, theme);
+  } catch {
+  }
+}
+
+function getPreferredTheme(): Theme {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+
+  const stored = getStoredTheme();
+  if (stored) {
+    return stored;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.style.colorScheme = theme;
+}
 
 export function useText(locale?: string | null) {
   return createTranslator(locale);
@@ -24,19 +65,21 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen text-stone-950 transition-colors dark:text-amber-50">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5">
-        <Link to="/" className="group inline-flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-stone-950 text-lg font-black text-amber-100 shadow-[6px_6px_0_#f97316]">
+        <Link to="/" className="group inline-flex items-center gap-3 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950">
+          <span className="grid size-11 place-items-center rounded-2xl bg-stone-950 text-lg font-black text-amber-100 shadow-[6px_6px_0_#f97316] dark:bg-amber-200 dark:text-stone-950 dark:shadow-[6px_6px_0_#1d4ed8]">
             sl
           </span>
           <span className="text-xl font-black tracking-tight">{t("app.name")}</span>
         </Link>
         <nav aria-label={t("nav.label")} className="flex items-center gap-2">
+          <ThemeToggle t={t} />
           {isPending ? null : session ? (
             <>
               <div className="hidden gap-2 sm:flex">
                 <NavLink to="/admin">{t("nav.dashboard")}</NavLink>
+                <NavLink to="/admin/links">{t("nav.shortLinks")}</NavLink>
                 <NavLink to="/admin/profile">{t("nav.profile")}</NavLink>
                 <NavLink to="/admin/sessions">{t("nav.sessions")}</NavLink>
                 <NavLink to="/admin/api-keys">{t("nav.apiKeys")}</NavLink>
@@ -44,7 +87,7 @@ export function AppShell({
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="rounded-full border border-stone-950/10 bg-white/60 px-4 py-2 text-sm font-bold text-stone-800 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-950/30 hover:bg-white"
+      className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
               >
                 {t("nav.signOut")}
               </button>
@@ -59,11 +102,57 @@ export function AppShell({
   );
 }
 
+function ThemeToggle({ t }: { t: ReturnType<typeof createTranslator> }) {
+  const [theme, setTheme] = useState<Theme>("light");
+  const label = theme === "dark" ? t("theme.useLight") : t("theme.useDark");
+
+  useEffect(() => {
+    setTheme(getPreferredTheme());
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    function handleChange(event: MediaQueryListEvent) {
+      if (getStoredTheme()) {
+        return;
+      }
+
+      const nextTheme = event.matches ? "dark" : "light";
+      setTheme(nextTheme);
+      applyTheme(nextTheme);
+    }
+
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  function handleToggle() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setStoredTheme(nextTheme);
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
+  }
+
+  return (
+    <button
+      aria-label={label}
+      className="inline-flex h-10 w-16 shrink-0 items-center rounded-full border border-stone-950/15 bg-white/70 p-1 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-950/30 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:border-white/15 dark:bg-white/10 dark:hover:border-white/30 dark:hover:bg-white/15 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
+      onClick={handleToggle}
+      title={label}
+      type="button"
+    >
+      <span className="sr-only">{label}</span>
+      <span
+        aria-hidden="true"
+        className="block size-8 rounded-full bg-stone-950 shadow-[3px_3px_0_#f97316] transition-transform dark:translate-x-6 dark:bg-amber-200 dark:shadow-[3px_3px_0_#1d4ed8]"
+      />
+    </button>
+  );
+}
+
 function NavLink({ children, to }: { children: ReactNode; to: string }) {
   return (
     <Link
       to={to}
-      className="rounded-full border border-stone-950/10 bg-white/60 px-4 py-2 text-sm font-bold text-stone-800 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-950/30 hover:bg-white"
+                className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
     >
       {children}
     </Link>
@@ -79,7 +168,7 @@ export function Card({
 }) {
   return (
     <section
-      className={`rounded-[2rem] border border-stone-950/10 bg-white/70 p-6 shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur ${className}`}
+      className={`rounded-[2rem] border border-stone-950/10 bg-white/70 p-6 shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur dark:border-white/10 dark:bg-stone-950/70 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)] ${className}`}
     >
       {children}
     </section>
@@ -95,15 +184,15 @@ export function Button({
 }) {
   const styles =
     tone === "danger"
-      ? "border-red-950/20 bg-red-100 text-red-950 hover:bg-red-200"
+      ? "border-red-950/20 bg-red-100 text-red-950 hover:bg-red-200 dark:border-red-300/30 dark:bg-red-500/20 dark:text-red-100 dark:hover:bg-red-500/30"
       : tone === "secondary"
-        ? "border-stone-950/15 bg-white/70 text-stone-900 hover:bg-white"
-        : "border-stone-950 bg-stone-950 text-amber-100 shadow-[5px_5px_0_#f97316] hover:-translate-y-0.5";
+        ? "border-stone-200 bg-white text-stone-900 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800"
+        : "border-stone-950 bg-stone-950 text-white hover:bg-stone-800 dark:border-white dark:bg-white dark:text-stone-950 dark:hover:bg-stone-200";
 
   return (
     <button
       {...props}
-      className={`rounded-2xl border px-4 py-3 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${styles} ${props.className ?? ""}`}
+      className={`rounded-2xl border px-4 py-3 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950 ${styles} ${props.className ?? ""}`}
     >
       {children}
     </button>
@@ -114,7 +203,7 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-2xl border border-stone-950/15 bg-white/80 px-4 py-3 text-stone-950 outline-none transition placeholder:text-stone-500 focus:border-blue-700 focus:ring-4 focus:ring-blue-700/15 ${props.className ?? ""}`}
+      className={`w-full rounded-2xl border border-stone-950/15 bg-white/80 px-4 py-3 text-stone-950 outline-none transition placeholder:text-stone-600 focus:border-blue-700 focus:ring-2 focus:ring-blue-700 dark:border-white/15 dark:bg-white/10 dark:text-amber-50 dark:placeholder:text-stone-300 dark:focus:border-amber-300 dark:focus:ring-amber-300 ${props.className ?? ""}`}
     />
   );
 }
@@ -123,7 +212,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`w-full rounded-2xl border border-stone-950/15 bg-white/80 px-4 py-3 text-stone-950 outline-none transition focus:border-blue-700 focus:ring-4 focus:ring-blue-700/15 ${props.className ?? ""}`}
+      className={`w-full rounded-2xl border border-stone-950/15 bg-white/80 px-4 py-3 text-stone-950 outline-none transition focus:border-blue-700 focus:ring-2 focus:ring-blue-700 dark:border-white/15 dark:bg-stone-900 dark:text-amber-50 dark:focus:border-amber-300 dark:focus:ring-amber-300 ${props.className ?? ""}`}
     />
   );
 }
@@ -132,7 +221,7 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
   return (
     <textarea
       {...props}
-      className={`min-h-28 w-full rounded-2xl border border-stone-950/15 bg-white/80 px-4 py-3 text-stone-950 outline-none transition placeholder:text-stone-500 focus:border-blue-700 focus:ring-4 focus:ring-blue-700/15 ${props.className ?? ""}`}
+      className={`min-h-28 w-full rounded-2xl border border-stone-950/15 bg-white/80 px-4 py-3 text-stone-950 outline-none transition placeholder:text-stone-600 focus:border-blue-700 focus:ring-2 focus:ring-blue-700 dark:border-white/15 dark:bg-white/10 dark:text-amber-50 dark:placeholder:text-stone-300 dark:focus:border-amber-300 dark:focus:ring-amber-300 ${props.className ?? ""}`}
     />
   );
 }
@@ -145,7 +234,7 @@ export function FieldLabel({
   htmlFor?: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-bold text-stone-800" htmlFor={htmlFor}>
+    <label className="grid gap-2 text-sm font-bold text-stone-800 dark:text-stone-200" htmlFor={htmlFor}>
       {children}
     </label>
   );
@@ -160,10 +249,10 @@ export function Notice({
 }) {
   const styles =
     tone === "error"
-      ? "border-red-950/20 bg-red-100 text-red-950"
+      ? "border-red-950/20 bg-red-100 text-red-950 dark:border-red-300/30 dark:bg-red-500/20 dark:text-red-100"
       : tone === "success"
-        ? "border-emerald-950/20 bg-emerald-100 text-emerald-950"
-        : "border-blue-950/20 bg-blue-100 text-blue-950";
+        ? "border-emerald-950/20 bg-emerald-100 text-emerald-950 dark:border-emerald-300/30 dark:bg-emerald-500/20 dark:text-emerald-100"
+        : "border-blue-950/20 bg-blue-100 text-blue-950 dark:border-blue-300/30 dark:bg-blue-500/20 dark:text-blue-100";
 
   return <div className={`rounded-2xl border px-4 py-3 text-sm ${styles}`}>{children}</div>;
 }

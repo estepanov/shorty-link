@@ -14,13 +14,13 @@ function Home() {
     <AppShell>
       <main className="mx-auto grid min-h-[calc(100vh-6rem)] w-full max-w-7xl items-center gap-8 px-5 py-10 lg:grid-cols-[1.15fr_0.85fr]">
         <section>
-          <p className="mb-5 inline-flex rounded-full border border-stone-950 bg-amber-200 px-4 py-2 text-sm font-black uppercase tracking-[0.24em] text-stone-950 shadow-[4px_4px_0_#1d4ed8]">
+          <p className="mb-5 inline-flex rounded-full border border-stone-950 bg-amber-200 px-4 py-2 text-sm font-black uppercase tracking-[0.24em] text-stone-950 shadow-[4px_4px_0_#1d4ed8] dark:border-amber-200 dark:bg-amber-300">
             {t("home.badge")}
           </p>
-          <h1 className="max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-stone-950 sm:text-7xl">
+          <h1 className="max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-stone-950 dark:text-amber-50 sm:text-7xl">
             {t("home.title")}
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-stone-700">
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-stone-700 dark:text-stone-300">
             {t("home.description")}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -33,7 +33,7 @@ function Home() {
           </div>
         </section>
 
-        <Card className="relative overflow-hidden bg-stone-950 text-amber-50">
+        <Card className="relative overflow-hidden bg-stone-950 text-amber-50 dark:border-white/10 dark:bg-stone-900/95">
           <div className="absolute -right-16 -top-16 size-44 rounded-full bg-orange-500/60 blur-2xl" />
           <div className="relative">
             <p className="text-sm font-black uppercase tracking-[0.25em] text-amber-300">
