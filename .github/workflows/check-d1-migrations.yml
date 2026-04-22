@@ -1,0 +1,41 @@
+name: Check D1 Migrations
+
+on:
+  pull_request:
+    paths:
+      - "packages/core/**"
+      - "apps/admin/migrations/**"
+      - "drizzle.config.ts"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/check-d1-migrations.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Validate generated migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate migrations
+        run: pnpm db:generate
+
+      - name: Ensure migrations are committed
+        run: git diff --exit-code -- apps/admin/migrations drizzle.config.ts

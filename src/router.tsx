@@ -1,0 +1,41 @@
+import { Link, createRouter } from "@tanstack/react-router";
+
+import { routeTree } from "./routeTree.gen";
+
+export function getRouter() {
+  return createRouter({
+    defaultNotFoundComponent: DefaultNotFound,
+    routeTree,
+    scrollRestoration: true,
+  });
+}
+
+function DefaultNotFound() {
+  return (
+    <main className="mx-auto grid min-h-[calc(100vh-6rem)] w-full max-w-7xl place-items-center px-5 py-10">
+      <section className="max-w-xl rounded-[2rem] border border-stone-950/10 bg-white/70 p-6 text-center shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur">
+        <p className="text-sm font-black uppercase tracking-[0.24em] text-orange-700">
+          Shorty Link
+        </p>
+        <h1 className="mt-4 text-4xl font-black tracking-tight text-stone-950">
+          Not found
+        </h1>
+        <p className="mt-4 text-stone-700">
+          This page does not exist.
+        </p>
+        <Link
+          className="mt-6 inline-flex rounded-2xl border border-stone-950 bg-stone-950 px-4 py-3 text-sm font-black text-amber-100 shadow-[5px_5px_0_#f97316] transition hover:-translate-y-0.5"
+          to="/"
+        >
+          Go home
+        </Link>
+      </section>
+    </main>
+  );
+}
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: ReturnType<typeof getRouter>;
+  }
+}

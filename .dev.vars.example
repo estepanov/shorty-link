@@ -1,0 +1,5 @@
+BETTER_AUTH_SECRET=replace-with-a-32-byte-random-secret
+BETTER_AUTH_ALLOWED_HOSTS=localhost:3000,localhost:8787,*.workers.dev
+BETTER_AUTH_FALLBACK_URL=http://localhost:3000
+PASSKEY_RP_NAME=Shorty Link
+# PASSKEY_RP_ID=example.com
