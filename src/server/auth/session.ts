@@ -20,12 +20,12 @@ export async function requireAdmin(request: Request) {
 
   const db = createDb();
   const rows = await db
-    .select({ id: user.id, role: user.role })
+    .select({ id: user.id, role: user.role, isActive: user.isActive })
     .from(user)
     .where(eq(user.id, session.user.id))
     .limit(1);
 
-  if (!isAdminRole(rows[0]?.role)) {
+  if (!isAdminRole(rows[0]?.role) || rows[0]?.isActive === false) {
     throw new Response("errors.forbidden", { status: 403 });
   }
 

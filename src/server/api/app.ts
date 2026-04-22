@@ -32,6 +32,13 @@ import {
   saveLink,
   suggestSlugFromUrl,
 } from "../services/links";
+import {
+  deleteInvite,
+  deleteUser,
+  listAllInvites,
+  listUsers,
+  toggleUserActive,
+} from "../services/users";
 
 type AiBinding = {
   run: (model: string, input: Record<string, unknown>) => Promise<unknown>;
@@ -477,6 +484,63 @@ export const app = new Elysia({
             email: t.String({ format: "email" }),
             expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 30 })),
           }),
+        },
+      )
+      .get("/users", async ({ db, request }) => {
+        await requireAdminOrError(request);
+        return listUsers(db);
+      })
+      .patch(
+        "/users/:id",
+        async ({ body, db, params, request }) => {
+          const session = await requireAdminOrError(request);
+          if (params.id === session.user.id) {
+            throw new Error("errors.cannotSelfDisable");
+          }
+          await toggleUserActive(db, params.id, body.isActive);
+          return { ok: true };
+        },
+        {
+          body: t.Object({
+            isActive: t.Boolean(),
+          }),
+          params: t.Object({ id: t.String({ minLength: 1 }) }),
+        },
+      )
+      .delete(
+        "/users/:id",
+        async ({ db, params, request }) => {
+          const session = await requireAdminOrError(request);
+          if (params.id === session.user.id) {
+            throw new Error("errors.cannotSelfDelete");
+          }
+          await deleteUser(db, params.id);
+          return { ok: true };
+        },
+        {
+          params: t.Object({ id: t.String({ minLength: 1 }) }),
+        },
+      )
+      .get("/invites", async ({ db, request }) => {
+        await requireAdminOrError(request);
+        const invites = await listAllInvites(db);
+        const origin = new URL(request.url).origin;
+        return invites.map((invite) => ({
+          ...invite,
+          inviteUrl: invite.acceptedAt
+            ? null
+            : buildInviteUrl(origin, invite.token),
+        }));
+      })
+      .delete(
+        "/invites",
+        async ({ body, db, request }) => {
+          await requireAdminOrError(request);
+          await deleteInvite(db, body.id);
+          return { ok: true };
+        },
+        {
+          body: t.Object({ id: t.String({ minLength: 1 }) }),
         },
       )
       .get(

@@ -17,3 +17,7 @@ export type LinkListItem = LinkListData["items"][number];
 export type LinkStatsResponse = ApiData<LinkByIdApi["stats"]["get"]>;
 export type LinkStats = LinkStatsResponse["stats"];
 export type UtmDimension = keyof LinkStats["breakdowns"] & string;
+
+export type AdminUser = ApiData<AdminApi["users"]["get"]>[number];
+export type AdminInviteList = ApiData<AdminApi["invites"]["get"]>;
+export type AdminInvite = AdminInviteList[number];

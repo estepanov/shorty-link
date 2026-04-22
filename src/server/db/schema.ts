@@ -18,6 +18,7 @@ export const user = sqliteTable("user", {
   image: text("image"),
   role: text("role").notNull().default("admin"),
   locale: text("locale").notNull().default("en"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

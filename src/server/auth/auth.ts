@@ -3,11 +3,14 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { i18n } from "@better-auth/i18n";
 import { passkey } from "@better-auth/passkey";
 import { env } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 
 import { createDb } from "../db/client";
-import { schema } from "../db/schema";
+import { apiKey as apiKeyTable, schema, user } from "../db/schema";
+import { isAdminRole } from "../services/links";
 import {
   completePasskeyRegistrationUser,
   resolvePasskeyRegistrationUser,
@@ -84,6 +87,33 @@ export function createAuth(request?: Request) {
         enabled: false,
       },
     },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/api-key/create") {
+          return;
+        }
+        const session = await createAuth(ctx.request).api.getSession({
+          headers: ctx.request?.headers ?? new Headers(),
+        });
+        if (!session) {
+          throw new APIError("UNAUTHORIZED", {
+            message: "Authentication required",
+          });
+        }
+        const authDb = createDb();
+        const rows = await authDb
+          .select({ role: user.role, isActive: user.isActive })
+          .from(user)
+          .where(eq(user.id, session.user.id))
+          .limit(1);
+        const u = rows[0];
+        if (!u || !isAdminRole(u.role) || u.isActive === false) {
+          throw new APIError("FORBIDDEN", {
+            message: "Only active admins can create API keys",
+          });
+        }
+      }),
+    },
     plugins: [
       passkey({
         origin,
@@ -115,6 +145,35 @@ export function createAuth(request?: Request) {
           enabled: true,
           maxRequests: 120,
           timeWindow: 60_000,
+        },
+        customAPIKeyValidator: async ({ key }) => {
+          const authDb = createDb();
+          const hash = await crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(key),
+          );
+          const hashed = btoa(String.fromCharCode(...new Uint8Array(hash)))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=/g, "");
+          const keys = await authDb
+            .select({ referenceId: apiKeyTable.referenceId })
+            .from(apiKeyTable)
+            .where(eq(apiKeyTable.key, hashed))
+            .limit(1);
+          if (!keys[0]) {
+            return true;
+          }
+          const rows = await authDb
+            .select({ role: user.role, isActive: user.isActive })
+            .from(user)
+            .where(eq(user.id, keys[0].referenceId))
+            .limit(1);
+          const u = rows[0];
+          if (!u || !isAdminRole(u.role) || u.isActive === false) {
+            return false;
+          }
+          return true;
         },
       }),
       i18n({

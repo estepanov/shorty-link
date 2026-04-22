@@ -80,6 +80,7 @@ export function AppShell({
               <div className="hidden gap-2 sm:flex">
                 <NavLink to="/admin">{t("nav.dashboard")}</NavLink>
                 <NavLink to="/admin/links">{t("nav.shortLinks")}</NavLink>
+                <NavLink to="/admin/users">{t("nav.access")}</NavLink>
                 <NavLink to="/admin/profile">{t("nav.profile")}</NavLink>
                 <NavLink to="/admin/sessions">{t("nav.sessions")}</NavLink>
                 <NavLink to="/admin/api-keys">{t("nav.apiKeys")}</NavLink>
