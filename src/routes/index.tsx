@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { AppShell, Button, Card } from "@/components/ui";
@@ -6,6 +7,60 @@ import { createTranslator, defaultLocale } from "@/lib/i18n";
 export const Route = createFileRoute("/")({
   component: Home,
 });
+
+function TiltCard({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [transform, setTransform] = useState("");
+  const [glowPosition, setGlowPosition] = useState({ x: 50, y: 50 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const rotateX = ((y - centerY) / centerY) * -6;
+    const rotateY = ((x - centerX) / centerX) * 6;
+
+    setTransform(
+      `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`
+    );
+    setGlowPosition({
+      x: (x / rect.width) * 100,
+      y: (y / rect.height) * 100,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTransform("perspective(800px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)");
+    setGlowPosition({ x: 50, y: 50 });
+  };
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="[transform-style:preserve-3d] transition-transform duration-200 ease-out will-change-transform"
+      style={{ transform }}
+    >
+      <Card className="relative overflow-hidden !border-0 !bg-gradient-to-br !from-stone-800 !via-stone-950 !to-black text-amber-50 dark:border-white/10 dark:bg-stone-900/95">
+        {/* Mouse-following radial glow */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(circle 280px at ${glowPosition.x}% ${glowPosition.y}%, rgba(251,191,36,0.35), transparent)`,
+          }}
+        />
+        {/* Static ambient accent */}
+        <div className="absolute -right-16 -top-16 size-44 rounded-full bg-orange-500/60 blur-2xl" />
+        <div className="relative">{children}</div>
+      </Card>
+    </div>
+  );
+}
 
 function Home() {
   const t = createTranslator(defaultLocale);
@@ -33,20 +88,17 @@ function Home() {
           </div>
         </section>
 
-        <Card className="relative overflow-hidden bg-stone-950 text-amber-50 dark:border-white/10 dark:bg-stone-900/95">
-          <div className="absolute -right-16 -top-16 size-44 rounded-full bg-orange-500/60 blur-2xl" />
-          <div className="relative">
-            <p className="text-sm font-black uppercase tracking-[0.25em] text-amber-300">
-              {t("home.redirectModel")}
-            </p>
-            <ol className="mt-6 grid gap-4 text-base leading-7">
-              <li>1. {t("home.modelOne")}</li>
-              <li>2. {t("home.modelTwo")}</li>
-              <li>3. {t("home.modelThree")}</li>
-              <li>4. {t("home.modelFour")}</li>
-            </ol>
-          </div>
-        </Card>
+        <TiltCard>
+          <p className="text-sm font-black uppercase tracking-[0.25em] text-amber-300">
+            {t("home.redirectModel")}
+          </p>
+          <ol className="mt-6 grid gap-4 text-base leading-7">
+            <li>1. {t("home.modelOne")}</li>
+            <li>2. {t("home.modelTwo")}</li>
+            <li>3. {t("home.modelThree")}</li>
+            <li>4. {t("home.modelFour")}</li>
+          </ol>
+        </TiltCard>
       </main>
     </AppShell>
   );
