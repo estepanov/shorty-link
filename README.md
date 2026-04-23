@@ -12,21 +12,13 @@ Shorty Link is a single-deploy URL shortener for Cloudflare Workers. It combines
 
 Password login and password account creation are intentionally disabled.
 
-## Quick Start
+## Local Development
 
 Install dependencies:
 
 ```bash
 pnpm install
 ```
-
-Create a D1 database:
-
-```bash
-pnpm exec wrangler d1 create shorty-link
-```
-
-Copy the returned `database_id` into `wrangler.jsonc`.
 
 Create a local env file:
 
@@ -54,21 +46,59 @@ pnpm dev
 
 Open `http://localhost:3000/admin`, create the first admin, and register a passkey.
 
-## Deploy
+## Self-Hosting
 
-Apply the schema remotely:
+Shorty Link is designed to be **forked** and run on **your own Cloudflare account**. The committed `wrangler.jsonc` is a working config, not a template — fork it and swap the values for yours.
+
+### 1. Fork and edit `wrangler.jsonc`
+
+Change at minimum:
+
+- `name`: your Worker name (must be unique within your account).
+- `d1_databases[0].database_id`: the ID returned by `wrangler d1 create`.
+- `vars.BETTER_AUTH_ALLOWED_HOSTS`: comma-separated hosts you'll serve from, e.g. `links.example.com,admin.example.com`.
+- `vars.BETTER_AUTH_FALLBACK_URL`: your primary origin, e.g. `https://links.example.com`.
+- `vars.PASSKEY_RP_NAME`: the name shown in passkey prompts.
+
+Create the D1 database:
+
+```bash
+pnpm exec wrangler d1 create <your-db-name>
+```
+
+### 2. Set secrets
+
+`BETTER_AUTH_SECRET` must be set as a Worker secret, not a var:
+
+```bash
+pnpm exec wrangler secret put BETTER_AUTH_SECRET
+```
+
+### 3. Deploy manually (first time)
 
 ```bash
 pnpm db:migrate:remote
-```
-
-Deploy one Worker:
-
-```bash
 pnpm deploy
 ```
 
-Add each custom redirect hostname as a Cloudflare Worker custom domain or route that points to this Worker. In the admin UI, create a domain entry for host-specific links. Links scoped to a hostname win first; default-host links are fallback links for all hostnames.
+### 4. Wire up GitHub Actions (optional)
+
+This repo ships with three workflows under `.github/workflows/`:
+
+- `deploy-workers.yml`: deploys on push to `main`.
+- `d1-production-migrations.yml`: applies migrations on push to `main`.
+- `check-d1-migrations.yml`: validates migrations in PRs.
+
+For automated deploys, add __two repository secrets__:
+
+- `CLOUDFLARE_API_TOKEN`: a token with `Workers Scripts:Edit` and `D1:Edit` on your account.
+- `CLOUDFLARE_ACCOUNT_ID`: your Cloudflare account ID.
+
+Push to `main` and CI handles migrations + deploy.
+
+### 5. Custom domains
+
+Add each redirect hostname as a Cloudflare Worker custom domain or route pointing to this Worker. In the admin UI, create a domain entry for host-specific links. Links scoped to a hostname win first; default-host links are fallback links for all hostnames.
 
 ## Configuration
 

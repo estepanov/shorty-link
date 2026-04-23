@@ -3,9 +3,7 @@
 	"name": "shorty-link",
 	"main": "src/server.ts",
 	"compatibility_date": "2026-04-16",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1
@@ -20,14 +18,8 @@
 		{
 			"binding": "DB",
 			"database_name": "shorty-link",
-			"database_id": "00000000-0000-0000-0000-000000000000",
-			"preview_database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "d0a003ba-aef0-4005-867b-acce83d85b64",
 			"migrations_dir": "./migrations"
-		},
-		{
-			"binding": "shorty_link",
-			"database_name": "shorty-link",
-			"database_id": "d0a003ba-aef0-4005-867b-acce83d85b64"
 		}
 	],
 	"ai": {

@@ -1,315 +1,316 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { InviteForm, type CreatedInvite } from "@/components/admin-forms";
+import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
 import { Button, Card, Notice } from "@/components/ui";
 import { useAdminAuthGuard } from "@/lib/admin-auth";
 import type { AdminInvite, AdminUser } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/users")({
-  component: UsersPage,
+	component: UsersPage,
 });
 
 type InviteWithStatus = AdminInvite & {
-  status: "pending" | "expired" | "accepted";
+	status: "pending" | "expired" | "accepted";
 };
 
 function UsersPage() {
-  const { session, isPending, locale, t } = useAdminAuthGuard();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [invites, setInvites] = useState<AdminInvite[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [createdInvite, setCreatedInvite] = useState<CreatedInvite | null>(null);
+	const { session, isPending, locale, t } = useAdminAuthGuard();
+	const [users, setUsers] = useState<AdminUser[]>([]);
+	const [invites, setInvites] = useState<AdminInvite[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	const [createdInvite, setCreatedInvite] = useState<CreatedInvite | null>(
+		null,
+	);
 
-  async function refresh() {
-    setError(null);
-    try {
-      const api = getTreaty();
-      const [nextUsers, nextInvites] = await Promise.all([
-        unwrap<AdminUser[]>(await api.admin.users.get()),
-        unwrap<AdminInvite[]>(await api.admin.invites.get()),
-      ]);
-      setUsers(nextUsers);
-      setInvites(nextInvites);
-    } catch (nextError) {
-      setError(
-        nextError instanceof Error ? nextError.message : "errors.unknown",
-      );
-    }
-  }
+	async function refresh() {
+		setError(null);
+		try {
+			const api = getTreaty();
+			const [nextUsers, nextInvites] = await Promise.all([
+				unwrap<AdminUser[]>(await api.admin.users.get()),
+				unwrap<AdminInvite[]>(await api.admin.invites.get()),
+			]);
+			setUsers(nextUsers);
+			setInvites(nextInvites);
+		} catch (nextError) {
+			setError(
+				nextError instanceof Error ? nextError.message : "errors.unknown",
+			);
+		}
+	}
 
-  useEffect(() => {
-    if (session) {
-      void refresh();
-    }
-  }, [session?.user.id]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh is stable within this component; re-fetch only when the authenticated user identity changes.
+	useEffect(() => {
+		if (session) {
+			void refresh();
+		}
+	}, [session?.user.id]);
 
-  if (isPending) {
-    return <Card>{t("loading.app")}</Card>;
-  }
+	if (isPending) {
+		return <Card>{t("loading.app")}</Card>;
+	}
 
-  if (!session) {
-    return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
-  }
+	if (!session) {
+		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+	}
 
-  const activeUsers = users.filter((u) => u.isActive);
-  const disabledUsers = users.filter((u) => !u.isActive);
-  const now = Date.now();
+	const activeUsers = users.filter((u) => u.isActive);
+	const disabledUsers = users.filter((u) => !u.isActive);
+	const now = Date.now();
 
-  const invitesWithStatus: InviteWithStatus[] = invites.map((invite) => {
-    if (invite.acceptedAt) return { ...invite, status: "accepted" };
-    if (invite.expiresAt < now) return { ...invite, status: "expired" };
-    return { ...invite, status: "pending" };
-  });
+	const invitesWithStatus: InviteWithStatus[] = invites.map((invite) => {
+		if (invite.acceptedAt) return { ...invite, status: "accepted" };
+		if (invite.expiresAt < now) return { ...invite, status: "expired" };
+		return { ...invite, status: "pending" };
+	});
 
-  return (
-    <div className="mx-auto grid w-full max-w-7xl gap-6">
-      <Card>
-        <Link
-          className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
-          to="/admin"
-        >
-          {t("pages.backDashboard")}
-        </Link>
-        <h1 className="mt-4 text-4xl font-black">{t("users.title")}</h1>
-        {error ? (
-          <div className="mt-4">
-            <Notice tone="error">{t(error)}</Notice>
-          </div>
-        ) : null}
-      </Card>
+	return (
+		<div className="mx-auto grid w-full max-w-7xl gap-6">
+			<Card>
+				<Link
+					className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
+					to="/admin"
+				>
+					{t("pages.backDashboard")}
+				</Link>
+				<h1 className="mt-4 text-4xl font-black">{t("users.title")}</h1>
+				{error ? (
+					<div className="mt-4">
+						<Notice tone="error">{t(error)}</Notice>
+					</div>
+				) : null}
+			</Card>
 
-      <Card>
-        <h2 className="text-2xl font-black">{t("users.active")}</h2>
-        <div className="mt-5 grid gap-3">
-          {activeUsers.length ? (
-            activeUsers.map((u) => (
-              <UserRow
-                key={u.id}
-                locale={locale}
-                onRefresh={refresh}
-                setError={setError}
-                t={t}
-                user={u}
-              />
-            ))
-          ) : (
-            <p className="text-sm text-stone-600 dark:text-stone-300">
-              {t("users.emptyActive")}
-            </p>
-          )}
-        </div>
-      </Card>
+			<Card>
+				<h2 className="text-2xl font-black">{t("users.active")}</h2>
+				<div className="mt-5 grid gap-3">
+					{activeUsers.length ? (
+						activeUsers.map((u) => (
+							<UserRow
+								key={u.id}
+								locale={locale}
+								onRefresh={refresh}
+								setError={setError}
+								t={t}
+								user={u}
+							/>
+						))
+					) : (
+						<p className="text-sm text-stone-600 dark:text-stone-300">
+							{t("users.emptyActive")}
+						</p>
+					)}
+				</div>
+			</Card>
 
-      <Card>
-        <h2 className="text-2xl font-black">{t("users.disabled")}</h2>
-        <div className="mt-5 grid gap-3">
-          {disabledUsers.length ? (
-            disabledUsers.map((u) => (
-              <UserRow
-                key={u.id}
-                locale={locale}
-                onRefresh={refresh}
-                setError={setError}
-                t={t}
-                user={u}
-              />
-            ))
-          ) : (
-            <p className="text-sm text-stone-600 dark:text-stone-300">
-              {t("users.emptyDisabled")}
-            </p>
-          )}
-        </div>
-      </Card>
+			<Card>
+				<h2 className="text-2xl font-black">{t("users.disabled")}</h2>
+				<div className="mt-5 grid gap-3">
+					{disabledUsers.length ? (
+						disabledUsers.map((u) => (
+							<UserRow
+								key={u.id}
+								locale={locale}
+								onRefresh={refresh}
+								setError={setError}
+								t={t}
+								user={u}
+							/>
+						))
+					) : (
+						<p className="text-sm text-stone-600 dark:text-stone-300">
+							{t("users.emptyDisabled")}
+						</p>
+					)}
+				</div>
+			</Card>
 
-      <Card>
-        <h2 className="text-2xl font-black">{t("users.invites")}</h2>
-        <div className="mt-5 grid gap-3">
-          {invitesWithStatus.length ? (
-            invitesWithStatus.map((invite) => (
-              <div
-                key={invite.id}
-                className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
-              >
-                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-                  <div>
-                    <p className="font-black">{invite.email}</p>
-                    <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
-                          invite.status === "pending"
-                            ? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
-                            : invite.status === "accepted"
-                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
-                              : "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300"
-                        }`}
-                      >
-                        {t(
-                          `users.status${
-                            invite.status.charAt(0).toUpperCase() +
-                            invite.status.slice(1)
-                          }`,
-                        )}
-                      </span>
-                      {" · "}
-                      {invite.status === "pending"
-                        ? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`
-                        : invite.status === "accepted"
-                          ? new Date(invite.acceptedAt!).toLocaleDateString(
-                              locale,
-                            )
-                          : `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
-                    </p>
-                    {invite.inviteUrl ? (
-                      <a
-                        className="mt-1 block break-all text-xs text-blue-800 underline dark:text-blue-300"
-                        href={invite.inviteUrl}
-                      >
-                        {invite.inviteUrl}
-                      </a>
-                    ) : null}
-                  </div>
-                  <Button
-                    onClick={async () => {
-                      setError(null);
-                      try {
-                        const api = getTreaty();
-                        await unwrap(
-                          await api.admin.invites.delete({
-                            id: invite.id,
-                          }),
-                        );
-                        await refresh();
-                      } catch (nextError) {
-                        setError(
-                          nextError instanceof Error
-                            ? nextError.message
-                            : "errors.unknown",
-                        );
-                      }
-                    }}
-                    tone="danger"
-                    type="button"
-                  >
-                    {t("users.cancelInvite")}
-                  </Button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-stone-600 dark:text-stone-300">
-              {t("users.emptyInvites")}
-            </p>
-          )}
-        </div>
-      </Card>
+			<Card>
+				<h2 className="text-2xl font-black">{t("users.invites")}</h2>
+				<div className="mt-5 grid gap-3">
+					{invitesWithStatus.length ? (
+						invitesWithStatus.map((invite) => (
+							<div
+								key={invite.id}
+								className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+							>
+								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+									<div>
+										<p className="font-black">{invite.email}</p>
+										<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+											<span
+												className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
+													invite.status === "pending"
+														? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
+														: invite.status === "accepted"
+															? "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
+															: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300"
+												}`}
+											>
+												{t(
+													`users.status${
+														invite.status.charAt(0).toUpperCase() +
+														invite.status.slice(1)
+													}`,
+												)}
+											</span>
+											{" · "}
+											{invite.status === "pending"
+												? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`
+												: invite.status === "accepted" && invite.acceptedAt
+													? new Date(invite.acceptedAt).toLocaleDateString(
+															locale,
+														)
+													: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
+										</p>
+										{invite.inviteUrl ? (
+											<a
+												className="mt-1 block break-all text-xs text-blue-800 underline dark:text-blue-300"
+												href={invite.inviteUrl}
+											>
+												{invite.inviteUrl}
+											</a>
+										) : null}
+									</div>
+									<Button
+										onClick={async () => {
+											setError(null);
+											try {
+												const api = getTreaty();
+												await unwrap(
+													await api.admin.invites.delete({
+														id: invite.id,
+													}),
+												);
+												await refresh();
+											} catch (nextError) {
+												setError(
+													nextError instanceof Error
+														? nextError.message
+														: "errors.unknown",
+												);
+											}
+										}}
+										tone="danger"
+										type="button"
+									>
+										{t("users.cancelInvite")}
+									</Button>
+								</div>
+							</div>
+						))
+					) : (
+						<p className="text-sm text-stone-600 dark:text-stone-300">
+							{t("users.emptyInvites")}
+						</p>
+					)}
+				</div>
+			</Card>
 
-      <Card>
-        <h2 className="text-2xl font-black">{t("actions.addInvite")}</h2>
-        {createdInvite ? (
-          <div className="mt-4">
-            <Notice tone="success">
-              <strong>{t("invites.created")}</strong>
-              <a
-                className="mt-2 block break-all underline underline-offset-4"
-                href={createdInvite.inviteUrl}
-              >
-                {createdInvite.inviteUrl}
-              </a>
-            </Notice>
-          </div>
-        ) : null}
-        <InviteForm
-          onSaved={(invite) => {
-            setCreatedInvite(invite);
-            void refresh();
-          }}
-          t={t}
-        />
-      </Card>
-    </div>
-  );
+			<Card>
+				<h2 className="text-2xl font-black">{t("actions.addInvite")}</h2>
+				{createdInvite ? (
+					<div className="mt-4">
+						<Notice tone="success">
+							<strong>{t("invites.created")}</strong>
+							<a
+								className="mt-2 block break-all underline underline-offset-4"
+								href={createdInvite.inviteUrl}
+							>
+								{createdInvite.inviteUrl}
+							</a>
+						</Notice>
+					</div>
+				) : null}
+				<InviteForm
+					onSaved={(invite) => {
+						setCreatedInvite(invite);
+						void refresh();
+					}}
+					t={t}
+				/>
+			</Card>
+		</div>
+	);
 }
 
 function UserRow({
-  locale,
-  onRefresh,
-  setError,
-  t,
-  user: u,
+	locale,
+	onRefresh,
+	setError,
+	t,
+	user: u,
 }: {
-  locale: string;
-  onRefresh: () => Promise<void>;
-  setError: (message: string | null) => void;
-  t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
-  user: AdminUser;
+	locale: string;
+	onRefresh: () => Promise<void>;
+	setError: (message: string | null) => void;
+	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
+	user: AdminUser;
 }) {
-  return (
-    <div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-        <div>
-          <p className="font-black">
-            {u.name}{" "}
-            <span className="text-sm font-normal text-stone-600 dark:text-stone-300">
-              ({u.email})
-            </span>
-          </p>
-          <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-            {u.role} · {u.locale} ·{" "}
-            {new Date(u.createdAt).toLocaleDateString(locale)}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={async () => {
-              setError(null);
-              try {
-                const api = getTreaty();
-                await unwrap(
-                  await api.admin.users({ id: u.id }).patch({
-                    isActive: !u.isActive,
-                  }),
-                );
-                await onRefresh();
-              } catch (nextError) {
-                setError(
-                  nextError instanceof Error
-                    ? nextError.message
-                    : "errors.unknown",
-                );
-              }
-            }}
-            tone="secondary"
-            type="button"
-          >
-            {u.isActive ? t("users.disable") : t("users.enable")}
-          </Button>
-          <Button
-            onClick={async () => {
-              setError(null);
-              try {
-                const api = getTreaty();
-                await unwrap(
-                  await api.admin.users({ id: u.id }).delete(),
-                );
-                await onRefresh();
-              } catch (nextError) {
-                setError(
-                  nextError instanceof Error
-                    ? nextError.message
-                    : "errors.unknown",
-                );
-              }
-            }}
-            tone="danger"
-            type="button"
-          >
-            {t("users.delete")}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
+	return (
+		<div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+				<div>
+					<p className="font-black">
+						{u.name}{" "}
+						<span className="text-sm font-normal text-stone-600 dark:text-stone-300">
+							({u.email})
+						</span>
+					</p>
+					<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+						{u.role} · {u.locale} ·{" "}
+						{new Date(u.createdAt).toLocaleDateString(locale)}
+					</p>
+				</div>
+				<div className="flex gap-2">
+					<Button
+						onClick={async () => {
+							setError(null);
+							try {
+								const api = getTreaty();
+								await unwrap(
+									await api.admin.users({ id: u.id }).patch({
+										isActive: !u.isActive,
+									}),
+								);
+								await onRefresh();
+							} catch (nextError) {
+								setError(
+									nextError instanceof Error
+										? nextError.message
+										: "errors.unknown",
+								);
+							}
+						}}
+						tone="secondary"
+						type="button"
+					>
+						{u.isActive ? t("users.disable") : t("users.enable")}
+					</Button>
+					<Button
+						onClick={async () => {
+							setError(null);
+							try {
+								const api = getTreaty();
+								await unwrap(await api.admin.users({ id: u.id }).delete());
+								await onRefresh();
+							} catch (nextError) {
+								setError(
+									nextError instanceof Error
+										? nextError.message
+										: "errors.unknown",
+								);
+							}
+						}}
+						tone="danger"
+						type="button"
+					>
+						{t("users.delete")}
+					</Button>
+				</div>
+			</div>
+		</div>
+	);
 }

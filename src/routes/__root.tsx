@@ -1,37 +1,37 @@
 /// <reference types="vite/client" />
 import {
-  HeadContent,
-  Outlet,
-  Scripts,
-  createRootRoute,
+	createRootRoute,
+	HeadContent,
+	Outlet,
+	Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import "../styles.css";
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "color-scheme", content: "light dark" },
-      {
-        name: "description",
-        content:
-          "Shorty Link is a self-hosted Cloudflare Workers URL shortener.",
-      },
-      { title: "Shorty Link" },
-    ],
-  }),
-  component: RootComponent,
+	head: () => ({
+		meta: [
+			{ charSet: "utf-8" },
+			{ name: "viewport", content: "width=device-width, initial-scale=1" },
+			{ name: "color-scheme", content: "light dark" },
+			{
+				name: "description",
+				content:
+					"Shorty Link is a self-hosted Cloudflare Workers URL shortener.",
+			},
+			{ title: "Shorty Link" },
+		],
+	}),
+	component: RootComponent,
 });
 
 function RootComponent() {
-  return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
-  );
+	return (
+		<RootDocument>
+			<Outlet />
+		</RootDocument>
+	);
 }
 
 const themeScript = `
@@ -50,16 +50,17 @@ const themeScript = `
 `;
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<head>
+				<HeadContent />
+				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: inline theme bootstrap script to avoid flash of incorrect theme on first paint; content is developer-authored, not user input. */}
+				<script dangerouslySetInnerHTML={{ __html: themeScript }} />
+			</head>
+			<body>
+				{children}
+				<Scripts />
+			</body>
+		</html>
+	);
 }

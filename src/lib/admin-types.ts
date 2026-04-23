@@ -5,9 +5,10 @@ import type { App } from "@/server/api/app";
 type Api = Treaty.Create<App>["api"];
 type AdminApi = Api["admin"];
 type LinkByIdApi = ReturnType<AdminApi["links"]>;
+// biome-ignore lint/suspicious/noExplicitAny: Eden Treaty helpers are structurally typed; the params/return are opaque here and are narrowed by Treaty.Data<T>.
 type ApiData<T extends (...args: Array<any>) => any> = Exclude<
-  Treaty.Data<T>,
-  Response
+	Treaty.Data<T>,
+	Response
 >;
 
 export type AdminDomain = ApiData<AdminApi["domains"]["get"]>[number];
