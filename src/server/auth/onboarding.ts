@@ -1,4 +1,3 @@
-import { env } from "cloudflare:workers";
 import { and, count, eq, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -6,16 +5,8 @@ import { normalizeLocale } from "@/lib/i18n";
 
 import type { AppDb } from "../db/client";
 import { adminInvites, user } from "../db/schema";
-import {
-	acceptInvite,
-	getBootstrapState,
-	getInviteByToken,
-	now,
-} from "../services/links";
-
-const runtimeEnv = env as typeof env & {
-	BETTER_AUTH_SECRET?: string;
-};
+import { getBootstrapState, getInviteByToken, now } from "../services/links";
+import { getAuthSecret } from "./secret";
 
 type OnboardingContext = {
 	email: string;
@@ -26,6 +17,8 @@ type OnboardingContext = {
 	role: "admin";
 	type: "bootstrap" | "invite";
 };
+
+type UserReader = Pick<AppDb, "select">;
 
 function base64UrlEncode(bytes: Uint8Array) {
 	let binary = "";
@@ -82,24 +75,21 @@ function timingSafeEqual(a: string, b: string) {
 	return diff === 0;
 }
 
-function authSecret() {
-	const secret = runtimeEnv.BETTER_AUTH_SECRET;
-	if (secret) {
-		return secret;
-	}
-
-	return "shorty-link-local-development-secret-change-me";
-}
-
-export async function createOnboardingContext(input: OnboardingContext) {
+export async function createOnboardingContext(
+	input: OnboardingContext,
+	request?: Request,
+) {
 	const payload = base64UrlEncode(
 		new TextEncoder().encode(JSON.stringify(input)),
 	);
-	const signature = await hmac(authSecret(), payload);
+	const signature = await hmac(getAuthSecret(request), payload);
 	return `${payload}.${signature}`;
 }
 
-export async function readOnboardingContext(context: string | undefined) {
+export async function readOnboardingContext(
+	context: string | undefined,
+	request?: Request,
+) {
 	if (!context) {
 		throw new Error("errors.unauthorized");
 	}
@@ -109,7 +99,7 @@ export async function readOnboardingContext(context: string | undefined) {
 		throw new Error("errors.unauthorized");
 	}
 
-	const expected = await hmac(authSecret(), payload);
+	const expected = await hmac(getAuthSecret(request), payload);
 	if (!timingSafeEqual(signature, expected)) {
 		throw new Error("errors.unauthorized");
 	}
@@ -127,43 +117,51 @@ export async function readOnboardingContext(context: string | undefined) {
 export async function createBootstrapContext(
 	db: AppDb,
 	input: { email: string; name: string; locale?: string },
+	request?: Request,
 ) {
 	const bootstrap = await getBootstrapState(db);
 	if (!bootstrap.canBootstrap) {
 		throw new Error("errors.bootstrapComplete");
 	}
 
-	return createOnboardingContext({
-		email: input.email.trim().toLowerCase(),
-		exp: Date.now() + 10 * 60 * 1000,
-		locale: normalizeLocale(input.locale),
-		name: input.name.trim(),
-		role: "admin",
-		type: "bootstrap",
-	});
+	return createOnboardingContext(
+		{
+			email: input.email.trim().toLowerCase(),
+			exp: Date.now() + 10 * 60 * 1000,
+			locale: normalizeLocale(input.locale),
+			name: input.name.trim(),
+			role: "admin",
+			type: "bootstrap",
+		},
+		request,
+	);
 }
 
 export async function createInviteContext(
 	db: AppDb,
 	input: { token: string; name: string; locale?: string },
+	request?: Request,
 ) {
 	const invite = await getInviteByToken(db, input.token);
 	if (!invite) {
 		throw new Error("errors.inviteMissing");
 	}
 
-	return createOnboardingContext({
-		email: invite.email,
-		exp: Date.now() + 10 * 60 * 1000,
-		inviteToken: invite.token,
-		locale: normalizeLocale(input.locale),
-		name: input.name.trim(),
-		role: "admin",
-		type: "invite",
-	});
+	return createOnboardingContext(
+		{
+			email: invite.email,
+			exp: Date.now() + 10 * 60 * 1000,
+			inviteToken: invite.token,
+			locale: normalizeLocale(input.locale),
+			name: input.name.trim(),
+			role: "admin",
+			type: "invite",
+		},
+		request,
+	);
 }
 
-async function findUserByEmail(db: AppDb, email: string) {
+async function findUserByEmail(db: UserReader, email: string) {
 	const rows = await db
 		.select()
 		.from(user)
@@ -212,9 +210,12 @@ async function assertOnboardingAllowed(
 export async function resolvePasskeyRegistrationUser(
 	db: AppDb,
 	context?: string,
+	request?: Request,
 ) {
-	const parsed = await readOnboardingContext(context);
+	const parsed = await readOnboardingContext(context, request);
 	const email = parsed.email.trim().toLowerCase();
+	await assertOnboardingAllowed(db, parsed, email);
+
 	const existing = await findUserByEmail(db, email);
 
 	if (existing) {
@@ -225,8 +226,6 @@ export async function resolvePasskeyRegistrationUser(
 		};
 	}
 
-	await assertOnboardingAllowed(db, parsed, email);
-
 	return { id: nanoid(), email, name: parsed.name };
 }
 
@@ -234,32 +233,115 @@ export async function completePasskeyRegistrationUser(
 	db: AppDb,
 	context: string | undefined,
 	id: string,
+	request?: Request,
 ) {
-	const parsed = await readOnboardingContext(context);
+	const parsed = await readOnboardingContext(context, request);
 	const email = parsed.email.trim().toLowerCase();
 	const existing = await findUserByEmail(db, email);
+	const timestamp = Math.floor(Date.now() / 1000);
+	const locale = normalizeLocale(parsed.locale);
+
+	if (parsed.type === "bootstrap") {
+		if (existing) {
+			if (existing.id === id) {
+				return existing.id;
+			}
+			throw new Error("errors.bootstrapComplete");
+		}
+
+		const inserted = await db.$client
+			.prepare(`
+				insert into "user" (
+					"id",
+					"name",
+					"email",
+					"email_verified",
+					"image",
+					"role",
+					"locale",
+					"is_active",
+					"created_at",
+					"updated_at"
+				)
+				select ?, ?, ?, 1, null, 'admin', ?, 1, ?, ?
+				where not exists (select 1 from "user")
+			`)
+			.bind(id, parsed.name, email, locale, timestamp, timestamp)
+			.run();
+
+		if (inserted.meta.changes !== 1) {
+			throw new Error("errors.bootstrapComplete");
+		}
+
+		return id;
+	}
+
+	if (!parsed.inviteToken) {
+		throw new Error("errors.inviteMissing");
+	}
+
+	const acceptedAt = now();
+	const claimStatement = db.$client
+		.prepare(`
+			update "admin_invite"
+			set "accepted_at" = ?
+			where "token" = ?
+				and "email" = ?
+				and "accepted_at" is null
+				and "expires_at" > ?
+		`)
+		.bind(acceptedAt, parsed.inviteToken, email, acceptedAt);
 
 	if (existing) {
+		const claimed = await claimStatement.run();
+		if (claimed.meta.changes !== 1) {
+			throw new Error("errors.inviteMissing");
+		}
 		return existing.id;
 	}
 
-	await assertOnboardingAllowed(db, parsed, email);
+	const insertStatement = db.$client
+		.prepare(`
+			insert into "user" (
+				"id",
+				"name",
+				"email",
+				"email_verified",
+				"image",
+				"role",
+				"locale",
+				"is_active",
+				"created_at",
+				"updated_at"
+			)
+			select ?, ?, ?, 1, null, 'admin', ?, 1, ?, ?
+			where exists (
+				select 1
+				from "admin_invite"
+				where "token" = ?
+					and "email" = ?
+					and "accepted_at" = ?
+			)
+		`)
+		.bind(
+			id,
+			parsed.name,
+			email,
+			locale,
+			timestamp,
+			timestamp,
+			parsed.inviteToken,
+			email,
+			acceptedAt,
+		);
 
-	const timestamp = new Date();
-	await db.insert(user).values({
-		id,
-		email,
-		emailVerified: true,
-		image: null,
-		locale: normalizeLocale(parsed.locale),
-		name: parsed.name,
-		role: "admin",
-		createdAt: timestamp,
-		updatedAt: timestamp,
-	});
+	const [claimed, inserted] = await db.$client.batch([
+		claimStatement,
+		insertStatement,
+	]);
 
-	if (parsed.type === "invite" && parsed.inviteToken) {
-		await acceptInvite(db, parsed.inviteToken);
+	if (claimed.meta.changes !== 1 || inserted.meta.changes !== 1) {
+		throw new Error("errors.inviteMissing");
 	}
 
 	return id;

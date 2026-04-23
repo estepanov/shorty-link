@@ -79,11 +79,11 @@ function getClientIp(request: Request) {
 }
 
 async function hashIp(value: string | null) {
-	if (!value) {
+	if (!value || !runtimeEnv.BETTER_AUTH_SECRET) {
 		return null;
 	}
 
-	const material = `${runtimeEnv.BETTER_AUTH_SECRET ?? "shorty-link"}:${value}`;
+	const material = `${runtimeEnv.BETTER_AUTH_SECRET}:${value}`;
 	const digest = await crypto.subtle.digest(
 		"SHA-256",
 		new TextEncoder().encode(material),
@@ -213,8 +213,8 @@ export const app = new Elysia({
 			.get("/bootstrap", ({ db }) => getBootstrapState(db))
 			.post(
 				"/onboarding/bootstrap",
-				async ({ body, db }) => ({
-					context: await createBootstrapContext(db, body),
+				async ({ body, db, request }) => ({
+					context: await createBootstrapContext(db, body, request),
 				}),
 				{
 					body: t.Object({
@@ -246,8 +246,8 @@ export const app = new Elysia({
 			)
 			.post(
 				"/onboarding/invite",
-				async ({ body, db }) => ({
-					context: await createInviteContext(db, body),
+				async ({ body, db, request }) => ({
+					context: await createInviteContext(db, body, request),
 				}),
 				{
 					body: t.Object({

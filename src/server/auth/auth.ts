@@ -15,6 +15,7 @@ import {
 	completePasskeyRegistrationUser,
 	resolvePasskeyRegistrationUser,
 } from "./onboarding";
+import { getAuthSecret } from "./secret";
 
 const runtimeEnv = env as typeof env & {
 	BETTER_AUTH_ALLOWED_HOSTS?: string;
@@ -54,9 +55,7 @@ export function createAuth(request?: Request) {
 					protocol: "auto",
 				}
 			: origin,
-		secret:
-			runtimeEnv.BETTER_AUTH_SECRET ??
-			"shorty-link-local-development-secret-change-me",
+		secret: getAuthSecret(request),
 		trustedOrigins: (incomingRequest) => {
 			const requestOrigin = incomingRequest
 				? new URL(incomingRequest.url).origin
@@ -122,12 +121,13 @@ export function createAuth(request?: Request) {
 				registration: {
 					requireSession: false,
 					resolveUser: async ({ context }) =>
-						resolvePasskeyRegistrationUser(db, context ?? undefined),
+						resolvePasskeyRegistrationUser(db, context ?? undefined, request),
 					afterVerification: async ({ context, user }) => ({
 						userId: await completePasskeyRegistrationUser(
 							db,
 							context ?? undefined,
 							user.id,
+							request,
 						),
 					}),
 					extensions: { credProps: true },

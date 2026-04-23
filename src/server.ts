@@ -1,6 +1,11 @@
+import { env } from "cloudflare:workers";
 import handler from "@tanstack/react-start/server-entry";
 import { app } from "./server/api/app";
 import { createAuth } from "./server/auth/auth";
+
+const runtimeEnv = env as typeof env & {
+	DEBUG_AUTH_ERRORS?: string;
+};
 
 const RESERVED_EXACT_PATHS = new Set([
 	"/admin",
@@ -55,21 +60,33 @@ export default {
 			try {
 				const response = await createAuth(request).handler(request);
 				if (isPasskeyPath && response.status >= 500) {
-					const body = await response
-						.clone()
-						.text()
-						.catch(() => "");
-					console.error(
-						"auth handler 5xx",
-						url.pathname,
-						response.status,
-						body,
-					);
+					if (runtimeEnv.DEBUG_AUTH_ERRORS === "true") {
+						const body = await response
+							.clone()
+							.text()
+							.catch(() => "");
+						console.error(
+							"auth handler 5xx",
+							url.pathname,
+							response.status,
+							body,
+						);
+					} else {
+						console.error("auth handler 5xx", url.pathname, response.status);
+					}
 					return friendly();
 				}
 				return response;
 			} catch (error) {
-				console.error("auth handler crashed", url.pathname, error);
+				if (runtimeEnv.DEBUG_AUTH_ERRORS === "true") {
+					console.error("auth handler crashed", url.pathname, error);
+				} else {
+					console.error(
+						"auth handler crashed",
+						url.pathname,
+						error instanceof Error ? error.name : typeof error,
+					);
+				}
 				if (isPasskeyPath) {
 					return friendly();
 				}
