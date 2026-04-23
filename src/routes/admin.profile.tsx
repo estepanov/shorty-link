@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Button, Card, FieldLabel, Input, Notice, Select } from "@/components/ui";
@@ -124,6 +124,20 @@ function Profile() {
             <Notice tone="error">{t(error)}</Notice>
           </div>
         ) : null}
+        <div className="mt-8 flex flex-wrap gap-3 border-t border-stone-950/10 pt-6 dark:border-white/10">
+          <Link
+            className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+            to="/admin/sessions"
+          >
+            {t("nav.sessions")}
+          </Link>
+          <Link
+            className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+            to="/admin/api-keys"
+          >
+            {t("nav.apiKeys")}
+          </Link>
+        </div>
       </Card>
     </div>
   );

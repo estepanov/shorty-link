@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Button, Card, FieldLabel, Input, Notice } from "@/components/ui";
@@ -84,7 +84,13 @@ function ApiKeys() {
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6">
       <Card>
-        <h1 className="text-4xl font-black">{t("keys.title")}</h1>
+        <Link
+          className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+          to="/admin/profile"
+        >
+          {t("nav.profile")}
+        </Link>
+        <h1 className="mt-4 text-4xl font-black">{t("keys.title")}</h1>
         <p className="mt-2 text-stone-700 dark:text-stone-300">
           {t("keys.description")}
         </p>

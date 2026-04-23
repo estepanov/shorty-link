@@ -73,28 +73,26 @@ export function AppShell({
           </span>
           <span className="text-xl font-black tracking-tight">{t("app.name")}</span>
         </Link>
-        <nav aria-label={t("nav.label")} className="flex items-center gap-2">
+        <nav aria-label={t("nav.label")} className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle t={t} />
           {isPending ? null : session ? (
             <>
-              <div className="hidden gap-2 sm:flex">
-                <NavLink to="/admin">{t("nav.dashboard")}</NavLink>
-                <NavLink to="/admin/links">{t("nav.shortLinks")}</NavLink>
-                <NavLink to="/admin/users">{t("nav.access")}</NavLink>
-                <NavLink to="/admin/profile">{t("nav.profile")}</NavLink>
-                <NavLink to="/admin/sessions">{t("nav.sessions")}</NavLink>
-                <NavLink to="/admin/api-keys">{t("nav.apiKeys")}</NavLink>
+              <div className="hidden items-center sm:flex">
+                <HeaderLink to="/admin">{t("nav.dashboard")}</HeaderLink>
+                <HeaderLink to="/admin/links">{t("nav.shortLinks")}</HeaderLink>
+                <HeaderLink to="/admin/users">{t("nav.access")}</HeaderLink>
+                <HeaderLink to="/admin/profile">{t("nav.profile")}</HeaderLink>
               </div>
               <button
                 type="button"
                 onClick={handleSignOut}
-      className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-amber-50 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
               >
                 {t("nav.signOut")}
               </button>
             </>
           ) : (
-            <NavLink to="/admin">{t("nav.signIn")}</NavLink>
+            <HeaderLink to="/admin">{t("nav.signIn")}</HeaderLink>
           )}
         </nav>
       </header>
@@ -135,25 +133,22 @@ function ThemeToggle({ t }: { t: ReturnType<typeof createTranslator> }) {
   return (
     <button
       aria-label={label}
-      className="inline-flex h-10 w-16 shrink-0 items-center rounded-full border border-stone-950/15 bg-white/70 p-1 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-950/30 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:border-white/15 dark:bg-white/10 dark:hover:border-white/30 dark:hover:bg-white/15 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white text-sm font-medium text-stone-700 transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:border-stone-700 dark:bg-stone-900 dark:text-amber-100 dark:hover:bg-stone-800 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
       onClick={handleToggle}
       title={label}
       type="button"
     >
       <span className="sr-only">{label}</span>
-      <span
-        aria-hidden="true"
-        className="block size-8 rounded-full bg-stone-950 shadow-[3px_3px_0_#f97316] transition-transform dark:translate-x-6 dark:bg-amber-200 dark:shadow-[3px_3px_0_#1d4ed8]"
-      />
+      <span aria-hidden="true">{theme === "dark" ? "☾" : "☀"}</span>
     </button>
   );
 }
 
-function NavLink({ children, to }: { children: ReactNode; to: string }) {
+function HeaderLink({ children, to }: { children: ReactNode; to: string }) {
   return (
     <Link
       to={to}
-                className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
+      className="rounded-lg px-3 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-amber-50 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
     >
       {children}
     </Link>
