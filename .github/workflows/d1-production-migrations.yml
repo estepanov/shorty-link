@@ -25,6 +25,7 @@ jobs:
   migrate:
     name: Apply production D1 migrations
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.SHORTY_LINK_DEPLOY_ENABLED == 'true' }}
 
     steps:
       - name: Checkout repository

@@ -1,5 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
+	// Self-hosters should change this to their own Worker name.
 	"name": "shorty-link",
 	"main": "src/server.ts",
 	"compatibility_date": "2026-04-16",
@@ -10,6 +11,7 @@
 	},
 	"upload_source_maps": true,
 	"vars": {
+		// Self-hosters should replace these with their production hostnames and origin.
 		"BETTER_AUTH_ALLOWED_HOSTS": "localhost:3000,localhost:8787,*.workers.dev",
 		"BETTER_AUTH_FALLBACK_URL": "http://localhost:3000",
 		"PASSKEY_RP_NAME": "Shorty Link"
@@ -17,8 +19,9 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
+			// Self-hosters may rename the D1 database, but must keep the DB binding name.
 			"database_name": "shorty-link",
-			"database_id": "d0a003ba-aef0-4005-867b-acce83d85b64",
+			"database_id": "replace-with-your-d1-database-id",
 			"migrations_dir": "./migrations"
 		}
 	],

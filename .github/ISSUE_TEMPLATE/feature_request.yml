@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a Shorty Link improvement.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should change?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Redirects
+        - Admin UI
+        - Auth/passkeys
+        - API keys
+        - Domains
+        - Analytics
+        - Deployment/configuration
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: operator-impact
+    attributes:
+      label: Operator impact
+      description: Would this require D1 migrations, config changes, or Cloudflare binding changes?

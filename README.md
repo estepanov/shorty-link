@@ -12,6 +12,18 @@ Shorty Link is a single-deploy URL shortener for Cloudflare Workers. It combines
 
 Password login and password account creation are intentionally disabled.
 
+## Project Status
+
+Shorty Link is __preparing__ for self-hosted open source releases. Use tagged releases for production deployments; `main` is the development branch.
+
+Release and operator docs:
+
+- [Self-hosting guide](docs/self-hosting.md)
+- [Configuration reference](docs/configuration.md)
+- [Upgrade guide](docs/upgrading.md)
+- [Release policy](docs/releases.md)
+- [Changelog](CHANGELOG.md)
+
 ## Local Development
 
 Install dependencies:
@@ -48,7 +60,9 @@ Open `http://localhost:3000/admin`, create the first admin, and register a passk
 
 ## Self-Hosting
 
-Shorty Link is designed to be **forked** and run on **your own Cloudflare account**. The committed `wrangler.jsonc` is a working config, not a template — fork it and swap the values for yours.
+Shorty Link is designed to be **forked** and run on **your own Cloudflare account**. The committed `wrangler.jsonc` is a working starter config for this app; fork it and swap the values for yours. For the full production path, read the [self-hosting guide](docs/self-hosting.md).
+
+`wrangler.jsonc` intentionally keeps the application-owned contract in Git while leaving operator-owned values as editable starter values. Keep binding names such as `DB` and `AI` stable; change your Worker name, D1 database ID, host vars, and passkey display values for your deployment.
 
 ### 1. Fork and edit `wrangler.jsonc`
 
@@ -83,18 +97,23 @@ pnpm deploy
 
 ### 4. Wire up GitHub Actions (optional)
 
-This repo ships with three workflows under `.github/workflows/`:
+This repo ships with four workflows under `.github/workflows/`:
 
 - `deploy-workers.yml`: deploys on push to `main`.
 - `d1-production-migrations.yml`: applies migrations on push to `main`.
 - `check-d1-migrations.yml`: validates migrations in PRs.
+- `release-please.yml`: prepares version bumps, changelog entries, GitHub releases, and tags from Conventional Commits.
 
-For automated deploys, add __two repository secrets__:
+For automated deploys on push to `main`, add one repository variable:
+
+- `SHORTY_LINK_DEPLOY_ENABLED`: set to `true`.
+
+Then add __two repository secrets__:
 
 - `CLOUDFLARE_API_TOKEN`: a token with `Workers Scripts:Edit` and `D1:Edit` on your account.
 - `CLOUDFLARE_ACCOUNT_ID`: your Cloudflare account ID.
 
-Push to `main` and CI handles migrations + deploy.
+If `SHORTY_LINK_DEPLOY_ENABLED` is not set to `true`, the production migration and deploy workflows are skipped on push. You can still run them manually with `workflow_dispatch` after configuring your fork.
 
 ### 5. Custom domains
 
@@ -120,6 +139,8 @@ pnpm build              # production build
 pnpm preview            # preview built Worker
 pnpm test               # unit tests
 pnpm typecheck          # TypeScript check
+pnpm verify             # lint, typecheck, test, and build
+pnpm deploy:dry-run     # build and validate the Worker upload without deploying
 pnpm cf-typegen         # generate Cloudflare binding types
 pnpm db:migrate:local   # apply local D1 schema
 pnpm db:migrate:remote  # apply remote D1 schema
@@ -141,7 +162,9 @@ Reserved paths include `/admin`, `/api`, static asset paths, `favicon.ico`, and 
 
 ## Development Notes
 
-This repo assumes a fresh app and does not preserve old migrations. The first migration creates the full schema.
+The first migration creates the full schema.
+
+After public releases begin, D1 migrations are append-only. Do not edit or delete a migration that may have shipped in a tagged release; add a new migration instead.
 
 For passkey-first onboarding, the admin UI asks the Elysia API for a short-lived signed onboarding context. Better Auth's passkey plugin verifies that context and creates the admin user during passkey registration.
 

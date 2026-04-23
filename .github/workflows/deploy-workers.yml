@@ -27,6 +27,7 @@ jobs:
   deploy:
     name: Verify and deploy Worker
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.SHORTY_LINK_DEPLOY_ENABLED == 'true' }}
 
     steps:
       - name: Checkout repository
