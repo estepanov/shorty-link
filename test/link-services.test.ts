@@ -54,6 +54,7 @@ describe("link services", () => {
 		proxy = await getPlatformProxy({
 			configPath: "wrangler.jsonc",
 			persist: false,
+			remoteBindings: false,
 		});
 		const database = (proxy.env as { DB: D1Database }).DB;
 		await applyMigrations(database);

@@ -13,7 +13,7 @@ export function getRouter() {
 function DefaultNotFound() {
 	return (
 		<main className="mx-auto grid min-h-[calc(100vh-6rem)] w-full max-w-7xl place-items-center px-5 py-10">
-			<section className="max-w-xl rounded-[2rem] border border-stone-950/10 bg-white/70 p-6 text-center shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur dark:border-white/10 dark:bg-stone-950/70 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)]">
+			<section className="max-w-xl rounded-4xl border border-stone-950/10 bg-white/70 p-6 text-center shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur dark:border-white/10 dark:bg-stone-950/70 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)]">
 				<p className="text-sm font-black uppercase tracking-[0.24em] text-orange-700 dark:text-orange-300">
 					Shorty Link
 				</p>
