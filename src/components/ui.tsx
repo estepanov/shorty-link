@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, type Locale, type MessageKey } from "@/lib/i18n";
 
 type Theme = "light" | "dark";
@@ -59,7 +60,8 @@ export function AppShell({
 	const { data: session, isPending } = authClient.useSession();
 
 	async function handleSignOut() {
-		await authClient.signOut();
+		const api = getTreaty();
+		await unwrap(await api.admin.sessions.current.delete());
 		window.location.href = "/";
 	}
 

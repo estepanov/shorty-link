@@ -10,6 +10,7 @@ import {
 	createBootstrapContext,
 	createInviteContext,
 } from "../auth/onboarding";
+import { createAuth } from "../auth/auth";
 import { requireAdmin } from "../auth/session";
 import { createDb } from "../db/client";
 import { user } from "../db/schema";
@@ -68,6 +69,24 @@ const domainBody = t.Object({
 	label: t.Optional(t.String()),
 	isPrimary: t.Optional(t.Boolean()),
 	isActive: t.Optional(t.Boolean()),
+});
+
+const apiKeyListQuery = t.Object({
+	limit: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+	offset: t.Optional(t.Number({ minimum: 0 })),
+	sortBy: t.Optional(t.Union([t.Literal("createdAt"), t.Literal("name")])),
+	sortDirection: t.Optional(t.Union([t.Literal("asc"), t.Literal("desc")])),
+});
+
+const apiKeyCreateBody = t.Object({
+	expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 365 })),
+	name: t.String({ minLength: 1 }),
+});
+
+const apiKeyUpdateBody = t.Object({
+	enabled: t.Optional(t.Boolean()),
+	expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 365 })),
+	name: t.Optional(t.String({ minLength: 1 })),
 });
 
 function getClientIp(request: Request) {
@@ -180,6 +199,21 @@ async function suggestSlugWithAi(targetUrl: string) {
 	);
 }
 
+function expiresInSeconds(days?: number) {
+	return days ? days * 24 * 60 * 60 : null;
+}
+
+async function signOutResponse(request: Request) {
+	const url = new URL("/api/auth/sign-out", request.url);
+
+	return createAuth(request).handler(
+		new Request(url, {
+			headers: request.headers,
+			method: "POST",
+		}),
+	);
+}
+
 export const app = new Elysia({
 	aot: false,
 	adapter: CloudflareAdapter,
@@ -270,6 +304,10 @@ export const app = new Elysia({
 					})),
 					session,
 				};
+			})
+			.get("/profile", async ({ request }) => {
+				const session = await requireAdminOrError(request);
+				return session.user;
 			})
 			.patch(
 				"/profile",
@@ -533,6 +571,109 @@ export const app = new Elysia({
 					}
 					await deleteUser(db, params.id);
 					return { ok: true };
+				},
+				{
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
+			.get(
+				"/sessions",
+				async ({ request }) => {
+					await requireAdminOrError(request);
+					return createAuth(request).api.listSessions({
+						headers: request.headers,
+					});
+				},
+			)
+			.post(
+				"/sessions/revoke",
+				async ({ body, request }) => {
+					await requireAdminOrError(request);
+					return createAuth(request).api.revokeSession({
+						body,
+						headers: request.headers,
+					});
+				},
+				{
+					body: t.Object({
+						token: t.String({ minLength: 1 }),
+					}),
+				},
+			)
+			.post("/sessions/revoke-other", async ({ request }) => {
+				await requireAdminOrError(request);
+				return createAuth(request).api.revokeOtherSessions({
+					headers: request.headers,
+				});
+			})
+			.delete("/sessions/current", async ({ request }) => {
+				await requireAdminOrError(request);
+				return signOutResponse(request);
+			})
+			.get(
+				"/api-keys",
+				async ({ query, request }) => {
+					await requireAdminOrError(request);
+					return createAuth(request).api.listApiKeys({
+						headers: request.headers,
+						query: {
+							limit: query.limit ?? 100,
+							offset: query.offset,
+							sortBy: query.sortBy ?? "createdAt",
+							sortDirection: query.sortDirection ?? "desc",
+						},
+					});
+				},
+				{
+					query: apiKeyListQuery,
+				},
+			)
+			.post(
+				"/api-keys",
+				async ({ body, request }) => {
+					await requireAdminOrError(request);
+					return createAuth(request).api.createApiKey({
+						body: {
+							expiresIn: expiresInSeconds(body.expiresInDays),
+							name: body.name,
+						},
+						headers: request.headers,
+					});
+				},
+				{
+					body: apiKeyCreateBody,
+				},
+			)
+			.patch(
+				"/api-keys/:id",
+				async ({ body, params, request }) => {
+					await requireAdminOrError(request);
+					return createAuth(request).api.updateApiKey({
+						body: {
+							enabled: body.enabled,
+							expiresIn:
+								body.expiresInDays === undefined
+									? undefined
+									: expiresInSeconds(body.expiresInDays),
+							keyId: params.id,
+							name: body.name,
+						},
+						headers: request.headers,
+					});
+				},
+				{
+					body: apiKeyUpdateBody,
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
+			.delete(
+				"/api-keys/:id",
+				async ({ params, request }) => {
+					await requireAdminOrError(request);
+					return createAuth(request).api.deleteApiKey({
+						body: { keyId: params.id },
+						headers: request.headers,
+					});
 				},
 				{
 					params: t.Object({ id: t.String({ minLength: 1 }) }),

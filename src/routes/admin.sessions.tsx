@@ -3,34 +3,28 @@ import { useEffect, useState } from "react";
 
 import { Button, Card, Notice } from "@/components/ui";
 import { useAdminAuthGuard } from "@/lib/admin-auth";
-import { authClient } from "@/lib/auth-client";
+import type { AdminSession } from "@/lib/admin-types";
+import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/sessions")({
 	component: Sessions,
 });
 
-type SessionRecord = {
-	id?: string;
-	token: string;
-	createdAt?: string | Date;
-	expiresAt?: string | Date;
-	ipAddress?: string | null;
-	userAgent?: string | null;
-};
-
 function Sessions() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const [sessions, setSessions] = useState<SessionRecord[]>([]);
+	const [sessions, setSessions] = useState<AdminSession[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
 	async function refresh() {
-		setError(null);
-		const result = await authClient.listSessions();
-		if (result.error) {
-			setError(result.error.message ?? "errors.unknown");
-			return;
+		try {
+			setError(null);
+			const api = getTreaty();
+			setSessions(await unwrap<AdminSession[]>(await api.admin.sessions.get()));
+		} catch (nextError) {
+			setError(
+				nextError instanceof Error ? nextError.message : "errors.unknown",
+			);
 		}
-		setSessions((result.data ?? []) as SessionRecord[]);
 	}
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh is stable within this component; re-fetch only when the authenticated user identity changes.
@@ -66,13 +60,18 @@ function Sessions() {
 					</div>
 					<Button
 						onClick={async () => {
-							setError(null);
-							const result = await authClient.revokeOtherSessions();
-							if (result.error) {
-								setError(result.error.message ?? "errors.unknown");
-								return;
+							try {
+								setError(null);
+								const api = getTreaty();
+								await unwrap(await api.admin.sessions["revoke-other"].post());
+								await refresh();
+							} catch (nextError) {
+								setError(
+									nextError instanceof Error
+										? nextError.message
+										: "errors.unknown",
+								);
 							}
-							await refresh();
 						}}
 						tone="secondary"
 						type="button"
@@ -108,15 +107,22 @@ function Sessions() {
 									</div>
 									<Button
 										onClick={async () => {
-											setError(null);
-											const result = await authClient.revokeSession({
-												token: item.token,
-											});
-											if (result.error) {
-												setError(result.error.message ?? "errors.unknown");
-												return;
+											try {
+												setError(null);
+												const api = getTreaty();
+												await unwrap(
+													await api.admin.sessions.revoke.post({
+														token: item.token,
+													}),
+												);
+												await refresh();
+											} catch (nextError) {
+												setError(
+													nextError instanceof Error
+														? nextError.message
+														: "errors.unknown",
+												);
 											}
-											await refresh();
 										}}
 										tone="danger"
 										type="button"

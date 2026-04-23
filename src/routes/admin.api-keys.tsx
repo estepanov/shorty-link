@@ -4,26 +4,21 @@ import { useEffect, useState } from "react";
 
 import { Button, Card, FieldLabel, Input, Notice } from "@/components/ui";
 import { useAdminAuthGuard } from "@/lib/admin-auth";
-import { authClient } from "@/lib/auth-client";
+import type {
+	AdminApiKey,
+	AdminApiKeyList,
+	AdminCreatedApiKey,
+} from "@/lib/admin-types";
+import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
 
 export const Route = createFileRoute("/admin/api-keys")({
 	component: ApiKeys,
 });
 
-type ApiKeyRecord = {
-	id: string;
-	name?: string | null;
-	start?: string | null;
-	prefix?: string | null;
-	enabled?: boolean | null;
-	createdAt?: string | Date;
-	expiresAt?: string | Date | null;
-};
-
 function ApiKeys() {
 	const { session, isPending, t } = useAdminAuthGuard();
-	const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
+	const [keys, setKeys] = useState<AdminApiKey[]>([]);
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
@@ -32,42 +27,43 @@ function ApiKeys() {
 			name: "",
 		},
 		onSubmit: async ({ value }) => {
-			setError(null);
-			setCreatedKey(null);
-			const result = await authClient.apiKey.create({
-				expiresIn: value.expiresInDays * 24 * 60 * 60,
-				name: value.name,
-			});
-
-			if (result.error) {
-				setError(result.error.message ?? "errors.unknown");
-				return;
+			try {
+				setError(null);
+				setCreatedKey(null);
+				const api = getTreaty();
+				const created = await unwrap<AdminCreatedApiKey>(
+					await api.admin["api-keys"].post(value),
+				);
+				setCreatedKey(created.key ?? null);
+				form.reset();
+				await refresh();
+			} catch (nextError) {
+				setError(
+					nextError instanceof Error ? nextError.message : "errors.unknown",
+				);
 			}
-
-			setCreatedKey((result.data as { key?: string } | null)?.key ?? null);
-			form.reset();
-			await refresh();
 		},
 	});
 
 	async function refresh() {
-		const result = await authClient.apiKey.list({
-			query: {
-				limit: 100,
-				sortBy: "createdAt",
-				sortDirection: "desc",
-			},
-		});
-		if (result.error) {
-			setError(result.error.message ?? "errors.unknown");
-			return;
+		try {
+			setError(null);
+			const api = getTreaty();
+			const data = await unwrap<AdminApiKeyList>(
+				await api.admin["api-keys"].get({
+					query: {
+						limit: 100,
+						sortBy: "createdAt",
+						sortDirection: "desc",
+					},
+				}),
+			);
+			setKeys(data.apiKeys);
+		} catch (nextError) {
+			setError(
+				nextError instanceof Error ? nextError.message : "errors.unknown",
+			);
 		}
-
-		const data = result.data as
-			| { apiKeys?: ApiKeyRecord[] }
-			| ApiKeyRecord[]
-			| null;
-		setKeys(Array.isArray(data) ? data : (data?.apiKeys ?? []));
 	}
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh is stable within this component; re-fetch only when the authenticated user identity changes.
@@ -175,7 +171,7 @@ function ApiKeyRow({
 	onChange,
 	t,
 }: {
-	item: ApiKeyRecord;
+	item: AdminApiKey;
 	onChange: () => Promise<void>;
 	t: ReturnType<typeof createTranslator>;
 }) {
@@ -186,17 +182,21 @@ function ApiKeyRow({
 			name: item.name ?? "",
 		},
 		onSubmit: async ({ value }) => {
-			setError(null);
-			const result = await authClient.apiKey.update({
-				keyId: item.id,
-				name: value.name,
-			});
-			if (result.error) {
-				setError(result.error.message ?? "errors.unknown");
-				return;
+			try {
+				setError(null);
+				const api = getTreaty();
+				await unwrap(
+					await api.admin["api-keys"]({ id: item.id }).patch({
+						name: value.name,
+					}),
+				);
+				setEditing(false);
+				await onChange();
+			} catch (nextError) {
+				setError(
+					nextError instanceof Error ? nextError.message : "errors.unknown",
+				);
 			}
-			setEditing(false);
-			await onChange();
 		},
 	});
 
@@ -249,15 +249,20 @@ function ApiKeyRow({
 						</Button>
 						<Button
 							onClick={async () => {
-								setError(null);
-								const result = await authClient.apiKey.delete({
-									keyId: item.id,
-								});
-								if (result.error) {
-									setError(result.error.message ?? "errors.unknown");
-									return;
+								try {
+									setError(null);
+									const api = getTreaty();
+									await unwrap(
+										await api.admin["api-keys"]({ id: item.id }).delete(),
+									);
+									await onChange();
+								} catch (nextError) {
+									setError(
+										nextError instanceof Error
+											? nextError.message
+											: "errors.unknown",
+									);
 								}
-								await onChange();
 							}}
 							tone="danger"
 							type="button"
