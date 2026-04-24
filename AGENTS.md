@@ -25,6 +25,7 @@ This repo is a single deployable Cloudflare Workers app.
 - Preserve redirect behavior: exact hostname+slug first, default hostname fallback second.
 - Keep redirect writes in `waitUntil` and avoid request-scoped globals.
 - After Wrangler binding changes, run `pnpm cf-typegen`.
+- After saving any code changes, run `pnpm format:fix`.
 
 ## Typical Commands
 

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
+import { CopyButton } from "@/components/copy-button";
 import { Button, Card, Notice } from "@/components/ui";
 import { useAdminAuthGuard } from "@/lib/admin-auth";
 import type { AdminInvite, AdminUser } from "@/lib/admin-types";
@@ -166,12 +167,20 @@ function UsersPage() {
 													: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
 										</p>
 										{invite.inviteUrl ? (
-											<a
-												className="mt-1 block break-all text-xs text-blue-800 underline dark:text-blue-300"
-												href={invite.inviteUrl}
-											>
-												{invite.inviteUrl}
-											</a>
+											<div className="mt-1 flex items-center gap-2">
+												<a
+													className="break-all text-xs text-blue-800 underline dark:text-blue-300"
+													href={invite.inviteUrl}
+												>
+													{invite.inviteUrl}
+												</a>
+												<CopyButton
+													className="shrink-0 !rounded-xl !px-2 !py-2"
+													label={t("actions.copyLink")}
+													copiedLabel={t("actions.copied")}
+													text={invite.inviteUrl}
+												/>
+											</div>
 										) : null}
 									</div>
 									<Button
@@ -215,12 +224,20 @@ function UsersPage() {
 					<div className="mt-4">
 						<Notice tone="success">
 							<strong>{t("invites.created")}</strong>
-							<a
-								className="mt-2 block break-all underline underline-offset-4"
-								href={createdInvite.inviteUrl}
-							>
-								{createdInvite.inviteUrl}
-							</a>
+							<div className="mt-2 flex items-center gap-2">
+								<a
+									className="break-all underline underline-offset-4"
+									href={createdInvite.inviteUrl}
+								>
+									{createdInvite.inviteUrl}
+								</a>
+								<CopyButton
+									className="shrink-0 !rounded-xl !px-2 !py-2"
+									label={t("actions.copyLink")}
+									copiedLabel={t("actions.copied")}
+									text={createdInvite.inviteUrl}
+								/>
+							</div>
 						</Notice>
 					</div>
 				) : null}

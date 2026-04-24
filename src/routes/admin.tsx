@@ -9,6 +9,7 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { CopyButton } from "@/components/copy-button";
 import {
 	AppShell,
 	Button,
@@ -122,14 +123,14 @@ function Admin() {
 		}
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh is stable within this component; re-fetch when invite-route context toggles or the authenticated user identity changes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh is stable within this component; re-fetch when invite-route context toggles, when the dashboard route is (re-)entered, or when the authenticated user identity changes.
 	useEffect(() => {
 		if (isInviteRoute) {
 			return;
 		}
 
 		void refresh();
-	}, [isInviteRoute, session?.user?.id]);
+	}, [isInviteRoute, isDashboardRoute, session?.user?.id]);
 
 	if (isInviteRoute) {
 		return <Outlet />;
@@ -594,18 +595,32 @@ function DashboardView({ data }: { data: DashboardData }) {
 						<div className="mt-5 grid gap-3">
 							{data.invites.length ? (
 								data.invites.map((invite) => (
-									<a
-										className="break-all rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm underline decoration-blue-700 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:border-white/10 dark:bg-white/5 dark:decoration-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
-										href={invite.inviteUrl}
+									<div
+										className="flex items-start justify-between gap-3 rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
 										key={invite.id}
 									>
-										<span className="font-black">{invite.email}</span>
-										<span className="mt-1 block text-stone-600 dark:text-stone-300">
-											{t("table.expires")}{" "}
-											{new Date(invite.expiresAt).toLocaleDateString(locale)}
-										</span>
-										{invite.inviteUrl}
-									</a>
+										<div className="break-all text-sm">
+											<a
+												className="font-black underline decoration-blue-700 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:decoration-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
+												href={invite.inviteUrl}
+											>
+												{invite.email}
+											</a>
+											<span className="mt-1 block text-stone-600 dark:text-stone-300">
+												{t("table.expires")}{" "}
+												{new Date(invite.expiresAt).toLocaleDateString(locale)}
+											</span>
+											<span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">
+												{invite.inviteUrl}
+											</span>
+										</div>
+										<CopyButton
+											className="shrink-0"
+											label={t("actions.copyLink")}
+											copiedLabel={t("actions.copied")}
+											text={invite.inviteUrl}
+										/>
+									</div>
 								))
 							) : (
 								<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">

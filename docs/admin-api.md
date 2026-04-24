@@ -11,6 +11,16 @@ Passkey registration and sign-in stay under `/api/auth/*` because they rely on B
 
 ## Endpoints
 
+### Health check
+
+- `GET /api/health` _(experimental)_
+
+Returns service status:
+
+```json
+{ "ok": true, "service": "shorty-link" }
+```
+
 ### Bootstrap and onboarding
 
 - `GET /api/admin/bootstrap`
@@ -32,7 +42,11 @@ Passkey registration and sign-in stay under `/api/auth/*` because they rely on B
 - `PATCH /api/admin/links/:id`
 - `DELETE /api/admin/links/:id`
 - `GET /api/admin/links/:id/stats`
-- `GET /api/admin/suggest-slug`
+- `GET /api/admin/suggest-slug?targetUrl=<url>` _(experimental)_
+
+The `suggest-slug` endpoint returns an AI-generated or fallback slug for a target URL. Requires Cloudflare AI binding for AI-backed suggestions.
+
+Supported redirect status codes for link create, update, and filtering are `301`, `302`, `303`, `307`, and `308`. If `statusCode` is omitted when creating a link, Shorty Link defaults it to `302`.
 
 ### Domains
 
@@ -90,4 +104,13 @@ List links:
 ```bash
 curl 'http://localhost:3000/api/admin/links?page=1&pageSize=25&active=all' \
   -H 'x-api-key: sl_your_key_here'
+```
+
+Create a link with an explicit redirect status code:
+
+```bash
+curl -X POST http://localhost:3000/api/admin/links \
+  -H 'content-type: application/json' \
+  -H 'x-api-key: sl_your_key_here' \
+  -d '{"slug":"pricing","targetUrl":"https://example.com/pricing","statusCode":308}'
 ```

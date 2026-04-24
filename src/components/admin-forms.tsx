@@ -12,6 +12,10 @@ import {
 import type { AdminDomain, AdminLink } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
+import {
+	normalizeRedirectStatusCode,
+	redirectStatusOptions,
+} from "@/lib/redirect-status";
 
 export type CreatedInvite = {
 	id: string;
@@ -45,7 +49,7 @@ export function LinkForm({
 			notes: initialLink?.notes ?? "",
 			preserveQueryParams: initialLink?.preserveQueryParams ?? false,
 			slug: initialLink?.slug ?? "",
-			statusCode: initialLink?.statusCode ?? 302,
+			statusCode: normalizeRedirectStatusCode(initialLink?.statusCode),
 			targetUrl: initialLink?.targetUrl ?? "",
 			title: initialLink?.title ?? "",
 		},
@@ -80,7 +84,7 @@ export function LinkForm({
 			notes: initialLink?.notes ?? "",
 			preserveQueryParams: initialLink?.preserveQueryParams ?? false,
 			slug: initialLink?.slug ?? "",
-			statusCode: initialLink?.statusCode ?? 302,
+			statusCode: normalizeRedirectStatusCode(initialLink?.statusCode),
 			targetUrl: initialLink?.targetUrl ?? "",
 			title: initialLink?.title ?? "",
 		});
@@ -126,13 +130,21 @@ export function LinkForm({
 							{t("forms.statusCode")}
 							<Select
 								onChange={(event) =>
-									field.handleChange(Number(event.target.value))
+									field.handleChange(
+										normalizeRedirectStatusCode(Number(event.target.value)),
+									)
 								}
 								value={field.state.value}
 							>
-								<option value={302}>302 temporary</option>
-								<option value={301}>301 permanent</option>
+								{redirectStatusOptions.map((option) => (
+									<option key={option.code} value={option.code}>
+										{t(option.labelKey)}
+									</option>
+								))}
 							</Select>
+							<p className="text-xs font-normal text-stone-500 dark:text-stone-400">
+								{t("forms.statusCodeHelp")}
+							</p>
 						</FieldLabel>
 					)}
 				</form.Field>

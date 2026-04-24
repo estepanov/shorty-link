@@ -98,6 +98,12 @@ Optional WebAuthn relying party ID. Usually this is your registrable domain, suc
 example.com
 ```
 
+## Optional Vars
+
+### `DEBUG_AUTH_ERRORS`
+
+When set to `"true"`, includes detailed error output for failed passkey authentication in server logs. Leave unset or set to any other value in production to avoid leaking error details.
+
 ## Local Variables
 
 For local development:

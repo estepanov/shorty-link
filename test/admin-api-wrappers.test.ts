@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+	createBootstrapContext: vi.fn(),
 	createApiKey: vi.fn(),
+	createInviteContext: vi.fn(),
 	deleteApiKey: vi.fn(),
+	getInviteByToken: vi.fn(),
+	getSession: vi.fn(),
 	handler: vi.fn(),
 	listApiKeys: vi.fn(),
 	listSessions: vi.fn(),
@@ -10,6 +14,11 @@ const mocks = vi.hoisted(() => ({
 	revokeOtherSessions: vi.fn(),
 	revokeSession: vi.fn(),
 	updateApiKey: vi.fn(),
+}));
+
+vi.mock("../src/server/auth/onboarding", () => ({
+	createBootstrapContext: mocks.createBootstrapContext,
+	createInviteContext: mocks.createInviteContext,
 }));
 
 vi.mock("../src/server/auth/auth", () => ({
@@ -27,7 +36,16 @@ vi.mock("../src/server/auth/auth", () => ({
 	})),
 }));
 
+vi.mock("../src/server/services/links", async () => {
+	const actual = await vi.importActual("../src/server/services/links");
+	return {
+		...actual,
+		getInviteByToken: mocks.getInviteByToken,
+	};
+});
+
 vi.mock("../src/server/auth/session", () => ({
+	getSession: mocks.getSession,
 	requireAdmin: mocks.requireAdmin,
 }));
 
@@ -39,6 +57,7 @@ const { app } = await import("../src/server/api/app");
 
 describe("admin api auth wrappers", () => {
 	beforeEach(() => {
+		mocks.getSession.mockResolvedValue(null);
 		mocks.requireAdmin.mockResolvedValue({
 			user: {
 				email: "admin@example.com",
@@ -112,6 +131,43 @@ describe("admin api auth wrappers", () => {
 		});
 	});
 
+	it("rejects cookie-authenticated admin writes without a same-origin source", async () => {
+		const response = await app.fetch(
+			new Request("https://shorty.test/api/admin/sessions/revoke-other", {
+				headers: {
+					cookie: "better-auth.session=abc123",
+				},
+				method: "POST",
+			}),
+		);
+
+		expect(response.status).toBe(403);
+		await expect(response.json()).resolves.toMatchObject({
+			code: "AUTH_ERROR",
+			message: expect.any(String),
+		});
+		expect(mocks.revokeOtherSessions).not.toHaveBeenCalled();
+	});
+
+	it("allows cookie-authenticated admin writes from the same origin", async () => {
+		mocks.revokeOtherSessions.mockResolvedValue({ status: true });
+
+		const response = await app.fetch(
+			new Request("https://shorty.test/api/admin/sessions/revoke-other", {
+				headers: {
+					cookie: "better-auth.session=abc123",
+					origin: "https://shorty.test",
+				},
+				method: "POST",
+			}),
+		);
+
+		expect(response.status).toBe(200);
+		expect(mocks.revokeOtherSessions).toHaveBeenCalledWith({
+			headers: expect.any(Headers),
+		});
+	});
+
 	it("passes sign-out through the Better Auth handler", async () => {
 		mocks.handler.mockResolvedValue(
 			new Response(JSON.stringify({ success: true }), {
@@ -137,6 +193,43 @@ describe("admin api auth wrappers", () => {
 				url: "https://shorty.test/api/auth/sign-out",
 			}),
 		);
+	});
+
+	it("rejects invite routes when a session is already active", async () => {
+		mocks.getSession.mockResolvedValue({
+			user: { id: "user-1" },
+		});
+
+		const inviteResponse = await app.fetch(
+			new Request("https://shorty.test/api/admin/invites/invite-token-value"),
+		);
+		expect(inviteResponse.status).toBe(403);
+		await expect(inviteResponse.json()).resolves.toMatchObject({
+			code: "AUTH_ERROR",
+			message: "Sign out before opening an invite link.",
+		});
+		expect(mocks.getInviteByToken).not.toHaveBeenCalled();
+
+		const onboardingResponse = await app.fetch(
+			new Request("https://shorty.test/api/admin/onboarding/invite", {
+				body: JSON.stringify({
+					locale: "en",
+					name: "Invited Admin",
+					token: "invite-token-value",
+				}),
+				headers: {
+					"content-type": "application/json",
+					origin: "https://shorty.test",
+				},
+				method: "POST",
+			}),
+		);
+		expect(onboardingResponse.status).toBe(403);
+		await expect(onboardingResponse.json()).resolves.toMatchObject({
+			code: "AUTH_ERROR",
+			message: "Sign out before opening an invite link.",
+		});
+		expect(mocks.createInviteContext).not.toHaveBeenCalled();
 	});
 
 	it("maps api key list and create requests to Better Auth", async () => {
@@ -188,7 +281,11 @@ describe("admin api auth wrappers", () => {
 
 		const updateResponse = await app.fetch(
 			new Request("https://shorty.test/api/admin/api-keys/key-1", {
-				body: JSON.stringify({ enabled: false, expiresInDays: 7, name: "Renamed" }),
+				body: JSON.stringify({
+					enabled: false,
+					expiresInDays: 7,
+					name: "Renamed",
+				}),
 				headers: { "content-type": "application/json" },
 				method: "PATCH",
 			}),

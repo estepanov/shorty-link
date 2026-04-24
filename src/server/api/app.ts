@@ -5,13 +5,17 @@ import { Elysia, t } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 
 import { createTranslator, normalizeLocale } from "@/lib/i18n";
-
+import {
+	isRedirectStatusCode,
+	type RedirectStatusCode,
+} from "@/lib/redirect-status";
+import { createAuth } from "../auth/auth";
 import {
 	createBootstrapContext,
 	createInviteContext,
 } from "../auth/onboarding";
-import { createAuth } from "../auth/auth";
-import { requireAdmin } from "../auth/session";
+import { assertTrustedAdminWrite } from "../auth/security";
+import { getSession, requireAdmin } from "../auth/session";
 import { createDb } from "../db/client";
 import { user } from "../db/schema";
 import {
@@ -53,13 +57,21 @@ const runtimeEnv = env as typeof env & {
 	BETTER_AUTH_SECRET?: string;
 };
 
+const redirectStatusCodeSchema = t.Union([
+	t.Literal(301),
+	t.Literal(302),
+	t.Literal(303),
+	t.Literal(307),
+	t.Literal(308),
+]);
+
 const linkBody = t.Object({
 	hostname: t.Optional(t.String()),
 	slug: t.Optional(t.String()),
 	targetUrl: t.String({ minLength: 1 }),
 	title: t.Optional(t.String()),
 	notes: t.Optional(t.String()),
-	statusCode: t.Optional(t.Number()),
+	statusCode: t.Optional(redirectStatusCodeSchema),
 	preserveQueryParams: t.Optional(t.Boolean()),
 	isActive: t.Optional(t.Boolean()),
 });
@@ -151,6 +163,17 @@ async function requireAdminOrError(request: Request) {
 		}
 
 		throw new Response("errors.unauthorized", { status: 401 });
+	}
+}
+
+async function requireSecureAdminSession(request: Request) {
+	assertTrustedAdminWrite(request);
+	return requireAdminOrError(request);
+}
+
+async function requireSignedOutInviteRequest(request: Request) {
+	if (await getSession(request)) {
+		throw new Response("errors.inviteRequiresSignOut", { status: 403 });
 	}
 }
 
@@ -247,9 +270,12 @@ export const app = new Elysia({
 			.get("/bootstrap", ({ db }) => getBootstrapState(db))
 			.post(
 				"/onboarding/bootstrap",
-				async ({ body, db, request }) => ({
-					context: await createBootstrapContext(db, body, request),
-				}),
+				async ({ body, db, request }) => {
+					assertTrustedAdminWrite(request);
+					return {
+						context: await createBootstrapContext(db, body, request),
+					};
+				},
 				{
 					body: t.Object({
 						email: t.String({ format: "email" }),
@@ -260,7 +286,8 @@ export const app = new Elysia({
 			)
 			.get(
 				"/invites/:token",
-				async ({ db, params }) => {
+				async ({ db, params, request }) => {
+					await requireSignedOutInviteRequest(request);
 					const invite = await getInviteByToken(db, params.token);
 					if (!invite) {
 						throw new Error("errors.inviteMissing");
@@ -280,9 +307,13 @@ export const app = new Elysia({
 			)
 			.post(
 				"/onboarding/invite",
-				async ({ body, db, request }) => ({
-					context: await createInviteContext(db, body, request),
-				}),
+				async ({ body, db, request }) => {
+					assertTrustedAdminWrite(request);
+					await requireSignedOutInviteRequest(request);
+					return {
+						context: await createInviteContext(db, body, request),
+					};
+				},
 				{
 					body: t.Object({
 						locale: t.Optional(t.String()),
@@ -312,7 +343,7 @@ export const app = new Elysia({
 			.patch(
 				"/profile",
 				async ({ body, db, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					const email = body.email.trim().toLowerCase();
 					const existing = await db
 						.select({ id: user.id })
@@ -355,8 +386,9 @@ export const app = new Elysia({
 						pageSize: query.pageSize,
 						search: query.search,
 						statusCode:
-							query.statusCode === 301 || query.statusCode === 302
-								? query.statusCode
+							typeof query.statusCode === "number" &&
+							isRedirectStatusCode(query.statusCode)
+								? (query.statusCode as RedirectStatusCode)
 								: "all",
 					});
 				},
@@ -373,14 +405,14 @@ export const app = new Elysia({
 						page: t.Optional(t.Number({ minimum: 1 })),
 						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
 						search: t.Optional(t.String()),
-						statusCode: t.Optional(t.Union([t.Literal(301), t.Literal(302)])),
+						statusCode: t.Optional(redirectStatusCodeSchema),
 					}),
 				},
 			)
 			.post(
 				"/links",
 				async ({ body, db, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					return {
 						id: await saveLink(db, {
 							...body,
@@ -430,7 +462,7 @@ export const app = new Elysia({
 			.patch(
 				"/links/:id",
 				async ({ body, db, params, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					return {
 						id: await saveLink(db, {
 							...body,
@@ -447,7 +479,7 @@ export const app = new Elysia({
 			.delete(
 				"/links/:id",
 				async ({ db, params, request }) => {
-					await requireAdminOrError(request);
+					await requireSecureAdminSession(request);
 					await deleteLink(db, params.id);
 					return { ok: true };
 				},
@@ -462,7 +494,7 @@ export const app = new Elysia({
 			.post(
 				"/domains",
 				async ({ body, db, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					return {
 						id: await saveDomain(db, {
 							...body,
@@ -490,7 +522,7 @@ export const app = new Elysia({
 			.patch(
 				"/domains/:id",
 				async ({ body, db, params, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					return {
 						id: await saveDomain(db, {
 							...body,
@@ -507,7 +539,7 @@ export const app = new Elysia({
 			.delete(
 				"/domains/:id",
 				async ({ db, params, request }) => {
-					await requireAdminOrError(request);
+					await requireSecureAdminSession(request);
 					await deleteDomain(db, params.id);
 					return { ok: true };
 				},
@@ -518,7 +550,7 @@ export const app = new Elysia({
 			.post(
 				"/invites",
 				async ({ body, db, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					const invite = await createInvite(db, {
 						email: body.email,
 						expiresInDays: body.expiresInDays,
@@ -548,7 +580,7 @@ export const app = new Elysia({
 			.patch(
 				"/users/:id",
 				async ({ body, db, params, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					if (params.id === session.user.id) {
 						throw new Error("errors.cannotSelfDisable");
 					}
@@ -565,7 +597,7 @@ export const app = new Elysia({
 			.delete(
 				"/users/:id",
 				async ({ db, params, request }) => {
-					const session = await requireAdminOrError(request);
+					const session = await requireSecureAdminSession(request);
 					if (params.id === session.user.id) {
 						throw new Error("errors.cannotSelfDelete");
 					}
@@ -576,19 +608,16 @@ export const app = new Elysia({
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
-			.get(
-				"/sessions",
-				async ({ request }) => {
-					await requireAdminOrError(request);
-					return createAuth(request).api.listSessions({
-						headers: request.headers,
-					});
-				},
-			)
+			.get("/sessions", async ({ request }) => {
+				await requireAdminOrError(request);
+				return createAuth(request).api.listSessions({
+					headers: request.headers,
+				});
+			})
 			.post(
 				"/sessions/revoke",
 				async ({ body, request }) => {
-					await requireAdminOrError(request);
+					await requireSecureAdminSession(request);
 					return createAuth(request).api.revokeSession({
 						body,
 						headers: request.headers,
@@ -601,13 +630,13 @@ export const app = new Elysia({
 				},
 			)
 			.post("/sessions/revoke-other", async ({ request }) => {
-				await requireAdminOrError(request);
+				await requireSecureAdminSession(request);
 				return createAuth(request).api.revokeOtherSessions({
 					headers: request.headers,
 				});
 			})
 			.delete("/sessions/current", async ({ request }) => {
-				await requireAdminOrError(request);
+				await requireSecureAdminSession(request);
 				return signOutResponse(request);
 			})
 			.get(
@@ -631,7 +660,7 @@ export const app = new Elysia({
 			.post(
 				"/api-keys",
 				async ({ body, request }) => {
-					await requireAdminOrError(request);
+					await requireSecureAdminSession(request);
 					return createAuth(request).api.createApiKey({
 						body: {
 							expiresIn: expiresInSeconds(body.expiresInDays),
@@ -647,7 +676,7 @@ export const app = new Elysia({
 			.patch(
 				"/api-keys/:id",
 				async ({ body, params, request }) => {
-					await requireAdminOrError(request);
+					await requireSecureAdminSession(request);
 					return createAuth(request).api.updateApiKey({
 						body: {
 							enabled: body.enabled,
@@ -669,7 +698,7 @@ export const app = new Elysia({
 			.delete(
 				"/api-keys/:id",
 				async ({ params, request }) => {
-					await requireAdminOrError(request);
+					await requireSecureAdminSession(request);
 					return createAuth(request).api.deleteApiKey({
 						body: { keyId: params.id },
 						headers: request.headers,
@@ -693,7 +722,7 @@ export const app = new Elysia({
 			.delete(
 				"/invites",
 				async ({ body, db, request }) => {
-					await requireAdminOrError(request);
+					await requireSecureAdminSession(request);
 					await deleteInvite(db, body.id);
 					return { ok: true };
 				},
@@ -765,7 +794,10 @@ export const app = new Elysia({
 			})(),
 		);
 
-		return Response.redirect(redirectTarget, link.statusCode as 301 | 302);
+		return Response.redirect(
+			redirectTarget,
+			link.statusCode as RedirectStatusCode,
+		);
 	});
 
 export type App = typeof app;

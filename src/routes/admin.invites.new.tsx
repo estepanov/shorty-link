@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
+import { CopyButton } from "@/components/copy-button";
 import { Card, Notice } from "@/components/ui";
 import { useAdminAuthGuard } from "@/lib/admin-auth";
 
@@ -37,12 +38,20 @@ function NewInvite() {
 					<div className="mt-4">
 						<Notice tone="success">
 							<strong>{t("invites.created")}</strong>
-							<a
-								className="mt-2 block break-all underline underline-offset-4"
-								href={createdInvite.inviteUrl}
-							>
-								{createdInvite.inviteUrl}
-							</a>
+							<div className="mt-2 flex items-center gap-2">
+								<a
+									className="break-all underline underline-offset-4"
+									href={createdInvite.inviteUrl}
+								>
+									{createdInvite.inviteUrl}
+								</a>
+								<CopyButton
+									className="shrink-0 rounded-xl! px-2! py-2!"
+									label={t("actions.copyLink")}
+									copiedLabel={t("actions.copied")}
+									text={createdInvite.inviteUrl}
+								/>
+							</div>
 						</Notice>
 					</div>
 				) : null}

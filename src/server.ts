@@ -16,6 +16,17 @@ const RESERVED_EXACT_PATHS = new Set([
 ]);
 
 const RESERVED_PREFIXES = ["/admin/", "/api/", "/assets/", "/_build/"];
+const HTML_CONTENT_SECURITY_POLICY = [
+	"default-src 'self'",
+	"base-uri 'self'",
+	"connect-src 'self'",
+	"font-src 'self' data:",
+	"frame-ancestors 'none'",
+	"img-src 'self' data: https:",
+	"object-src 'none'",
+	"script-src 'self' 'unsafe-inline'",
+	"style-src 'self' 'unsafe-inline'",
+].join("; ");
 
 function isReservedPath(pathname: string) {
 	return (
@@ -40,6 +51,31 @@ function shouldUseElysia(request: Request) {
 	}
 
 	return !isReservedPath(url.pathname);
+}
+
+function applySecurityHeaders(request: Request, response: Response) {
+	const next = new Response(response.body, response);
+	const { headers } = next;
+	const contentType = headers.get("content-type")?.toLowerCase() ?? "";
+
+	headers.set("Cross-Origin-Opener-Policy", "same-origin");
+	headers.set("Permissions-Policy", "camera=(), geolocation=(), microphone=()");
+	headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+	headers.set("X-Content-Type-Options", "nosniff");
+	headers.set("X-Frame-Options", "DENY");
+
+	if (new URL(request.url).protocol === "https:") {
+		headers.set(
+			"Strict-Transport-Security",
+			"max-age=31536000; includeSubDomains",
+		);
+	}
+
+	if (contentType.includes("text/html")) {
+		headers.set("Content-Security-Policy", HTML_CONTENT_SECURITY_POLICY);
+	}
+
+	return next;
 }
 
 export default {
@@ -74,9 +110,9 @@ export default {
 					} else {
 						console.error("auth handler 5xx", url.pathname, response.status);
 					}
-					return friendly();
+					return applySecurityHeaders(request, friendly());
 				}
-				return response;
+				return applySecurityHeaders(request, response);
 			} catch (error) {
 				if (runtimeEnv.DEBUG_AUTH_ERRORS === "true") {
 					console.error("auth handler crashed", url.pathname, error);
@@ -88,16 +124,16 @@ export default {
 					);
 				}
 				if (isPasskeyPath) {
-					return friendly();
+					return applySecurityHeaders(request, friendly());
 				}
 				throw error;
 			}
 		}
 
 		if (shouldUseElysia(request)) {
-			return app.fetch(request);
+			return applySecurityHeaders(request, await app.fetch(request));
 		}
 
-		return handler.fetch(request);
+		return applySecurityHeaders(request, await handler.fetch(request));
 	},
 } satisfies ExportedHandler;

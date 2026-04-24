@@ -22,6 +22,7 @@ export const Route = createFileRoute("/admin/invite/$token")({
 function Invite() {
 	const { token } = Route.useParams();
 	const router = useRouter();
+	const { data: session } = authClient.useSession();
 	const [email, setEmail] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const t = createTranslator(defaultLocale);
@@ -60,12 +61,33 @@ function Invite() {
 	});
 
 	useEffect(() => {
+		if (session) {
+			void router.navigate({ to: "/admin" });
+			return;
+		}
+	}, [router, session]);
+
+	useEffect(() => {
+		if (session) {
+			return;
+		}
+
 		const api = getTreaty();
 		void unwrap<{ email: string }>(api.admin.invites({ token }).get()).then(
 			(invite) => setEmail(invite.email),
 			() => setError("errors.inviteMissing"),
 		);
-	}, [token]);
+	}, [session, token]);
+
+	if (session) {
+		return (
+			<AppShell>
+				<main className="mx-auto max-w-2xl px-5 py-10">
+					<Card>{t("loading.app")}</Card>
+				</main>
+			</AppShell>
+		);
+	}
 
 	return (
 		<AppShell>

@@ -131,6 +131,41 @@ describe("link services", () => {
 		).resolves.toBe(existingDomainId);
 	});
 
+	it("supports the expanded redirect status code set in saves and filters", async () => {
+		const temporaryId = await saveLink(db, {
+			slug: "launch",
+			statusCode: 307,
+			targetUrl: "https://example.com/launch",
+		});
+		await saveLink(db, {
+			slug: "pricing",
+			statusCode: 308,
+			targetUrl: "https://example.com/pricing",
+		});
+
+		const temporaryLinks = await listShortLinks(db, { statusCode: 307 });
+		const permanentLinks = await listShortLinks(db, { statusCode: 308 });
+
+		expect(temporaryLinks.items.map((item) => item.id)).toEqual([temporaryId]);
+		expect(permanentLinks.items).toHaveLength(1);
+		expect(permanentLinks.items[0]?.statusCode).toBe(308);
+	});
+
+	it("defaults unsupported redirect status codes to 302 in the service layer", async () => {
+		const linkId = await saveLink(db, {
+			slug: "fallback-status",
+			statusCode: 399,
+			targetUrl: "https://example.com/fallback",
+		});
+
+		const [link] = await db
+			.select()
+			.from(shortLinks)
+			.where(eq(shortLinks.id, linkId));
+
+		expect(link?.statusCode).toBe(302);
+	});
+
 	it("buckets stats by the selected window and excludes empty or out-of-window UTM values", async () => {
 		const linkId = await saveLink(db, {
 			slug: "stats",

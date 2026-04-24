@@ -12,6 +12,8 @@ Shorty Link is a single-deploy URL shortener for Cloudflare Workers. It combines
 
 Password login and password account creation are intentionally disabled.
 
+Supported redirect status codes are `301`, `302`, `303`, `307`, and `308`. New links default to `302` unless you choose another supported code.
+
 ## Project Status
 
 Shorty Link is __preparing__ for self-hosted open source releases. Use tagged releases for production deployments; `main` is the development branch.
@@ -158,7 +160,19 @@ pnpm deploy             # build and deploy
 - `/api/admin/*`: Elysia admin API with Server-Timing headers
 - `/:slug`: redirect lookup for non-reserved paths
 
-Reserved paths include `/admin`, `/api`, static asset paths, `favicon.ico`, and `robots.txt`.
+Reserved paths include `/admin`, `/api`, static asset paths, `favicon.ico`, `robots.txt`, and `manifest.webmanifest`.
+
+## Redirect Status Codes
+
+Shorty Link supports these redirect responses for short links:
+
+- `301 Moved Permanently`
+- `302 Found`
+- `303 See Other`
+- `307 Temporary Redirect`
+- `308 Permanent Redirect`
+
+The admin UI and `/api/admin/links` only accept those values. The default for new links is `302`.
 
 ## Development Notes
 

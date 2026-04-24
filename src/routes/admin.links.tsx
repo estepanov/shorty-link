@@ -19,6 +19,11 @@ import { useAdminAuthGuard } from "@/lib/admin-auth";
 import type { AdminDomain, LinkListData } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
+import {
+	parseRedirectStatusCodeFilter,
+	type RedirectStatusCodeFilter,
+	redirectStatusOptions,
+} from "@/lib/redirect-status";
 
 export const Route = createFileRoute("/admin/links")({
 	component: LinksList,
@@ -29,7 +34,7 @@ type LinkFilters = {
 	hostname: string;
 	pageSize: number;
 	search: string;
-	statusCode: "all" | "301" | "302";
+	statusCode: RedirectStatusCodeFilter;
 };
 
 const defaultFilters: LinkFilters = {
@@ -79,12 +84,7 @@ function LinksList() {
 								page,
 								pageSize: filters.pageSize,
 								search: filters.search,
-								statusCode:
-									filters.statusCode === "301"
-										? 301
-										: filters.statusCode === "302"
-											? 302
-											: undefined,
+								statusCode: parseRedirectStatusCodeFilter(filters.statusCode),
 							},
 						}),
 					),
@@ -208,8 +208,11 @@ function LinksList() {
 									value={field.state.value}
 								>
 									<option value="all">{t("links.allStatusCodes")}</option>
-									<option value="302">302</option>
-									<option value="301">301</option>
+									{redirectStatusOptions.map((option) => (
+										<option key={option.code} value={String(option.code)}>
+											{t(option.labelKey)}
+										</option>
+									))}
 								</Select>
 							</FieldLabel>
 						)}
@@ -325,7 +328,7 @@ function LinkRow({
 						</span>
 						<StatusBadge
 							label={String(link.statusCode)}
-							variant={link.statusCode === 301 ? "blue" : "green"}
+							variant={getRedirectStatusBadgeVariant(link.statusCode)}
 						/>
 						<StatusBadge
 							label={
@@ -383,6 +386,10 @@ function LinkRow({
 			</div>
 		</div>
 	);
+}
+
+function getRedirectStatusBadgeVariant(statusCode: number) {
+	return statusCode === 301 || statusCode === 308 ? "blue" : "green";
 }
 
 function StatusBadge({

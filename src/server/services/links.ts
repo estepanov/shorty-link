@@ -13,6 +13,11 @@ import {
 } from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
 
+import {
+	isRedirectStatusCode,
+	normalizeRedirectStatusCode,
+	type RedirectStatusCode,
+} from "@/lib/redirect-status";
 import type { AppDb } from "../db/client";
 import {
 	adminInvites,
@@ -304,7 +309,7 @@ export async function listShortLinks(
 		page?: number;
 		pageSize?: number;
 		search?: string;
-		statusCode?: 301 | 302 | "all";
+		statusCode?: RedirectStatusCode | "all";
 	},
 ) {
 	const page = Math.max(1, Math.floor(input.page ?? 1));
@@ -337,7 +342,10 @@ export async function listShortLinks(
 		filters.push(eq(shortLinks.isActive, false));
 	}
 
-	if (input.statusCode === 301 || input.statusCode === 302) {
+	if (
+		typeof input.statusCode === "number" &&
+		isRedirectStatusCode(input.statusCode)
+	) {
 		filters.push(eq(shortLinks.statusCode, input.statusCode));
 	}
 
@@ -499,7 +507,7 @@ export async function saveLink(
 		input.slug?.trim() ? input.slug : suggestSlugFromUrl(targetUrl),
 		input.id,
 	);
-	const statusCode = input.statusCode === 301 ? 301 : 302;
+	const statusCode = normalizeRedirectStatusCode(input.statusCode);
 
 	if (input.id) {
 		const existing = await db
@@ -824,6 +832,14 @@ export function extractUtmParams(requestUrl: string) {
 	}
 }
 
+function truncateStoredText(
+	value: string | null | undefined,
+	maxLength: number,
+) {
+	const normalized = value?.trim();
+	return normalized ? normalized.slice(0, maxLength) : null;
+}
+
 export async function recordRedirectEvent(
 	db: AppDb,
 	input: {
@@ -854,17 +870,17 @@ export async function recordRedirectEvent(
 		slug: input.slug,
 		targetUrl: input.targetUrl,
 		statusCode: input.statusCode,
-		country: input.country ?? null,
-		city: input.city ?? null,
-		colo: input.colo ?? null,
-		referer: input.referer ?? null,
-		userAgent: input.userAgent ?? null,
+		country: truncateStoredText(input.country, 32),
+		city: truncateStoredText(input.city, 128),
+		colo: truncateStoredText(input.colo, 32),
+		referer: truncateStoredText(input.referer, 2048),
+		userAgent: truncateStoredText(input.userAgent, 512),
 		ipHash: input.ipHash ?? null,
-		utmSource: input.utmSource ?? null,
-		utmMedium: input.utmMedium ?? null,
-		utmCampaign: input.utmCampaign ?? null,
-		utmTerm: input.utmTerm ?? null,
-		utmContent: input.utmContent ?? null,
+		utmSource: truncateStoredText(input.utmSource, 256),
+		utmMedium: truncateStoredText(input.utmMedium, 256),
+		utmCampaign: truncateStoredText(input.utmCampaign, 256),
+		utmTerm: truncateStoredText(input.utmTerm, 256),
+		utmContent: truncateStoredText(input.utmContent, 256),
 		createdAt: timestamp,
 	});
 

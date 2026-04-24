@@ -16,6 +16,7 @@ import {
 	resolvePasskeyRegistrationUser,
 } from "./onboarding";
 import { getAuthSecret } from "./secret";
+import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
 
 const runtimeEnv = env as typeof env & {
 	BETTER_AUTH_ALLOWED_HOSTS?: string;
@@ -25,25 +26,38 @@ const runtimeEnv = env as typeof env & {
 	PASSKEY_RP_NAME?: string;
 };
 
-function splitHosts(value?: string) {
-	return (value ?? "")
-		.split(",")
-		.map((host) => host.trim())
-		.filter(Boolean);
-}
-
 function fallbackUrl(request?: Request) {
 	if (runtimeEnv.BETTER_AUTH_FALLBACK_URL) {
 		return runtimeEnv.BETTER_AUTH_FALLBACK_URL;
 	}
 
-	return request ? new URL(request.url).origin : "http://localhost:3000";
+	if (request) {
+		const trustedOrigin = resolveTrustedRequestOrigin(request);
+		if (trustedOrigin) {
+			return trustedOrigin;
+		}
+	}
+
+	return "http://localhost:3000";
 }
 
 export function createAuth(request?: Request) {
 	const db = createDb();
-	const allowedHosts = splitHosts(runtimeEnv.BETTER_AUTH_ALLOWED_HOSTS);
-	const origin = request ? new URL(request.url).origin : fallbackUrl();
+	const allowedHosts = splitTrustedHosts(runtimeEnv.BETTER_AUTH_ALLOWED_HOSTS);
+	const configuredFallback = runtimeEnv.BETTER_AUTH_FALLBACK_URL ?? null;
+	const trustedRequestOrigin = request
+		? resolveTrustedRequestOrigin(request, {
+				allowedHosts,
+				fallbackOrigin: configuredFallback,
+			})
+		: null;
+
+	if (request && !trustedRequestOrigin) {
+		throw new Error("Untrusted auth host");
+	}
+
+	const origin = trustedRequestOrigin ?? fallbackUrl(request);
+	const fallback = configuredFallback ?? origin;
 
 	return betterAuth({
 		appName: "Shorty Link",
@@ -51,16 +65,19 @@ export function createAuth(request?: Request) {
 		baseURL: allowedHosts.length
 			? {
 					allowedHosts,
-					fallback: fallbackUrl(request),
+					fallback,
 					protocol: "auto",
 				}
 			: origin,
 		secret: getAuthSecret(request),
 		trustedOrigins: (incomingRequest) => {
-			const requestOrigin = incomingRequest
-				? new URL(incomingRequest.url).origin
+			const nextRequestOrigin = incomingRequest
+				? resolveTrustedRequestOrigin(incomingRequest, {
+						allowedHosts,
+						fallbackOrigin: configuredFallback,
+					})
 				: origin;
-			return [requestOrigin, fallbackUrl(incomingRequest)];
+			return [...new Set([nextRequestOrigin, fallback].filter(Boolean))];
 		},
 		database: drizzleAdapter(db, {
 			provider: "sqlite",
