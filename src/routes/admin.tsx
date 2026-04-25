@@ -19,9 +19,11 @@ import {
 	Notice,
 	Select,
 } from "@/components/ui";
+import { useAuthContext } from "@/lib/admin-auth";
 import { authClient } from "@/lib/auth-client";
 import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, defaultLocale, supportedLocales } from "@/lib/i18n";
+import type { Permission } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin")({
 	component: Admin,
@@ -98,6 +100,7 @@ function Admin() {
 	const [bootstrap, setBootstrap] = useState<BootstrapState | null>(null);
 	const [dashboard, setDashboard] = useState<DashboardData | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const { hasPermission } = useAuthContext();
 
 	async function refresh() {
 		setError(null);
@@ -159,7 +162,7 @@ function Admin() {
 				) : !isDashboardRoute ? (
 					<Outlet />
 				) : dashboard ? (
-					<DashboardView data={dashboard} />
+					<DashboardView data={dashboard} hasPermission={hasPermission} />
 				) : (
 					<Card>{t("loading.dashboard")}</Card>
 				)}
@@ -393,9 +396,25 @@ function BootstrapForm({ locale }: { locale: string }) {
 	);
 }
 
-function DashboardView({ data }: { data: DashboardData }) {
+function DashboardView({
+	data,
+	hasPermission,
+}: {
+	data: DashboardData;
+	hasPermission: (permission: Permission | Permission[]) => boolean;
+}) {
 	const locale = data.session.user.locale ?? defaultLocale;
 	const t = createTranslator(locale);
+
+	const showLinks = hasPermission("links.read");
+	const showLinksWrite = hasPermission("links.write");
+	const showDomains = hasPermission("domains.read");
+	const showDomainsWrite = hasPermission("domains.write");
+	const showInvites = hasPermission("invites.manage");
+	const showAnalytics = hasPermission("analytics.read");
+
+	const dashboardHasContent =
+		showLinks || showDomains || showInvites || showAnalytics;
 
 	return (
 		<div className="grid gap-6">
@@ -409,228 +428,274 @@ function DashboardView({ data }: { data: DashboardData }) {
 					</h1>
 					<p className="mt-2 text-amber-100/80">{data.session.user.email}</p>
 					<div className="mt-6 flex flex-wrap gap-3">
-						<ActionLink to="/admin/links/new">
-							{t("actions.addLink")}
-						</ActionLink>
-						<ActionLink to="/admin/domains/new">
-							{t("actions.addDomain")}
-						</ActionLink>
-						<ActionLink to="/admin/invites/new">
-							{t("actions.addInvite")}
-						</ActionLink>
+						{showLinksWrite ? (
+							<ActionLink to="/admin/links/new">
+								{t("actions.addLink")}
+							</ActionLink>
+						) : null}
+						{showDomainsWrite ? (
+							<ActionLink to="/admin/domains/new">
+								{t("actions.addDomain")}
+							</ActionLink>
+						) : null}
+						{showInvites ? (
+							<ActionLink to="/admin/invites/new">
+								{t("actions.addInvite")}
+							</ActionLink>
+						) : null}
 					</div>
 				</section>
 				<div className="grid gap-4 sm:grid-cols-2">
-					<Stat label={t("dashboard.links")} value={data.summary.links} />
-					<Stat
-						label={t("dashboard.redirects")}
-						value={data.summary.redirects}
-					/>
-					<Stat label={t("dashboard.domains")} value={data.summary.domains} />
-					<Stat label={t("dashboard.invites")} value={data.summary.invites} />
+					{showLinks ? (
+						<Stat label={t("dashboard.links")} value={data.summary.links} />
+					) : null}
+					{showAnalytics ? (
+						<Stat
+							label={t("dashboard.redirects")}
+							value={data.summary.redirects}
+						/>
+					) : null}
+					{showDomains ? (
+						<Stat label={t("dashboard.domains")} value={data.summary.domains} />
+					) : null}
+					{showInvites ? (
+						<Stat label={t("dashboard.invites")} value={data.summary.invites} />
+					) : null}
 				</div>
 			</section>
 
-			<Card>
-				<h2 className="text-2xl font-black">
-					{t("dashboard.recentRedirects")}
-				</h2>
-				<div className="mt-5 overflow-x-auto">
-					<table className="min-w-full text-left text-sm">
-						<thead>
-							<tr className="border-b border-stone-950/10 text-stone-600 dark:border-white/10 dark:text-stone-300">
-								<th className="py-3">{t("table.when")}</th>
-								<th className="py-3">{t("table.host")}</th>
-								<th className="py-3">{t("table.slug")}</th>
-								<th className="py-3">{t("table.country")}</th>
-								<th className="py-3">{t("table.referer")}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{data.events.length ? (
-								data.events.map((event) => (
-									<tr
-										className="border-b border-stone-950/5 dark:border-white/5"
-										key={event.id}
-									>
-										<td className="py-3">
-											{new Date(event.createdAt).toLocaleString(locale)}
-										</td>
-										<td className="py-3">
-											{formatHostname(event.hostname, t)}
-										</td>
-										<td className="py-3 font-black">{event.slug}</td>
-										<td className="py-3">
-											{event.country ?? t("table.direct")}
-										</td>
-										<td className="max-w-xs truncate py-3">
-											{event.referer ?? t("table.direct")}
-										</td>
-									</tr>
-								))
-							) : (
-								<EmptyTableRow colSpan={5} label={t("dashboard.noRedirects")} />
-							)}
-						</tbody>
-					</table>
-				</div>
-			</Card>
-
-			<section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+			{!dashboardHasContent ? (
 				<Card>
-					<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-						<h2 className="text-2xl font-black">
-							{t("dashboard.latestLinks")}
-						</h2>
-						<div className="flex flex-wrap gap-2">
-							<ActionLink to="/admin/links">{t("links.viewAll")}</ActionLink>
-							<ActionLink to="/admin/links/new" tone="primary">
-								{t("actions.addLink")}
-							</ActionLink>
-						</div>
-					</div>
-					<div className="mt-5 overflow-x-auto">
-						<table className="min-w-full text-left text-sm">
-							<thead>
-								<tr className="border-b border-stone-950/10 text-stone-600 dark:border-white/10 dark:text-stone-300">
-									<th className="py-3">{t("table.slug")}</th>
-									<th className="py-3">{t("table.host")}</th>
-									<th className="py-3">{t("table.target")}</th>
-									<th className="py-3">{t("table.hits")}</th>
-									<th className="py-3">{t("table.actions")}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{data.links.length ? (
-									data.links.map((link) => (
-										<tr
-											className="border-b border-stone-950/5 dark:border-white/5"
-											key={link.id}
-										>
-											<td className="py-3">
-												<Link
-													className="font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
-													params={{ id: link.id }}
-													to="/admin/links/$id"
-												>
-													{link.slug}
-												</Link>
-											</td>
-											<td className="py-3">
-												{formatHostname(link.hostname, t)}
-											</td>
-											<td className="max-w-xs truncate py-3">
-												{link.targetUrl}
-											</td>
-											<td className="py-3">{link.hitCount}</td>
-											<td className="py-3">
-												<ActionLink to={`/admin/links/${link.id}/edit`}>
-													{t("forms.update")}
-												</ActionLink>
-											</td>
-										</tr>
-									))
-								) : (
-									<EmptyTableRow colSpan={5} label={t("dashboard.noLinks")} />
-								)}
-							</tbody>
-						</table>
-					</div>
+					<p className="text-sm text-stone-600 dark:text-stone-300">
+						{t("errors.permissionDenied")}
+					</p>
 				</Card>
-
-				<div className="grid gap-6">
-					<Card>
-						<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+			) : (
+				<>
+					{showAnalytics ? (
+						<Card>
 							<h2 className="text-2xl font-black">
-								{t("dashboard.latestDomains")}
+								{t("dashboard.recentRedirects")}
 							</h2>
-							<ActionLink to="/admin/domains/new" tone="primary">
-								{t("actions.addDomain")}
-							</ActionLink>
-						</div>
-						<div className="mt-5 grid gap-3">
-							{data.domains.length ? (
-								data.domains.map((domain) => (
-									<div
-										className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
-										key={domain.id}
-									>
-										<div className="flex items-start justify-between gap-3">
-											<div>
-												<p className="font-black">{domain.hostname}</p>
-												<p className="text-sm text-stone-600 dark:text-stone-300">
-													{domain.label ?? t("domains.noLabel")} ·{" "}
-													{domain.isPrimary
-														? t("domains.primary")
-														: t("domains.secondary")}{" "}
-													·{" "}
-													{domain.isActive
-														? t("domains.active")
-														: t("domains.inactive")}
-												</p>
-											</div>
-											<ActionLink to={`/admin/domains/${domain.id}/edit`}>
-												{t("forms.update")}
+							<div className="mt-5 overflow-x-auto">
+								<table className="min-w-full text-left text-sm">
+									<thead>
+										<tr className="border-b border-stone-950/10 text-stone-600 dark:border-white/10 dark:text-stone-300">
+											<th className="py-3">{t("table.when")}</th>
+											<th className="py-3">{t("table.host")}</th>
+											<th className="py-3">{t("table.slug")}</th>
+											<th className="py-3">{t("table.country")}</th>
+											<th className="py-3">{t("table.referer")}</th>
+										</tr>
+									</thead>
+									<tbody>
+										{data.events.length ? (
+											data.events.map((event) => (
+												<tr
+													className="border-b border-stone-950/5 dark:border-white/5"
+													key={event.id}
+												>
+													<td className="py-3">
+														{new Date(event.createdAt).toLocaleString(locale)}
+													</td>
+													<td className="py-3">
+														{formatHostname(event.hostname, t)}
+													</td>
+													<td className="py-3 font-black">{event.slug}</td>
+													<td className="py-3">
+														{event.country ?? t("table.direct")}
+													</td>
+													<td className="max-w-xs truncate py-3">
+														{event.referer ?? t("table.direct")}
+													</td>
+												</tr>
+											))
+										) : (
+											<EmptyTableRow
+												colSpan={5}
+												label={t("dashboard.noRedirects")}
+											/>
+										)}
+									</tbody>
+								</table>
+							</div>
+						</Card>
+					) : null}
+
+					<section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+						{showLinks ? (
+							<Card>
+								<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+									<h2 className="text-2xl font-black">
+										{t("dashboard.latestLinks")}
+									</h2>
+									<div className="flex flex-wrap gap-2">
+										<ActionLink to="/admin/links">
+											{t("links.viewAll")}
+										</ActionLink>
+										{showLinksWrite ? (
+											<ActionLink to="/admin/links/new" tone="primary">
+												{t("actions.addLink")}
 											</ActionLink>
-										</div>
+										) : null}
 									</div>
-								))
-							) : (
-								<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
-									{t("dashboard.noDomains")}
-								</p>
-							)}
-						</div>
-					</Card>
+								</div>
+								<div className="mt-5 overflow-x-auto">
+									<table className="min-w-full text-left text-sm">
+										<thead>
+											<tr className="border-b border-stone-950/10 text-stone-600 dark:border-white/10 dark:text-stone-300">
+												<th className="py-3">{t("table.slug")}</th>
+												<th className="py-3">{t("table.host")}</th>
+												<th className="py-3">{t("table.target")}</th>
+												<th className="py-3">{t("table.hits")}</th>
+												<th className="py-3">{t("table.actions")}</th>
+											</tr>
+										</thead>
+										<tbody>
+											{data.links.length ? (
+												data.links.map((link) => (
+													<tr
+														className="border-b border-stone-950/5 dark:border-white/5"
+														key={link.id}
+													>
+														<td className="py-3">
+															<Link
+																className="font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+																params={{ id: link.id }}
+																to="/admin/links/$id"
+															>
+																{link.slug}
+															</Link>
+														</td>
+														<td className="py-3">
+															{formatHostname(link.hostname, t)}
+														</td>
+														<td className="max-w-xs truncate py-3">
+															{link.targetUrl}
+														</td>
+														<td className="py-3">{link.hitCount}</td>
+														<td className="py-3">
+															<ActionLink to={`/admin/links/${link.id}/edit`}>
+																{t("forms.update")}
+															</ActionLink>
+														</td>
+													</tr>
+												))
+											) : (
+												<EmptyTableRow
+													colSpan={5}
+													label={t("dashboard.noLinks")}
+												/>
+											)}
+										</tbody>
+									</table>
+								</div>
+							</Card>
+						) : null}
 
-					<Card>
-						<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-							<h2 className="text-2xl font-black">
-								{t("dashboard.latestInvites")}
-							</h2>
-							<ActionLink to="/admin/invites/new" tone="primary">
-								{t("actions.addInvite")}
-							</ActionLink>
-						</div>
-						<div className="mt-5 grid gap-3">
-							{data.invites.length ? (
-								data.invites.map((invite) => (
-									<div
-										className="flex items-start justify-between gap-3 rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
-										key={invite.id}
-									>
-										<div className="break-all text-sm">
-											<a
-												className="font-black underline decoration-blue-700 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:decoration-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
-												href={invite.inviteUrl}
-											>
-												{invite.email}
-											</a>
-											<span className="mt-1 block text-stone-600 dark:text-stone-300">
-												{t("table.expires")}{" "}
-												{new Date(invite.expiresAt).toLocaleDateString(locale)}
-											</span>
-											<span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">
-												{invite.inviteUrl}
-											</span>
-										</div>
-										<CopyButton
-											className="shrink-0"
-											label={t("actions.copyLink")}
-											copiedLabel={t("actions.copied")}
-											text={invite.inviteUrl}
-										/>
+						<div className="grid gap-6">
+							{showDomains ? (
+								<Card>
+									<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+										<h2 className="text-2xl font-black">
+											{t("dashboard.latestDomains")}
+										</h2>
+										{showDomainsWrite ? (
+											<ActionLink to="/admin/domains/new" tone="primary">
+												{t("actions.addDomain")}
+											</ActionLink>
+										) : null}
 									</div>
-								))
-							) : (
-								<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
-									{t("dashboard.noInvites")}
-								</p>
-							)}
+									<div className="mt-5 grid gap-3">
+										{data.domains.length ? (
+											data.domains.map((domain) => (
+												<div
+													className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+													key={domain.id}
+												>
+													<div className="flex items-start justify-between gap-3">
+														<div>
+															<p className="font-black">{domain.hostname}</p>
+															<p className="text-sm text-stone-600 dark:text-stone-300">
+																{domain.label ?? t("domains.noLabel")} ·{" "}
+																{domain.isPrimary
+																	? t("domains.primary")
+																	: t("domains.secondary")}{" "}
+																·{" "}
+																{domain.isActive
+																	? t("domains.active")
+																	: t("domains.inactive")}
+															</p>
+														</div>
+														<ActionLink to={`/admin/domains/${domain.id}/edit`}>
+															{t("forms.update")}
+														</ActionLink>
+													</div>
+												</div>
+											))
+										) : (
+											<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+												{t("dashboard.noDomains")}
+											</p>
+										)}
+									</div>
+								</Card>
+							) : null}
+
+							{showInvites ? (
+								<Card>
+									<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+										<h2 className="text-2xl font-black">
+											{t("dashboard.latestInvites")}
+										</h2>
+										<ActionLink to="/admin/invites/new" tone="primary">
+											{t("actions.addInvite")}
+										</ActionLink>
+									</div>
+									<div className="mt-5 grid gap-3">
+										{data.invites.length ? (
+											data.invites.map((invite) => (
+												<div
+													className="flex items-start justify-between gap-3 rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+													key={invite.id}
+												>
+													<div className="break-all text-sm">
+														<a
+															className="font-black underline decoration-blue-700 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:decoration-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
+															href={invite.inviteUrl}
+														>
+															{invite.email}
+														</a>
+														<span className="mt-1 block text-stone-600 dark:text-stone-300">
+															{t("table.expires")}{" "}
+															{new Date(invite.expiresAt).toLocaleDateString(
+																locale,
+															)}
+														</span>
+														<span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">
+															{invite.inviteUrl}
+														</span>
+													</div>
+													<CopyButton
+														className="shrink-0"
+														label={t("actions.copyLink")}
+														copiedLabel={t("actions.copied")}
+														text={invite.inviteUrl}
+													/>
+												</div>
+											))
+										) : (
+											<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+												{t("dashboard.noInvites")}
+											</p>
+										)}
+									</div>
+								</Card>
+							) : null}
 						</div>
-					</Card>
-				</div>
-			</section>
+					</section>
+				</>
+			)}
 		</div>
 	);
 }

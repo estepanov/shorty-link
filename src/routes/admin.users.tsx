@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 
 import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
 import { CopyButton } from "@/components/copy-button";
-import { Button, Card, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
-import type { AdminInvite, AdminUser } from "@/lib/admin-types";
+import { Button, Card, Notice, Select } from "@/components/ui";
+import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
+import type { AdminInvite, AdminUser, AssignableRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/users")({
@@ -18,8 +18,10 @@ type InviteWithStatus = AdminInvite & {
 
 function UsersPage() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
+	const { hasPermission } = useAuthContext();
 	const [users, setUsers] = useState<AdminUser[]>([]);
 	const [invites, setInvites] = useState<AdminInvite[]>([]);
+	const [roles, setRoles] = useState<AssignableRole[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [createdInvite, setCreatedInvite] = useState<CreatedInvite | null>(
 		null,
@@ -29,12 +31,14 @@ function UsersPage() {
 		setError(null);
 		try {
 			const api = getTreaty();
-			const [nextUsers, nextInvites] = await Promise.all([
+			const [nextUsers, nextInvites, nextRoles] = await Promise.all([
 				unwrap<AdminUser[]>(await api.admin.users.get()),
 				unwrap<AdminInvite[]>(await api.admin.invites.get()),
+				unwrap<AssignableRole[]>(await api.admin.roles.assignable.get()),
 			]);
 			setUsers(nextUsers);
 			setInvites(nextInvites);
+			setRoles(nextRoles);
 		} catch (nextError) {
 			setError(
 				nextError instanceof Error ? nextError.message : "errors.unknown",
@@ -55,6 +59,10 @@ function UsersPage() {
 
 	if (!session) {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+	}
+
+	if (!hasPermission("users.read")) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 
 	const activeUsers = users.filter((u) => u.isActive);
@@ -93,6 +101,7 @@ function UsersPage() {
 								key={u.id}
 								locale={locale}
 								onRefresh={refresh}
+								roles={roles}
 								setError={setError}
 								t={t}
 								user={u}
@@ -115,6 +124,7 @@ function UsersPage() {
 								key={u.id}
 								locale={locale}
 								onRefresh={refresh}
+								roles={roles}
 								setError={setError}
 								t={t}
 								user={u}
@@ -218,37 +228,40 @@ function UsersPage() {
 				</div>
 			</Card>
 
-			<Card>
-				<h2 className="text-2xl font-black">{t("actions.addInvite")}</h2>
-				{createdInvite ? (
-					<div className="mt-4">
-						<Notice tone="success">
-							<strong>{t("invites.created")}</strong>
-							<div className="mt-2 flex items-center gap-2">
-								<a
-									className="break-all underline underline-offset-4"
-									href={createdInvite.inviteUrl}
-								>
-									{createdInvite.inviteUrl}
-								</a>
-								<CopyButton
-									className="shrink-0 !rounded-xl !px-2 !py-2"
-									label={t("actions.copyLink")}
-									copiedLabel={t("actions.copied")}
-									text={createdInvite.inviteUrl}
-								/>
-							</div>
-						</Notice>
-					</div>
-				) : null}
-				<InviteForm
-					onSaved={(invite) => {
-						setCreatedInvite(invite);
-						void refresh();
-					}}
-					t={t}
-				/>
-			</Card>
+			{hasPermission("invites.manage") ? (
+				<Card>
+					<h2 className="text-2xl font-black">{t("actions.addInvite")}</h2>
+					{createdInvite ? (
+						<div className="mt-4">
+							<Notice tone="success">
+								<strong>{t("invites.created")}</strong>
+								<div className="mt-2 flex items-center gap-2">
+									<a
+										className="break-all underline underline-offset-4"
+										href={createdInvite.inviteUrl}
+									>
+										{createdInvite.inviteUrl}
+									</a>
+									<CopyButton
+										className="shrink-0 !rounded-xl !px-2 !py-2"
+										label={t("actions.copyLink")}
+										copiedLabel={t("actions.copied")}
+										text={createdInvite.inviteUrl}
+									/>
+								</div>
+							</Notice>
+						</div>
+					) : null}
+					<InviteForm
+						onSaved={(invite) => {
+							setCreatedInvite(invite);
+							void refresh();
+						}}
+						roles={roles}
+						t={t}
+					/>
+				</Card>
+			) : null}
 		</div>
 	);
 }
@@ -256,12 +269,14 @@ function UsersPage() {
 function UserRow({
 	locale,
 	onRefresh,
+	roles,
 	setError,
 	t,
 	user: u,
 }: {
 	locale: string;
 	onRefresh: () => Promise<void>;
+	roles: AssignableRole[];
 	setError: (message: string | null) => void;
 	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
 	user: AdminUser;
@@ -269,7 +284,7 @@ function UserRow({
 	return (
 		<div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
 			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-				<div>
+				<div className="flex-1">
 					<p className="font-black">
 						{u.name}{" "}
 						<span className="text-sm font-normal text-stone-600 dark:text-stone-300">
@@ -277,9 +292,46 @@ function UserRow({
 						</span>
 					</p>
 					<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-						{u.role} · {u.locale} ·{" "}
+						{u.roleName} · {u.locale} ·{" "}
 						{new Date(u.createdAt).toLocaleDateString(locale)}
 					</p>
+					{roles.length > 0 ? (
+						<div className="mt-3 flex items-center gap-2">
+							<label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+								{t("users.role")}
+							</label>
+							<Select
+								className="!w-auto !py-2"
+								onChange={async (event) => {
+									const nextRoleId = event.target.value;
+									if (nextRoleId === u.roleId) return;
+									setError(null);
+									try {
+										const api = getTreaty();
+										await unwrap(
+											await api.admin
+												.users({ id: u.id })
+												.role.patch({ roleId: nextRoleId }),
+										);
+										await onRefresh();
+									} catch (nextError) {
+										setError(
+											nextError instanceof Error
+												? nextError.message
+												: "errors.unknown",
+										);
+									}
+								}}
+								value={u.roleId}
+							>
+								{roles.map((role) => (
+									<option key={role.id} value={role.id}>
+										{role.name}
+									</option>
+								))}
+							</Select>
+						</div>
+					) : null}
 				</div>
 				<div className="flex gap-2">
 					<Button

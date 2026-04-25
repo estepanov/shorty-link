@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Button, Card, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminSession } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
@@ -12,6 +12,7 @@ export const Route = createFileRoute("/admin/sessions")({
 
 function Sessions() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
+	const { isAuthorized } = useRequirePermission("sessions.manage");
 	const [sessions, setSessions] = useState<AdminSession[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +41,10 @@ function Sessions() {
 
 	if (!session) {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+	}
+
+	if (!isAuthorized) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 
 	return (

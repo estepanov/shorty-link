@@ -4,7 +4,14 @@ import { and, eq, ne } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 
-import { createTranslator, normalizeLocale } from "@/lib/i18n";
+import { createTranslator, interpolate, normalizeLocale } from "@/lib/i18n";
+import { getLogger, serializeError } from "../logging";
+import {
+	isPermission,
+	type Permission,
+	PERMISSION_GROUPS,
+	PERMISSIONS,
+} from "@/lib/permissions";
 import {
 	isRedirectStatusCode,
 	type RedirectStatusCode,
@@ -15,10 +22,23 @@ import {
 	createInviteContext,
 } from "../auth/onboarding";
 import { assertTrustedAdminWrite } from "../auth/security";
-import { getSession, requireAdmin } from "../auth/session";
-import { createDb } from "../db/client";
-import { user } from "../db/schema";
 import {
+	assertDomainInScope,
+	assertHostnameInScope,
+	assertLinkInScope,
+	type AuthContext,
+	buildDomainScopeForCtx,
+	buildLinkScopeForCtx,
+	getSession,
+	requireAuth,
+	requirePermissionContext,
+	requireSecurePermission,
+} from "../auth/session";
+import { createDb } from "../db/client";
+import { SYSTEM_ROLE_ADMIN, user } from "../db/schema";
+import {
+	appendDomainToRoleScopeIfScoped,
+	appendLinkToRoleScopeIfScoped,
 	buildAnalyticsTarget,
 	buildInviteUrl,
 	buildRedirectTarget,
@@ -34,6 +54,7 @@ import {
 	getLinkStats,
 	listDomains,
 	listShortLinks,
+	normalizeHostname,
 	recordRedirectEvent,
 	resolveRedirect,
 	saveDomain,
@@ -41,8 +62,17 @@ import {
 	suggestSlugFromUrl,
 } from "../services/links";
 import {
-	deleteInvite,
+	createRole,
+	deleteRole,
+	getRoleById,
+	listAssignableRoles,
+	listRoles,
+	updateRole,
+} from "../services/roles";
+import {
+	assignUserRole,
 	deleteUser,
+	deleteInvite,
 	listAllInvites,
 	listUsers,
 	toggleUserActive,
@@ -101,6 +131,18 @@ const apiKeyUpdateBody = t.Object({
 	name: t.Optional(t.String({ minLength: 1 })),
 });
 
+const roleBody = t.Object({
+	name: t.String({ minLength: 1, maxLength: 64 }),
+	description: t.Optional(t.String()),
+	permissions: t.Array(t.String({ minLength: 1 }), { minItems: 1 }),
+	domainScopeIds: t.Optional(t.Array(t.String({ minLength: 1 }))),
+	linkScopeIds: t.Optional(t.Array(t.String({ minLength: 1 }))),
+});
+
+function coercePermissionList(values: string[]): Permission[] {
+	return values.filter(isPermission);
+}
+
 function getClientIp(request: Request) {
 	return (
 		request.headers.get("cf-connecting-ip") ??
@@ -131,20 +173,79 @@ function localeFromRequest(request: Request) {
 	);
 }
 
+const apiLog = getLogger(["api"]);
+
 async function jsonError(error: unknown, request: Request) {
 	const tMessage = createTranslator(localeFromRequest(request));
+	const path = new URL(request.url).pathname;
 
 	if (error instanceof Response) {
+		const body = await error.text();
+		let parsed: {
+			key?: string;
+			roleName?: string;
+			permission?: string;
+		} | null = null;
+		try {
+			parsed = JSON.parse(body);
+		} catch {
+			/* plain text body */
+		}
+
+		if (parsed?.key) {
+			let message = tMessage(parsed.key);
+			if (parsed.roleName) {
+				const vars: Record<string, string> = {
+					roleName: parsed.roleName,
+				};
+				if (parsed.permission) {
+					vars.permission = tMessage(`permissions.${parsed.permission}`);
+				}
+				message = interpolate(message, vars);
+			}
+			apiLog.debug("api error response", {
+				path,
+				method: request.method,
+				status: error.status,
+				key: parsed.key,
+				roleName: parsed.roleName,
+				permission: parsed.permission,
+			});
+			return Response.json(
+				{ code: "AUTH_ERROR", message },
+				{ status: error.status },
+			);
+		}
+
+		apiLog.debug("api error response", {
+			path,
+			method: request.method,
+			status: error.status,
+			message: body,
+		});
 		return Response.json(
 			{
 				code: "AUTH_ERROR",
-				message: tMessage(await error.text()),
+				message: tMessage(body),
 			},
 			{ status: error.status },
 		);
 	}
 
 	const key = error instanceof Error ? error.message : "errors.unknown";
+	if (key === "errors.unknown" || !key.startsWith("errors.")) {
+		apiLog.error("api handler threw", {
+			path,
+			method: request.method,
+			error: serializeError(error),
+		});
+	} else {
+		apiLog.debug("api domain error", {
+			path,
+			method: request.method,
+			code: key,
+		});
+	}
 	return Response.json(
 		{
 			code: key,
@@ -154,21 +255,43 @@ async function jsonError(error: unknown, request: Request) {
 	);
 }
 
-async function requireAdminOrError(request: Request) {
+async function requireAuthOrError(request: Request) {
 	try {
-		return await requireAdmin(request);
+		return await requireAuth(request);
 	} catch (error) {
 		if (error instanceof Response) {
 			throw error;
 		}
-
 		throw new Response("errors.unauthorized", { status: 401 });
 	}
 }
 
-async function requireSecureAdminSession(request: Request) {
-	assertTrustedAdminWrite(request);
-	return requireAdminOrError(request);
+async function requirePermissionOrError(
+	request: Request,
+	permission: Permission | Permission[],
+) {
+	try {
+		return await requirePermissionContext(request, permission);
+	} catch (error) {
+		if (error instanceof Response) {
+			throw error;
+		}
+		throw new Response("errors.unauthorized", { status: 401 });
+	}
+}
+
+async function requireSecurePermissionOrError(
+	request: Request,
+	permission: Permission | Permission[],
+) {
+	try {
+		return await requireSecurePermission(request, permission);
+	} catch (error) {
+		if (error instanceof Response) {
+			throw error;
+		}
+		throw new Response("errors.unauthorized", { status: 401 });
+	}
 }
 
 async function requireSignedOutInviteRequest(request: Request) {
@@ -235,6 +358,50 @@ async function signOutResponse(request: Request) {
 			method: "POST",
 		}),
 	);
+}
+
+async function fetchLinkInScope(
+	db: ReturnType<typeof createDb>,
+	ctx: AuthContext,
+	id: string,
+) {
+	const link = await getLinkById(db, id);
+	if (!link) {
+		throw new Response("errors.linkMissing", { status: 404 });
+	}
+	await assertLinkInScope(ctx, link);
+	return link;
+}
+
+async function fetchDomainInScope(
+	db: ReturnType<typeof createDb>,
+	ctx: AuthContext,
+	id: string,
+) {
+	const domain = await getDomainById(db, id);
+	if (!domain) {
+		throw new Response("errors.domainMissing", { status: 404 });
+	}
+	assertDomainInScope(ctx, domain);
+	return domain;
+}
+
+function authSessionShape(ctx: AuthContext) {
+	return {
+		user: {
+			id: ctx.user.id,
+			email: ctx.user.email,
+			name: ctx.user.name,
+			locale: ctx.user.locale,
+			isActive: ctx.user.isActive,
+			roleId: ctx.role.id,
+			roleName: ctx.role.name,
+		},
+		role: ctx.role,
+		permissions: [...ctx.permissions],
+		domainScope: ctx.domainScope ? [...ctx.domainScope] : null,
+		linkScope: ctx.linkScope ? [...ctx.linkScope] : null,
+	};
 }
 
 export const app = new Elysia({
@@ -323,8 +490,13 @@ export const app = new Elysia({
 				},
 			)
 			.get("/dashboard", async ({ db, request }) => {
-				const session = await requireAdminOrError(request);
-				const dashboard = await getDashboardData(db);
+				const ctx = await requireAuthOrError(request);
+				const linkScope = await buildLinkScopeForCtx(ctx);
+				const domainScope = buildDomainScopeForCtx(ctx);
+				const dashboard = await getDashboardData(db, {
+					linkScope,
+					domainScope,
+				});
 				const origin = new URL(request.url).origin;
 
 				return {
@@ -333,22 +505,23 @@ export const app = new Elysia({
 						...invite,
 						inviteUrl: buildInviteUrl(origin, invite.token),
 					})),
-					session,
+					session: authSessionShape(ctx),
 				};
 			})
 			.get("/profile", async ({ request }) => {
-				const session = await requireAdminOrError(request);
-				return session.user;
+				const ctx = await requireAuthOrError(request);
+				return authSessionShape(ctx).user;
 			})
 			.patch(
 				"/profile",
 				async ({ body, db, request }) => {
-					const session = await requireSecureAdminSession(request);
+					assertTrustedAdminWrite(request);
+					const ctx = await requireAuthOrError(request);
 					const email = body.email.trim().toLowerCase();
 					const existing = await db
 						.select({ id: user.id })
 						.from(user)
-						.where(and(eq(user.email, email), ne(user.id, session.user.id)))
+						.where(and(eq(user.email, email), ne(user.id, ctx.user.id)))
 						.limit(1);
 
 					if (existing[0]) {
@@ -363,7 +536,7 @@ export const app = new Elysia({
 							name: body.name.trim(),
 							updatedAt: new Date(),
 						})
-						.where(eq(user.id, session.user.id));
+						.where(eq(user.id, ctx.user.id));
 
 					return { ok: true };
 				},
@@ -375,22 +548,34 @@ export const app = new Elysia({
 					}),
 				},
 			)
+			.get("/auth-context", async ({ request }) => {
+				const ctx = await requireAuthOrError(request);
+				return {
+					role: ctx.role,
+					permissions: [...ctx.permissions],
+				};
+			})
 			.get(
 				"/links",
 				async ({ db, query, request }) => {
-					await requireAdminOrError(request);
-					return listShortLinks(db, {
-						active: query.active,
-						hostname: query.hostname,
-						page: query.page,
-						pageSize: query.pageSize,
-						search: query.search,
-						statusCode:
-							typeof query.statusCode === "number" &&
-							isRedirectStatusCode(query.statusCode)
-								? (query.statusCode as RedirectStatusCode)
-								: "all",
-					});
+					const ctx = await requirePermissionOrError(request, "links.read");
+					const scope = await buildLinkScopeForCtx(ctx);
+					return listShortLinks(
+						db,
+						{
+							active: query.active,
+							hostname: query.hostname,
+							page: query.page,
+							pageSize: query.pageSize,
+							search: query.search,
+							statusCode:
+								typeof query.statusCode === "number" &&
+								isRedirectStatusCode(query.statusCode)
+									? (query.statusCode as RedirectStatusCode)
+									: "all",
+						},
+						scope,
+					);
 				},
 				{
 					query: t.Object({
@@ -412,26 +597,33 @@ export const app = new Elysia({
 			.post(
 				"/links",
 				async ({ body, db, request }) => {
-					const session = await requireSecureAdminSession(request);
-					return {
-						id: await saveLink(db, {
-							...body,
-							createdBy: session.user.id,
-						}),
-					};
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"links.write",
+					);
+					const targetHost = normalizeHostname(body.hostname);
+					if (ctx.domainScope) {
+						await assertHostnameInScope(ctx, targetHost);
+					} else if (ctx.linkScope) {
+						// Link-only scope (no domain scope) cannot create new links.
+						throw new Response("errors.linkScopeRequiresDomain", {
+							status: 403,
+						});
+					}
+					const id = await saveLink(db, {
+						...body,
+						createdBy: ctx.user.id,
+					});
+					await appendLinkToRoleScopeIfScoped(db, ctx.role.id, id);
+					return { id };
 				},
 				{ body: linkBody },
 			)
 			.get(
 				"/links/:id",
 				async ({ db, params, request }) => {
-					await requireAdminOrError(request);
-					const link = await getLinkById(db, params.id);
-					if (!link) {
-						throw new Error("errors.linkMissing");
-					}
-
-					return link;
+					const ctx = await requirePermissionOrError(request, "links.read");
+					return fetchLinkInScope(db, ctx, params.id);
 				},
 				{
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
@@ -440,16 +632,14 @@ export const app = new Elysia({
 			.get(
 				"/links/:id/stats",
 				async ({ db, params, query, request }) => {
-					await requireAdminOrError(request);
-					const link = await getLinkById(db, params.id);
-					if (!link) {
-						throw new Error("errors.linkMissing");
-					}
-
+					const ctx = await requirePermissionOrError(request, [
+						"links.read",
+						"analytics.read",
+					]);
+					const link = await fetchLinkInScope(db, ctx, params.id);
 					const stats = await getLinkStats(db, params.id, {
 						days: query.days,
 					});
-
 					return { link, stats };
 				},
 				{
@@ -462,12 +652,20 @@ export const app = new Elysia({
 			.patch(
 				"/links/:id",
 				async ({ body, db, params, request }) => {
-					const session = await requireSecureAdminSession(request);
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"links.write",
+					);
+					await fetchLinkInScope(db, ctx, params.id);
+					const targetHost = normalizeHostname(body.hostname);
+					if (ctx.domainScope) {
+						await assertHostnameInScope(ctx, targetHost);
+					}
 					return {
 						id: await saveLink(db, {
 							...body,
 							id: params.id,
-							createdBy: session.user.id,
+							createdBy: ctx.user.id,
 						}),
 					};
 				},
@@ -479,7 +677,11 @@ export const app = new Elysia({
 			.delete(
 				"/links/:id",
 				async ({ db, params, request }) => {
-					await requireSecureAdminSession(request);
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"links.delete",
+					);
+					await fetchLinkInScope(db, ctx, params.id);
 					await deleteLink(db, params.id);
 					return { ok: true };
 				},
@@ -488,32 +690,30 @@ export const app = new Elysia({
 				},
 			)
 			.get("/domains", async ({ db, request }) => {
-				await requireAdminOrError(request);
-				return listDomains(db);
+				const ctx = await requirePermissionOrError(request, "domains.read");
+				return listDomains(db, buildDomainScopeForCtx(ctx));
 			})
 			.post(
 				"/domains",
 				async ({ body, db, request }) => {
-					const session = await requireSecureAdminSession(request);
-					return {
-						id: await saveDomain(db, {
-							...body,
-							createdBy: session.user.id,
-						}),
-					};
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"domains.write",
+					);
+					const id = await saveDomain(db, {
+						...body,
+						createdBy: ctx.user.id,
+					});
+					await appendDomainToRoleScopeIfScoped(db, ctx.role.id, id);
+					return { id };
 				},
 				{ body: domainBody },
 			)
 			.get(
 				"/domains/:id",
 				async ({ db, params, request }) => {
-					await requireAdminOrError(request);
-					const domain = await getDomainById(db, params.id);
-					if (!domain) {
-						throw new Error("errors.domainMissing");
-					}
-
-					return domain;
+					const ctx = await requirePermissionOrError(request, "domains.read");
+					return fetchDomainInScope(db, ctx, params.id);
 				},
 				{
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
@@ -522,12 +722,16 @@ export const app = new Elysia({
 			.patch(
 				"/domains/:id",
 				async ({ body, db, params, request }) => {
-					const session = await requireSecureAdminSession(request);
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"domains.write",
+					);
+					await fetchDomainInScope(db, ctx, params.id);
 					return {
 						id: await saveDomain(db, {
 							...body,
 							id: params.id,
-							createdBy: session.user.id,
+							createdBy: ctx.user.id,
 						}),
 					};
 				},
@@ -539,7 +743,11 @@ export const app = new Elysia({
 			.delete(
 				"/domains/:id",
 				async ({ db, params, request }) => {
-					await requireSecureAdminSession(request);
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"domains.delete",
+					);
+					await fetchDomainInScope(db, ctx, params.id);
 					await deleteDomain(db, params.id);
 					return { ok: true };
 				},
@@ -550,12 +758,15 @@ export const app = new Elysia({
 			.post(
 				"/invites",
 				async ({ body, db, request }) => {
-					const session = await requireSecureAdminSession(request);
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"invites.manage",
+					);
 					const invite = await createInvite(db, {
 						email: body.email,
 						expiresInDays: body.expiresInDays,
-						invitedBy: session.user.id,
-						role: "admin",
+						invitedBy: ctx.user.id,
+						roleId: body.roleId ?? SYSTEM_ROLE_ADMIN,
 					});
 
 					return {
@@ -570,18 +781,22 @@ export const app = new Elysia({
 					body: t.Object({
 						email: t.String({ format: "email" }),
 						expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 30 })),
+						roleId: t.Optional(t.String({ minLength: 1 })),
 					}),
 				},
 			)
 			.get("/users", async ({ db, request }) => {
-				await requireAdminOrError(request);
+				await requirePermissionOrError(request, "users.read");
 				return listUsers(db);
 			})
 			.patch(
 				"/users/:id",
 				async ({ body, db, params, request }) => {
-					const session = await requireSecureAdminSession(request);
-					if (params.id === session.user.id) {
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"users.write",
+					);
+					if (params.id === ctx.user.id) {
 						throw new Error("errors.cannotSelfDisable");
 					}
 					await toggleUserActive(db, params.id, body.isActive);
@@ -594,11 +809,28 @@ export const app = new Elysia({
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
+			.patch(
+				"/users/:id/role",
+				async ({ body, db, params, request }) => {
+					await requireSecurePermissionOrError(request, "users.write");
+					await assignUserRole(db, params.id, body.roleId);
+					return { ok: true };
+				},
+				{
+					body: t.Object({
+						roleId: t.String({ minLength: 1 }),
+					}),
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
 			.delete(
 				"/users/:id",
 				async ({ db, params, request }) => {
-					const session = await requireSecureAdminSession(request);
-					if (params.id === session.user.id) {
+					const ctx = await requireSecurePermissionOrError(
+						request,
+						"users.delete",
+					);
+					if (params.id === ctx.user.id) {
 						throw new Error("errors.cannotSelfDelete");
 					}
 					await deleteUser(db, params.id);
@@ -609,7 +841,7 @@ export const app = new Elysia({
 				},
 			)
 			.get("/sessions", async ({ request }) => {
-				await requireAdminOrError(request);
+				await requirePermissionOrError(request, "sessions.manage");
 				return createAuth(request).api.listSessions({
 					headers: request.headers,
 				});
@@ -617,7 +849,7 @@ export const app = new Elysia({
 			.post(
 				"/sessions/revoke",
 				async ({ body, request }) => {
-					await requireSecureAdminSession(request);
+					await requireSecurePermissionOrError(request, "sessions.manage");
 					return createAuth(request).api.revokeSession({
 						body,
 						headers: request.headers,
@@ -630,19 +862,20 @@ export const app = new Elysia({
 				},
 			)
 			.post("/sessions/revoke-other", async ({ request }) => {
-				await requireSecureAdminSession(request);
+				await requireSecurePermissionOrError(request, "sessions.manage");
 				return createAuth(request).api.revokeOtherSessions({
 					headers: request.headers,
 				});
 			})
 			.delete("/sessions/current", async ({ request }) => {
-				await requireSecureAdminSession(request);
+				assertTrustedAdminWrite(request);
+				await requireAuthOrError(request);
 				return signOutResponse(request);
 			})
 			.get(
 				"/api-keys",
 				async ({ query, request }) => {
-					await requireAdminOrError(request);
+					await requirePermissionOrError(request, "apikeys.manage");
 					return createAuth(request).api.listApiKeys({
 						headers: request.headers,
 						query: {
@@ -660,7 +893,7 @@ export const app = new Elysia({
 			.post(
 				"/api-keys",
 				async ({ body, request }) => {
-					await requireSecureAdminSession(request);
+					await requireSecurePermissionOrError(request, "apikeys.manage");
 					return createAuth(request).api.createApiKey({
 						body: {
 							expiresIn: expiresInSeconds(body.expiresInDays),
@@ -676,7 +909,7 @@ export const app = new Elysia({
 			.patch(
 				"/api-keys/:id",
 				async ({ body, params, request }) => {
-					await requireSecureAdminSession(request);
+					await requireSecurePermissionOrError(request, "apikeys.manage");
 					return createAuth(request).api.updateApiKey({
 						body: {
 							enabled: body.enabled,
@@ -698,7 +931,7 @@ export const app = new Elysia({
 			.delete(
 				"/api-keys/:id",
 				async ({ params, request }) => {
-					await requireSecureAdminSession(request);
+					await requireSecurePermissionOrError(request, "apikeys.manage");
 					return createAuth(request).api.deleteApiKey({
 						body: { keyId: params.id },
 						headers: request.headers,
@@ -709,7 +942,7 @@ export const app = new Elysia({
 				},
 			)
 			.get("/invites", async ({ db, request }) => {
-				await requireAdminOrError(request);
+				await requirePermissionOrError(request, "invites.manage");
 				const invites = await listAllInvites(db);
 				const origin = new URL(request.url).origin;
 				return invites.map((invite) => ({
@@ -722,7 +955,7 @@ export const app = new Elysia({
 			.delete(
 				"/invites",
 				async ({ body, db, request }) => {
-					await requireSecureAdminSession(request);
+					await requireSecurePermissionOrError(request, "invites.manage");
 					await deleteInvite(db, body.id);
 					return { ok: true };
 				},
@@ -733,13 +966,80 @@ export const app = new Elysia({
 			.get(
 				"/suggest-slug",
 				async ({ query, request }) => {
-					await requireAdminOrError(request);
+					await requirePermissionOrError(request, "links.write");
 					return { slug: await suggestSlugWithAi(query.targetUrl) };
 				},
 				{
 					query: t.Object({
 						targetUrl: t.String({ minLength: 1 }),
 					}),
+				},
+			)
+			.get("/permissions", async ({ request }) => {
+				await requirePermissionOrError(request, "roles.manage");
+				return {
+					permissions: PERMISSIONS,
+					groups: PERMISSION_GROUPS,
+				};
+			})
+			.get("/roles/assignable", async ({ db, request }) => {
+				await requirePermissionOrError(request, "users.read");
+				return listAssignableRoles(db);
+			})
+			.get("/roles", async ({ db, request }) => {
+				await requirePermissionOrError(request, "roles.manage");
+				return listRoles(db);
+			})
+			.get(
+				"/roles/:id",
+				async ({ db, params, request }) => {
+					await requirePermissionOrError(request, "roles.manage");
+					const role = await getRoleById(db, params.id);
+					if (!role) {
+						throw new Error("errors.roleMissing");
+					}
+					return role;
+				},
+				{
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
+			.post(
+				"/roles",
+				async ({ body, db, request }) => {
+					await requireSecurePermissionOrError(request, "roles.manage");
+					const id = await createRole(db, {
+						...body,
+						permissions: coercePermissionList(body.permissions),
+					});
+					return { id };
+				},
+				{ body: roleBody },
+			)
+			.patch(
+				"/roles/:id",
+				async ({ body, db, params, request }) => {
+					await requireSecurePermissionOrError(request, "roles.manage");
+					await updateRole(db, params.id, {
+						...body,
+						permissions: coercePermissionList(body.permissions),
+					});
+					return { ok: true };
+				},
+				{
+					body: roleBody,
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
+			.delete(
+				"/roles/:id",
+				async ({ db, params, request }) => {
+					await requireSecurePermissionOrError(request, "roles.manage");
+					await deleteRole(db, params.id);
+					return { ok: true };
+				},
+				{
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			),
 	)

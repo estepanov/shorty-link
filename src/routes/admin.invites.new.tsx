@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
-import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
-import { CopyButton } from "@/components/copy-button";
+import { InviteForm } from "@/components/admin-forms";
 import { Card, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
+import type { AssignableRole } from "@/lib/admin-types";
+import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/invites/new")({
 	component: NewInvite,
@@ -12,9 +13,25 @@ export const Route = createFileRoute("/admin/invites/new")({
 
 function NewInvite() {
 	const { session, isPending, t } = useAdminAuthGuard();
-	const [createdInvite, setCreatedInvite] = useState<CreatedInvite | null>(
-		null,
-	);
+	const { hasPermission } = useAuthContext();
+	const router = useRouter();
+	const [roles, setRoles] = useState<AssignableRole[]>([]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: load roles when session identity changes.
+	useEffect(() => {
+		if (!session) return;
+		void (async () => {
+			try {
+				const api = getTreaty();
+				const next = await unwrap<AssignableRole[]>(
+					await api.admin.roles.assignable.get(),
+				);
+				setRoles(next);
+			} catch {
+				// silent fail; InviteForm will render without roles
+			}
+		})();
+	}, [session?.user.id]);
 
 	if (isPending) {
 		return <Card>{t("loading.app")}</Card>;
@@ -24,38 +41,27 @@ function NewInvite() {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
 	}
 
+	if (!hasPermission("invites.manage")) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
+	}
+
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
 				<Link
 					className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
-					to="/admin"
+					to="/admin/access/invites"
 				>
 					{t("pages.backDashboard")}
 				</Link>
 				<h1 className="mt-4 text-4xl font-black">{t("pages.newInvite")}</h1>
-				{createdInvite ? (
-					<div className="mt-4">
-						<Notice tone="success">
-							<strong>{t("invites.created")}</strong>
-							<div className="mt-2 flex items-center gap-2">
-								<a
-									className="break-all underline underline-offset-4"
-									href={createdInvite.inviteUrl}
-								>
-									{createdInvite.inviteUrl}
-								</a>
-								<CopyButton
-									className="shrink-0 rounded-xl! px-2! py-2!"
-									label={t("actions.copyLink")}
-									copiedLabel={t("actions.copied")}
-									text={createdInvite.inviteUrl}
-								/>
-							</div>
-						</Notice>
-					</div>
-				) : null}
-				<InviteForm onSaved={setCreatedInvite} t={t} />
+				<InviteForm
+					onSaved={async () => {
+						await router.navigate({ to: "/admin/access/invites" });
+					}}
+					roles={roles}
+					t={t}
+				/>
 			</Card>
 		</div>
 	);

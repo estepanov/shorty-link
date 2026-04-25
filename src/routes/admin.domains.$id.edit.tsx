@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { DomainForm } from "@/components/admin-forms";
 import { Button, Card, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminDomain } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
@@ -15,6 +15,7 @@ function EditDomain() {
 	const { id } = Route.useParams();
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
+	const { isAuthorized } = useRequirePermission("domains.write");
 	const [domain, setDomain] = useState<AdminDomain | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +48,10 @@ function EditDomain() {
 
 	if (!session) {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+	}
+
+	if (!isAuthorized) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 
 	return (

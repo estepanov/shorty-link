@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Button, Card, FieldLabel, Input, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type {
 	AdminApiKey,
 	AdminApiKeyList,
@@ -18,6 +18,7 @@ export const Route = createFileRoute("/admin/api-keys")({
 
 function ApiKeys() {
 	const { session, isPending, t } = useAdminAuthGuard();
+	const { isAuthorized } = useRequirePermission("apikeys.manage");
 	const [keys, setKeys] = useState<AdminApiKey[]>([]);
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -79,6 +80,10 @@ function ApiKeys() {
 
 	if (!session) {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+	}
+
+	if (!isAuthorized) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 
 	return (

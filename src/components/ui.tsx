@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { useAuthContext } from "@/lib/admin-auth";
 import { authClient } from "@/lib/auth-client";
 import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, type Locale, type MessageKey } from "@/lib/i18n";
@@ -58,12 +59,21 @@ export function AppShell({
 }) {
 	const t = useText(locale);
 	const { data: session, isPending } = authClient.useSession();
+	const { hasPermission } = useAuthContext();
 
 	async function handleSignOut() {
 		const api = getTreaty();
 		await unwrap(await api.admin.sessions.current.delete());
 		window.location.href = "/";
 	}
+
+	const showLinks = hasPermission("links.read");
+	const showAccess =
+		hasPermission("users.read") ||
+		hasPermission("invites.manage") ||
+		hasPermission("sessions.manage") ||
+		hasPermission("apikeys.manage") ||
+		hasPermission("roles.manage");
 
 	return (
 		<div className="min-h-screen text-stone-950 transition-colors dark:text-amber-50">
@@ -88,8 +98,14 @@ export function AppShell({
 						<>
 							<div className="hidden items-center sm:flex">
 								<HeaderLink to="/admin">{t("nav.dashboard")}</HeaderLink>
-								<HeaderLink to="/admin/links">{t("nav.shortLinks")}</HeaderLink>
-								<HeaderLink to="/admin/users">{t("nav.access")}</HeaderLink>
+								{showLinks ? (
+									<HeaderLink to="/admin/links">
+										{t("nav.shortLinks")}
+									</HeaderLink>
+								) : null}
+								{showAccess ? (
+									<HeaderLink to="/admin/access">{t("nav.access")}</HeaderLink>
+								) : null}
 								<HeaderLink to="/admin/profile">{t("nav.profile")}</HeaderLink>
 							</div>
 							<button

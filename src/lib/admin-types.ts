@@ -28,3 +28,11 @@ export type AdminApiKeyList = ApiData<AdminApi["api-keys"]["get"]>;
 export type AdminApiKey = AdminApiKeyList["apiKeys"][number];
 export type AdminCreatedApiKey = ApiData<AdminApi["api-keys"]["post"]>;
 export type AdminUpdatedApiKey = ApiData<ApiKeyByIdApi["patch"]>;
+
+type RoleByIdApi = ReturnType<AdminApi["roles"]>;
+export type AdminRole = ApiData<AdminApi["roles"]["get"]>[number];
+export type AdminRoleDetail = ApiData<RoleByIdApi["get"]>;
+export type AssignableRole = ApiData<
+	AdminApi["roles"]["assignable"]["get"]
+>[number];
+export type PermissionCatalog = ApiData<AdminApi["permissions"]["get"]>;

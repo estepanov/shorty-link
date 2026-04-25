@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { LinkForm } from "@/components/admin-forms";
 import { Button, Card, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminDomain, AdminLink } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
@@ -15,6 +15,7 @@ function EditLink() {
 	const { id } = Route.useParams();
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
+	const { isAuthorized } = useRequirePermission("links.write");
 	const [domains, setDomains] = useState<AdminDomain[] | null>(null);
 	const [link, setLink] = useState<AdminLink | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,10 @@ function EditLink() {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
 	}
 
+	if (!isAuthorized) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
+	}
+
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
@@ -70,7 +75,7 @@ function EditLink() {
 							try {
 								const api = getTreaty();
 								await unwrap(await api.admin.links({ id }).delete());
-								await router.navigate({ to: "/admin" });
+								await router.navigate({ to: "/admin/links" });
 							} catch (nextError) {
 								setError(
 									nextError instanceof Error
@@ -95,7 +100,7 @@ function EditLink() {
 						domains={domains}
 						initialLink={link}
 						onSaved={() => {
-							void router.navigate({ to: "/admin" });
+							void router.navigate({ to: "/admin/links" });
 						}}
 						t={t}
 					/>

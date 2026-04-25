@@ -6,6 +6,7 @@ import {
 	eq,
 	gt,
 	gte,
+	inArray,
 	isNotNull,
 	isNull,
 	or,
@@ -24,9 +25,52 @@ import {
 	DEFAULT_HOSTNAME,
 	managedDomains,
 	redirectEvents,
+	roleDomainScopes,
+	roleLinkScopes,
 	shortLinks,
 	user,
 } from "../db/schema";
+
+export type ScopeFilter = {
+	hostnames: ReadonlySet<string> | null;
+	linkIds: ReadonlySet<string> | null;
+} | null;
+
+export type DomainScopeFilter = ReadonlySet<string> | null;
+
+function buildLinkScopeCondition(scope: ScopeFilter) {
+	if (!scope) {
+		return undefined;
+	}
+	const { hostnames, linkIds } = scope;
+	const conditions = [];
+	if (hostnames) {
+		conditions.push(
+			hostnames.size === 0
+				? sql`0 = 1`
+				: inArray(shortLinks.hostname, [...hostnames]),
+		);
+	}
+	if (linkIds) {
+		conditions.push(
+			linkIds.size === 0 ? sql`0 = 1` : inArray(shortLinks.id, [...linkIds]),
+		);
+	}
+	if (!conditions.length) {
+		return undefined;
+	}
+	return conditions.length === 1 ? conditions[0] : or(...conditions);
+}
+
+function buildDomainScopeCondition(scope: DomainScopeFilter) {
+	if (!scope) {
+		return undefined;
+	}
+	if (scope.size === 0) {
+		return sql`0 = 1`;
+	}
+	return inArray(managedDomains.id, [...scope]);
+}
 
 const slugAlphabet = customAlphabet("abcdefghijkmnpqrstuvwxyz23456789", 7);
 
@@ -45,13 +89,6 @@ function escapeLikePattern(value: string) {
 
 function likeEscaped(column: AnyColumn, pattern: string) {
 	return sql`${column} like ${pattern} escape '\\'`;
-}
-
-export function isAdminRole(role: string | null | undefined) {
-	return (role ?? "")
-		.split(",")
-		.map((value) => value.trim())
-		.includes("admin");
 }
 
 export function normalizeHostname(value?: string | null) {
@@ -226,14 +263,46 @@ export async function getBootstrapState(db: AppDb) {
 	};
 }
 
-export async function getDashboardData(db: AppDb) {
+export async function getDashboardData(
+	db: AppDb,
+	options: {
+		linkScope?: ScopeFilter;
+		domainScope?: DomainScopeFilter;
+	} = {},
+) {
+	const linkScope = options.linkScope ?? null;
+	const domainScope = options.domainScope ?? null;
+	const linkCond = buildLinkScopeCondition(linkScope);
+	const domainCond = buildDomainScopeCondition(domainScope);
+	const linkIdScopeForEvents = linkScope?.linkIds ?? null;
+	const eventLinkIds = linkIdScopeForEvents
+		? linkIdScopeForEvents.size === 0
+			? sql`0 = 1`
+			: inArray(redirectEvents.linkId, [...linkIdScopeForEvents])
+		: undefined;
+	const eventHostnames = linkScope?.hostnames
+		? linkScope.hostnames.size === 0
+			? sql`0 = 1`
+			: inArray(redirectEvents.hostname, [...linkScope.hostnames])
+		: undefined;
+	const eventCond =
+		eventLinkIds && eventHostnames
+			? or(eventLinkIds, eventHostnames)
+			: (eventLinkIds ?? eventHostnames);
+
 	const [domains, links, invites, events, counts] = await Promise.all([
 		db
 			.select()
 			.from(managedDomains)
+			.where(domainCond)
 			.orderBy(desc(managedDomains.createdAt))
 			.limit(10),
-		db.select().from(shortLinks).orderBy(desc(shortLinks.createdAt)).limit(10),
+		db
+			.select()
+			.from(shortLinks)
+			.where(linkCond)
+			.orderBy(desc(shortLinks.createdAt))
+			.limit(10),
 		db
 			.select()
 			.from(adminInvites)
@@ -245,12 +314,13 @@ export async function getDashboardData(db: AppDb) {
 		db
 			.select()
 			.from(redirectEvents)
+			.where(eventCond)
 			.orderBy(desc(redirectEvents.createdAt))
 			.limit(10),
 		Promise.all([
-			db.select({ total: count() }).from(shortLinks),
-			db.select({ total: count() }).from(redirectEvents),
-			db.select({ total: count() }).from(managedDomains),
+			db.select({ total: count() }).from(shortLinks).where(linkCond),
+			db.select({ total: count() }).from(redirectEvents).where(eventCond),
+			db.select({ total: count() }).from(managedDomains).where(domainCond),
 			db
 				.select({ total: count() })
 				.from(adminInvites)
@@ -277,8 +347,13 @@ export async function getDashboardData(db: AppDb) {
 	};
 }
 
-export async function listDomains(db: AppDb) {
-	return db.select().from(managedDomains).orderBy(managedDomains.hostname);
+export async function listDomains(db: AppDb, scope?: DomainScopeFilter) {
+	const cond = buildDomainScopeCondition(scope ?? null);
+	return db
+		.select()
+		.from(managedDomains)
+		.where(cond)
+		.orderBy(managedDomains.hostname);
 }
 
 export async function getDomainById(db: AppDb, id: string) {
@@ -301,6 +376,52 @@ export async function getLinkById(db: AppDb, id: string) {
 	return links[0] ?? null;
 }
 
+export async function appendLinkToRoleScopeIfScoped(
+	db: AppDb,
+	roleId: string,
+	linkId: string,
+) {
+	const [existing] = await db
+		.select({ total: count() })
+		.from(roleLinkScopes)
+		.where(eq(roleLinkScopes.roleId, roleId));
+	if (Number(existing?.total ?? 0) === 0) {
+		return;
+	}
+	await db
+		.insert(roleLinkScopes)
+		.values({
+			id: nanoid(),
+			roleId,
+			linkId,
+			createdAt: new Date(),
+		})
+		.onConflictDoNothing();
+}
+
+export async function appendDomainToRoleScopeIfScoped(
+	db: AppDb,
+	roleId: string,
+	domainId: string,
+) {
+	const [existing] = await db
+		.select({ total: count() })
+		.from(roleDomainScopes)
+		.where(eq(roleDomainScopes.roleId, roleId));
+	if (Number(existing?.total ?? 0) === 0) {
+		return;
+	}
+	await db
+		.insert(roleDomainScopes)
+		.values({
+			id: nanoid(),
+			roleId,
+			domainId,
+			createdAt: new Date(),
+		})
+		.onConflictDoNothing();
+}
+
 export async function listShortLinks(
 	db: AppDb,
 	input: {
@@ -311,6 +432,7 @@ export async function listShortLinks(
 		search?: string;
 		statusCode?: RedirectStatusCode | "all";
 	},
+	scope?: ScopeFilter,
 ) {
 	const page = Math.max(1, Math.floor(input.page ?? 1));
 	const pageSize = Math.max(1, Math.min(Math.floor(input.pageSize ?? 25), 100));
@@ -347,6 +469,11 @@ export async function listShortLinks(
 		isRedirectStatusCode(input.statusCode)
 	) {
 		filters.push(eq(shortLinks.statusCode, input.statusCode));
+	}
+
+	const scopeCond = buildLinkScopeCondition(scope ?? null);
+	if (scopeCond) {
+		filters.push(scopeCond);
 	}
 
 	const where = filters.length ? and(...filters) : undefined;
@@ -711,7 +838,7 @@ export async function createInvite(
 		email: string;
 		invitedBy?: string;
 		expiresInDays?: number;
-		role?: string;
+		roleId: string;
 	},
 ) {
 	const email = input.email.trim().toLowerCase();
@@ -728,7 +855,7 @@ export async function createInvite(
 		id,
 		email,
 		token,
-		role: input.role ?? "admin",
+		roleId: input.roleId,
 		invitedBy: input.invitedBy ?? null,
 		expiresAt: timestamp + expiresInDays * 24 * 60 * 60 * 1000,
 		acceptedAt: null,

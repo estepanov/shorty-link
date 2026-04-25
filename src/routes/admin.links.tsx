@@ -15,7 +15,7 @@ import {
 	Notice,
 	Select,
 } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminDomain, LinkListData } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
@@ -48,6 +48,7 @@ const defaultFilters: LinkFilters = {
 function LinksList() {
 	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
+	const { isAuthorized } = useRequirePermission("links.read");
 	const [domains, setDomains] = useState<AdminDomain[]>([]);
 	const [data, setData] = useState<LinkListData | null>(null);
 	const [filters, setFilters] = useState<LinkFilters>(defaultFilters);
@@ -111,6 +112,10 @@ function LinksList() {
 
 	if (!session) {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+	}
+
+	if (!isAuthorized) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 
 	const firstItem =

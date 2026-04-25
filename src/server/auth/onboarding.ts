@@ -4,7 +4,12 @@ import { nanoid } from "nanoid";
 import { normalizeLocale } from "@/lib/i18n";
 
 import type { AppDb } from "../db/client";
-import { adminInvites, user } from "../db/schema";
+import {
+	adminInvites,
+	SYSTEM_ROLE_ADMIN,
+	SYSTEM_ROLE_OWNER,
+	user,
+} from "../db/schema";
 import { getBootstrapState, getInviteByToken, now } from "../services/links";
 import { getAuthSecret } from "./secret";
 
@@ -14,7 +19,7 @@ type OnboardingContext = {
 	inviteToken?: string;
 	locale: string;
 	name: string;
-	role: "admin";
+	roleId: string;
 	type: "bootstrap" | "invite";
 };
 
@@ -130,7 +135,7 @@ export async function createBootstrapContext(
 			exp: Date.now() + 10 * 60 * 1000,
 			locale: normalizeLocale(input.locale),
 			name: input.name.trim(),
-			role: "admin",
+			roleId: SYSTEM_ROLE_OWNER,
 			type: "bootstrap",
 		},
 		request,
@@ -154,7 +159,7 @@ export async function createInviteContext(
 			inviteToken: invite.token,
 			locale: normalizeLocale(input.locale),
 			name: input.name.trim(),
-			role: "admin",
+			roleId: invite.roleId,
 			type: "invite",
 		},
 		request,
@@ -240,6 +245,8 @@ export async function completePasskeyRegistrationUser(
 	const existing = await findUserByEmail(db, email);
 	const timestamp = Math.floor(Date.now() / 1000);
 	const locale = normalizeLocale(parsed.locale);
+	const roleId =
+		parsed.type === "bootstrap" ? SYSTEM_ROLE_OWNER : parsed.roleId;
 
 	if (parsed.type === "bootstrap") {
 		if (existing) {
@@ -257,16 +264,16 @@ export async function completePasskeyRegistrationUser(
 					"email",
 					"email_verified",
 					"image",
-					"role",
+					"role_id",
 					"locale",
 					"is_active",
 					"created_at",
 					"updated_at"
 				)
-				select ?, ?, ?, 1, null, 'admin', ?, 1, ?, ?
+				select ?, ?, ?, 1, null, ?, ?, 1, ?, ?
 				where not exists (select 1 from "user")
 			`)
-			.bind(id, parsed.name, email, locale, timestamp, timestamp)
+			.bind(id, parsed.name, email, roleId, locale, timestamp, timestamp)
 			.run();
 
 		if (inserted.meta.changes !== 1) {
@@ -297,6 +304,10 @@ export async function completePasskeyRegistrationUser(
 		if (claimed.meta.changes !== 1) {
 			throw new Error("errors.inviteMissing");
 		}
+		await db
+			.update(user)
+			.set({ roleId: roleId ?? SYSTEM_ROLE_ADMIN, updatedAt: new Date() })
+			.where(eq(user.id, existing.id));
 		return existing.id;
 	}
 
@@ -308,13 +319,13 @@ export async function completePasskeyRegistrationUser(
 				"email",
 				"email_verified",
 				"image",
-				"role",
+				"role_id",
 				"locale",
 				"is_active",
 				"created_at",
 				"updated_at"
 			)
-			select ?, ?, ?, 1, null, 'admin', ?, 1, ?, ?
+			select ?, ?, ?, 1, null, ?, ?, 1, ?, ?
 			where exists (
 				select 1
 				from "admin_invite"
@@ -327,6 +338,7 @@ export async function completePasskeyRegistrationUser(
 			id,
 			parsed.name,
 			email,
+			roleId ?? SYSTEM_ROLE_ADMIN,
 			locale,
 			timestamp,
 			timestamp,

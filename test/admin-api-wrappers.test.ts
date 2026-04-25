@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PERMISSIONS } from "../src/lib/permissions";
+
 const mocks = vi.hoisted(() => ({
 	createBootstrapContext: vi.fn(),
 	createApiKey: vi.fn(),
@@ -10,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 	handler: vi.fn(),
 	listApiKeys: vi.fn(),
 	listSessions: vi.fn(),
-	requireAdmin: vi.fn(),
+	loadAuthContext: vi.fn(),
 	revokeOtherSessions: vi.fn(),
 	revokeSession: vi.fn(),
 	updateApiKey: vi.fn(),
@@ -44,10 +46,35 @@ vi.mock("../src/server/services/links", async () => {
 	};
 });
 
-vi.mock("../src/server/auth/session", () => ({
-	getSession: mocks.getSession,
-	requireAdmin: mocks.requireAdmin,
-}));
+vi.mock("../src/server/auth/session", async () => {
+	const actual = await vi.importActual<
+		typeof import("../src/server/auth/session")
+	>("../src/server/auth/session");
+	const security = await vi.importActual<
+		typeof import("../src/server/auth/security")
+	>("../src/server/auth/security");
+	const requireAuth = async (request: Request) => {
+		const ctx = await mocks.loadAuthContext(request);
+		if (!ctx) {
+			throw new Response("errors.unauthorized", { status: 401 });
+		}
+		return ctx;
+	};
+	const requirePermissionContext = async (request: Request) =>
+		requireAuth(request);
+	const requireSecurePermission = async (request: Request) => {
+		security.assertTrustedAdminWrite(request);
+		return requireAuth(request);
+	};
+	return {
+		...actual,
+		getSession: mocks.getSession,
+		loadAuthContext: mocks.loadAuthContext,
+		requireAuth,
+		requirePermissionContext,
+		requireSecurePermission,
+	};
+});
 
 vi.mock("../src/server/db/client", () => ({
 	createDb: vi.fn(() => ({})),
@@ -55,17 +82,24 @@ vi.mock("../src/server/db/client", () => ({
 
 const { app } = await import("../src/server/api/app");
 
+const FAKE_CTX = {
+	user: {
+		id: "user-1",
+		email: "admin@example.com",
+		name: "Admin",
+		locale: "en",
+		isActive: true,
+	},
+	role: { id: "system_admin", name: "Admin", isSystem: true },
+	permissions: new Set(PERMISSIONS),
+	domainScope: null,
+	linkScope: null,
+};
+
 describe("admin api auth wrappers", () => {
 	beforeEach(() => {
 		mocks.getSession.mockResolvedValue(null);
-		mocks.requireAdmin.mockResolvedValue({
-			user: {
-				email: "admin@example.com",
-				id: "user-1",
-				locale: "en",
-				name: "Admin",
-			},
-		});
+		mocks.loadAuthContext.mockResolvedValue(FAKE_CTX);
 	});
 
 	afterEach(() => {
@@ -78,11 +112,12 @@ describe("admin api auth wrappers", () => {
 		);
 
 		expect(response.status).toBe(200);
-		await expect(response.json()).resolves.toEqual({
+		await expect(response.json()).resolves.toMatchObject({
 			email: "admin@example.com",
 			id: "user-1",
 			locale: "en",
 			name: "Admin",
+			roleId: "system_admin",
 		});
 	});
 

@@ -10,9 +10,10 @@ import {
 	Notice,
 	Select,
 } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import { getTreaty, unwrap } from "@/lib/eden";
 import { supportedLocales } from "@/lib/i18n";
+import { PERMISSION_GROUPS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin/profile")({
 	component: Profile,
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/admin/profile")({
 
 function Profile() {
 	const { session, isPending, locale, refetch, t } = useAdminAuthGuard();
+	const { authContext, hasPermission } = useAuthContext();
 	const [notice, setNotice] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
@@ -131,20 +133,61 @@ function Profile() {
 						<Notice tone="error">{t(error)}</Notice>
 					</div>
 				) : null}
-				<div className="mt-8 flex flex-wrap gap-3 border-t border-stone-950/10 pt-6 dark:border-white/10">
-					<Link
-						className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
-						to="/admin/sessions"
-					>
-						{t("nav.sessions")}
-					</Link>
-					<Link
-						className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
-						to="/admin/api-keys"
-					>
-						{t("nav.apiKeys")}
-					</Link>
-				</div>
+				{authContext ? (
+					<div className="mt-8 border-t border-stone-950/10 pt-6 dark:border-white/10">
+						<h2 className="text-xl font-black">{authContext.role.name}</h2>
+						{authContext.role.isSystem ? (
+							<span className="mt-1 inline-block rounded-lg border border-stone-950/15 bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-600 dark:border-white/15 dark:bg-stone-800 dark:text-stone-300">
+								{t("roles.systemBadge")}
+							</span>
+						) : null}
+						<ul className="mt-4 grid gap-1 text-sm">
+							{Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
+								<li key={group}>
+									<span className="font-bold text-stone-600 dark:text-stone-300">
+										{t(`roles.permissionGroup.${group}`)}
+									</span>
+									<ul className="ml-4 list-disc text-stone-500 dark:text-stone-400">
+										{permissions.map((perm) => (
+											<li key={perm}>
+												<span
+													className={
+														authContext.permissions.includes(perm)
+															? ""
+															: "line-through opacity-40"
+													}
+												>
+													{t(`permissions.${perm}`)}
+												</span>
+											</li>
+										))}
+									</ul>
+								</li>
+							))}
+						</ul>
+					</div>
+				) : null}
+				{(hasPermission("sessions.manage") ||
+					hasPermission("apikeys.manage")) && (
+					<div className="mt-8 flex flex-wrap gap-3 border-t border-stone-950/10 pt-6 dark:border-white/10">
+						{hasPermission("sessions.manage") ? (
+							<Link
+								className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+								to="/admin/sessions"
+							>
+								{t("nav.sessions")}
+							</Link>
+						) : null}
+						{hasPermission("apikeys.manage") ? (
+							<Link
+								className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+								to="/admin/api-keys"
+							>
+								{t("nav.apiKeys")}
+							</Link>
+						) : null}
+					</div>
+				)}
 			</Card>
 		</div>
 	);

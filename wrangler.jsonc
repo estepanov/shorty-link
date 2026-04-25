@@ -16,6 +16,15 @@
 		"BETTER_AUTH_FALLBACK_URL": "http://localhost:3000",
 		"PASSKEY_RP_NAME": "Shorty Link"
 	},
+	"routes": [
+		// Self-hosters should change this to their own domain.
+		// Note: you can have multiple routes if you want to support multiple domains, but make sure to update the allowed hosts.
+		{
+			// Self-hosters should change this to their own domain.
+			"pattern": "some-cool-fake-website-that-doesnt-exist-yet.link",
+			"custom_domain": true
+		}
+	],
 	"d1_databases": [
 		{
 			"binding": "DB",

@@ -8,15 +8,39 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 
+import { type Permission, parsePermissions } from "@/lib/permissions";
+
 import { createDb } from "../db/client";
-import { apiKey as apiKeyTable, schema, user } from "../db/schema";
-import { isAdminRole } from "../services/links";
+import { apiKey as apiKeyTable, roles, schema, user } from "../db/schema";
 import {
 	completePasskeyRegistrationUser,
 	resolvePasskeyRegistrationUser,
 } from "./onboarding";
 import { getAuthSecret } from "./secret";
 import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
+
+const APIKEY_CREATE_PERMISSION: Permission = "apikeys.manage";
+
+async function userHasPermission(
+	authDb: ReturnType<typeof createDb>,
+	userId: string,
+	permission: Permission,
+): Promise<boolean> {
+	const rows = await authDb
+		.select({
+			isActive: user.isActive,
+			permissions: roles.permissions,
+		})
+		.from(user)
+		.innerJoin(roles, eq(user.roleId, roles.id))
+		.where(eq(user.id, userId))
+		.limit(1);
+	const row = rows[0];
+	if (!row || row.isActive === false) {
+		return false;
+	}
+	return parsePermissions(row.permissions).has(permission);
+}
 
 const runtimeEnv = env as typeof env & {
 	BETTER_AUTH_ALLOWED_HOSTS?: string;
@@ -88,11 +112,6 @@ export function createAuth(request?: Request) {
 		},
 		user: {
 			additionalFields: {
-				role: {
-					type: "string",
-					required: false,
-					defaultValue: "admin",
-				},
 				locale: {
 					type: "string",
 					required: false,
@@ -116,16 +135,15 @@ export function createAuth(request?: Request) {
 						message: "Authentication required",
 					});
 				}
-				const authDb = createDb();
-				const rows = await authDb
-					.select({ role: user.role, isActive: user.isActive })
-					.from(user)
-					.where(eq(user.id, session.user.id))
-					.limit(1);
-				const u = rows[0];
-				if (!u || !isAdminRole(u.role) || u.isActive === false) {
+				const allowed = await userHasPermission(
+					createDb(),
+					session.user.id,
+					APIKEY_CREATE_PERMISSION,
+				);
+				if (!allowed) {
 					throw new APIError("FORBIDDEN", {
-						message: "Only active admins can create API keys",
+						message:
+							"You need the 'apikeys.manage' permission to manage API keys",
 					});
 				}
 			}),
@@ -182,12 +200,12 @@ export function createAuth(request?: Request) {
 						return true;
 					}
 					const rows = await authDb
-						.select({ role: user.role, isActive: user.isActive })
+						.select({ isActive: user.isActive })
 						.from(user)
 						.where(eq(user.id, keys[0].referenceId))
 						.limit(1);
 					const u = rows[0];
-					if (!u || !isAdminRole(u.role) || u.isActive === false) {
+					if (!u || u.isActive === false) {
 						return false;
 					}
 					return true;

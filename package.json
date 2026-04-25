@@ -37,6 +37,7 @@
 		"@better-auth/passkey": "^1.6.5",
 		"@elysiajs/eden": "^1.4.0",
 		"@elysiajs/server-timing": "^1.4.0",
+		"@logtape/logtape": "^2.0.5",
 		"@sinclair/typebox": "^0.34.41",
 		"@tanstack/react-form": "^1.25.0",
 		"@tanstack/react-router": "^1.140.2",
@@ -51,7 +52,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.12",
-		"@cloudflare/vite-plugin": "^1.31.2",
+		"@cloudflare/vite-plugin": "^1.33.2",
 		"@tailwindcss/vite": "^4.2.2",
 		"@types/node": "^24.5.2",
 		"@types/react": "^19.2.2",
@@ -63,7 +64,7 @@
 		"vite": "^7.1.10",
 		"vite-tsconfig-paths": "^5.1.4",
 		"vitest": "^3.2.4",
-		"wrangler": "^4.81.1"
+		"wrangler": "^4.85.0"
 	},
 	"pnpm": {
 		"overrides": {

@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Card, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { LinkStatsResponse, UtmDimension } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator, MessageKey } from "@/lib/i18n";
@@ -29,6 +29,7 @@ function LinkDetails() {
 	const { id } = Route.useParams();
 	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
+	const { isAuthorized } = useRequirePermission("links.read");
 	const [data, setData] = useState<LinkStatsResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const isDetailsRoute =
@@ -69,6 +70,10 @@ function LinkDetails() {
 
 	if (!session) {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+	}
+
+	if (!isAuthorized) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 
 	if (error) {

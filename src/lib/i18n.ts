@@ -12,6 +12,7 @@ export const messages = {
 		"nav.sessions": "Sessions",
 		"nav.apiKeys": "API keys",
 		"nav.access": "Access",
+		"nav.roles": "Roles",
 		"nav.signIn": "Sign in",
 		"nav.signOut": "Sign out",
 		"nav.label": "Admin navigation",
@@ -143,6 +144,53 @@ export const messages = {
 		"keys.edit": "Edit",
 		"keys.delete": "Delete",
 		"keys.empty": "No API keys yet.",
+		"roles.title": "Roles",
+		"roles.description":
+			"Roles bundle a set of permissions and an optional scope of domains and links. Apply a role to a user to grant exactly that access.",
+		"roles.create": "Create role",
+		"roles.edit": "Edit role",
+		"roles.delete": "Delete role",
+		"roles.systemBadge": "System",
+		"roles.usersCount": "{{count}} users",
+		"roles.permissionsCount": "{{count}} permissions",
+		"roles.unrestricted": "Unrestricted",
+		"roles.scopeDomains": "Domain scope",
+		"roles.scopeDomainsHelp":
+			"Leave empty to allow this role on every domain. Otherwise, choose the domains this role can manage links under.",
+		"roles.scopeLinks": "Link scope",
+		"roles.scopeLinksHelp":
+			"Leave empty to allow access to every link in scope. Otherwise, choose individual links to grant access to.",
+		"roles.permissions": "Permissions",
+		"roles.permissionsHelp":
+			"Pick the actions this role can perform. Custom roles let you mix and match.",
+		"roles.namePlaceholder": "X Manager",
+		"roles.descriptionPlaceholder": "What this role is for",
+		"roles.empty": "No roles yet.",
+		"roles.assignedTo": "Assigned to",
+		"roles.permissionGroup.links": "Links",
+		"roles.permissionGroup.domains": "Domains",
+		"roles.permissionGroup.users": "Users",
+		"roles.permissionGroup.access": "Access management",
+		"roles.permissionGroup.analytics": "Analytics",
+		"permissions.links.read": "View links",
+		"permissions.links.write": "Create and edit links",
+		"permissions.links.delete": "Delete links",
+		"permissions.domains.read": "View domains",
+		"permissions.domains.write": "Create and edit domains",
+		"permissions.domains.delete": "Delete domains",
+		"permissions.users.read": "View users",
+		"permissions.users.write": "Edit users",
+		"permissions.users.delete": "Delete users",
+		"permissions.invites.manage": "Manage invites",
+		"permissions.sessions.manage": "Manage sessions",
+		"permissions.apikeys.manage": "Manage API keys",
+		"permissions.roles.manage": "Manage roles",
+		"permissions.analytics.read": "View analytics",
+		"access.tabs.users": "Users",
+		"access.tabs.invites": "Invites",
+		"access.tabs.roles": "Roles",
+		"access.createInvite": "Create Invite",
+		"users.role": "Role",
 		"users.title": "Access",
 		"users.active": "Active users",
 		"users.disabled": "Disabled users",
@@ -211,6 +259,24 @@ export const messages = {
 		"errors.cannotSelfDelete": "You cannot delete your own account.",
 		"errors.cannotSelfDisable": "You cannot disable your own account.",
 		"errors.unknown": "Something went wrong.",
+		"errors.roleMissing": "Role not found.",
+		"errors.roleNameTaken": "A role with that name already exists.",
+		"errors.roleSystem": "System roles cannot be edited or deleted.",
+		"errors.roleInUse": "Reassign users on that role before deleting it.",
+		"errors.roleNoPermissions": "Roles must include at least one permission.",
+		"errors.lastOwner": "At least one active user must keep the owner role.",
+		"errors.permissionDenied": "Your role does not allow this action.",
+		"errors.permissionDeniedDetail":
+			"Your role '{{roleName}}' is missing the '{{permission}}' permission.",
+		"errors.linkScopeDenied":
+			"Your role '{{roleName}}' cannot access this link.",
+		"errors.domainScopeDenied":
+			"Your role '{{roleName}}' cannot access this domain.",
+		"errors.scopeForbidden": "That item is outside your assigned scope.",
+		"errors.scopeForbiddenDetail":
+			"Your role '{{roleName}}' cannot manage links under this hostname.",
+		"errors.linkScopeRequiresDomain":
+			"Add a domain to this role's scope to allow creating new links.",
 		"errors.passkeyVerifyFailed":
 			"We could not verify that passkey for this site.",
 		"errors.passkeyNotFound":
@@ -230,6 +296,7 @@ export const messages = {
 		"nav.sessions": "Sesiones",
 		"nav.apiKeys": "Claves API",
 		"nav.access": "Acceso",
+		"nav.roles": "Roles",
 		"nav.signIn": "Iniciar sesion",
 		"nav.signOut": "Cerrar sesion",
 		"nav.label": "Navegacion de admin",
@@ -361,6 +428,53 @@ export const messages = {
 		"keys.edit": "Editar",
 		"keys.delete": "Eliminar",
 		"keys.empty": "Todavia no hay claves API.",
+		"roles.title": "Roles",
+		"roles.description":
+			"Los roles agrupan permisos y un alcance opcional de dominios y links. Asigna un rol a un usuario para otorgar exactamente ese acceso.",
+		"roles.create": "Crear rol",
+		"roles.edit": "Editar rol",
+		"roles.delete": "Eliminar rol",
+		"roles.systemBadge": "Sistema",
+		"roles.usersCount": "{{count}} usuarios",
+		"roles.permissionsCount": "{{count}} permisos",
+		"roles.unrestricted": "Sin restriccion",
+		"roles.scopeDomains": "Alcance de dominios",
+		"roles.scopeDomainsHelp":
+			"Dejar vacio para permitir este rol en todos los dominios. De lo contrario, elige los dominios que este rol puede gestionar.",
+		"roles.scopeLinks": "Alcance de links",
+		"roles.scopeLinksHelp":
+			"Dejar vacio para permitir todos los links del alcance. De lo contrario, elige links individuales para otorgar acceso.",
+		"roles.permissions": "Permisos",
+		"roles.permissionsHelp":
+			"Elige las acciones que este rol puede realizar. Los roles personalizados se pueden combinar.",
+		"roles.namePlaceholder": "Manager X",
+		"roles.descriptionPlaceholder": "Para que sirve este rol",
+		"roles.empty": "Todavia no hay roles.",
+		"roles.assignedTo": "Asignado a",
+		"roles.permissionGroup.links": "Links",
+		"roles.permissionGroup.domains": "Dominios",
+		"roles.permissionGroup.users": "Usuarios",
+		"roles.permissionGroup.access": "Gestion de accesos",
+		"roles.permissionGroup.analytics": "Analitica",
+		"permissions.links.read": "Ver links",
+		"permissions.links.write": "Crear y editar links",
+		"permissions.links.delete": "Eliminar links",
+		"permissions.domains.read": "Ver dominios",
+		"permissions.domains.write": "Crear y editar dominios",
+		"permissions.domains.delete": "Eliminar dominios",
+		"permissions.users.read": "Ver usuarios",
+		"permissions.users.write": "Editar usuarios",
+		"permissions.users.delete": "Eliminar usuarios",
+		"permissions.invites.manage": "Gestionar invitaciones",
+		"permissions.sessions.manage": "Gestionar sesiones",
+		"permissions.apikeys.manage": "Gestionar claves API",
+		"permissions.roles.manage": "Gestionar roles",
+		"permissions.analytics.read": "Ver analitica",
+		"access.tabs.users": "Usuarios",
+		"access.tabs.invites": "Invitaciones",
+		"access.tabs.roles": "Roles",
+		"access.createInvite": "Crear invitacion",
+		"users.role": "Rol",
 		"users.title": "Acceso",
 		"users.active": "Usuarios activos",
 		"users.disabled": "Usuarios desactivados",
@@ -430,6 +544,26 @@ export const messages = {
 		"errors.cannotSelfDelete": "No puedes eliminar tu propia cuenta.",
 		"errors.cannotSelfDisable": "No puedes desactivar tu propia cuenta.",
 		"errors.unknown": "Algo salio mal.",
+		"errors.roleMissing": "Rol no encontrado.",
+		"errors.roleNameTaken": "Ya existe un rol con ese nombre.",
+		"errors.roleSystem":
+			"Los roles del sistema no se pueden editar ni eliminar.",
+		"errors.roleInUse": "Reasigna los usuarios de ese rol antes de eliminarlo.",
+		"errors.roleNoPermissions": "Los roles deben incluir al menos un permiso.",
+		"errors.lastOwner":
+			"Al menos un usuario activo debe conservar el rol owner.",
+		"errors.permissionDenied": "Tu rol no permite esta accion.",
+		"errors.permissionDeniedDetail":
+			"Tu rol '{{roleName}}' no tiene el permiso '{{permission}}'.",
+		"errors.linkScopeDenied":
+			"Tu rol '{{roleName}}' no puede acceder a este link.",
+		"errors.domainScopeDenied":
+			"Tu rol '{{roleName}}' no puede acceder a este dominio.",
+		"errors.scopeForbidden": "Ese elemento esta fuera del alcance asignado.",
+		"errors.scopeForbiddenDetail":
+			"Tu rol '{{roleName}}' no puede gestionar links bajo este hostname.",
+		"errors.linkScopeRequiresDomain":
+			"Agrega un dominio al alcance de este rol para permitir crear links.",
 		"errors.passkeyVerifyFailed":
 			"No pudimos verificar esa passkey para este sitio.",
 		"errors.passkeyNotFound":
@@ -460,4 +594,14 @@ export function createTranslator(locale: string | null | undefined) {
 		(dictionary as Record<string, string>)[key] ??
 		(messages.en as Record<string, string>)[key] ??
 		key;
+}
+
+export function interpolate(
+	template: string,
+	vars: Record<string, string>,
+): string {
+	return template.replace(
+		/\{\{(\w+)\}\}/g,
+		(_, key) => vars[key] ?? `{{${key}}}`,
+	);
 }

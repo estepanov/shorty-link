@@ -9,7 +9,7 @@ import {
 	Select,
 	TextArea,
 } from "@/components/ui";
-import type { AdminDomain, AdminLink } from "@/lib/admin-types";
+import type { AdminDomain, AdminLink, AssignableRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
 import {
@@ -348,16 +348,21 @@ export function DomainForm({
 
 export function InviteForm({
 	onSaved,
+	roles,
 	t,
 }: {
 	onSaved: (invite: CreatedInvite) => Promise<void> | void;
+	roles: AssignableRole[];
 	t: ReturnType<typeof createTranslator>;
 }) {
 	const [error, setError] = useState<string | null>(null);
+	const defaultRoleId =
+		roles.find((role) => role.id === "system_admin")?.id ?? roles[0]?.id ?? "";
 	const form = useForm({
 		defaultValues: {
 			email: "",
 			expiresInDays: 7,
+			roleId: defaultRoleId,
 		},
 		onSubmit: async ({ value }) => {
 			setError(null);
@@ -395,6 +400,23 @@ export function InviteForm({
 							type="email"
 							value={field.state.value}
 						/>
+					</FieldLabel>
+				)}
+			</form.Field>
+			<form.Field name="roleId">
+				{(field) => (
+					<FieldLabel>
+						{t("users.role")}
+						<Select
+							onChange={(event) => field.handleChange(event.target.value)}
+							value={field.state.value}
+						>
+							{roles.map((role) => (
+								<option key={role.id} value={role.id}>
+									{role.name}
+								</option>
+							))}
+						</Select>
 					</FieldLabel>
 				)}
 			</form.Field>

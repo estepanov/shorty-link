@@ -10,7 +10,12 @@ import {
 	createInviteContext,
 	resolvePasskeyRegistrationUser,
 } from "../src/server/auth/onboarding";
-import { adminInvites, schema, user } from "../src/server/db/schema";
+import {
+	adminInvites,
+	schema,
+	SYSTEM_ROLE_ADMIN,
+	user,
+} from "../src/server/db/schema";
 
 async function applyMigrations(database: D1Database) {
 	for (const file of [
@@ -18,6 +23,7 @@ async function applyMigrations(database: D1Database) {
 		"0001_redirect_event_utm.sql",
 		"0002_short_link_last_click.sql",
 		"0003_user_is_active.sql",
+		"0004_roles_and_scopes.sql",
 	]) {
 		const statements = readFileSync(
 			join(process.cwd(), "migrations", file),
@@ -79,7 +85,7 @@ describe("onboarding security", () => {
 			image: null,
 			locale: "en",
 			name: "Existing Admin",
-			role: "admin",
+			roleId: SYSTEM_ROLE_ADMIN,
 			createdAt: timestamp,
 			updatedAt: timestamp,
 		});
@@ -87,7 +93,7 @@ describe("onboarding security", () => {
 			id: "invite-1",
 			email: "admin@example.com",
 			token: "valid-invite-token-for-admin",
-			role: "admin",
+			roleId: SYSTEM_ROLE_ADMIN,
 			invitedBy: null,
 			expiresAt: Date.now() + 60_000,
 			acceptedAt: null,

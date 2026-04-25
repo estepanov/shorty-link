@@ -68,7 +68,15 @@ Shorty Link is designed to be **forked** and run on **your own Cloudflare accoun
 
 ### 1. Fork and edit `wrangler.jsonc`
 
-Change at minimum:
+Fork, clone, or use GitHub template feature to get this project into your new private (or public if you want) repo.
+
+Now run 
+
+```bash
+pnpm install
+```
+
+In your `wrangler.jsonc` at minimum change:
 
 - `name`: your Worker name (must be unique within your account).
 - `d1_databases[0].database_id`: the ID returned by `wrangler d1 create`.
@@ -84,7 +92,13 @@ pnpm exec wrangler d1 create <your-db-name>
 
 ### 2. Set secrets
 
-`BETTER_AUTH_SECRET` must be set as a Worker secret, not a var:
+`BETTER_AUTH_SECRET` must be set as a Worker secret, not a var. Generate a 32-byte random secret:
+
+```bash
+openssl rand -base64 32
+```
+
+Then set it as a Worker secret:
 
 ```bash
 pnpm exec wrangler secret put BETTER_AUTH_SECRET
@@ -94,7 +108,7 @@ pnpm exec wrangler secret put BETTER_AUTH_SECRET
 
 ```bash
 pnpm db:migrate:remote
-pnpm deploy
+pnpm run deploy
 ```
 
 ### 4. Wire up GitHub Actions (optional)

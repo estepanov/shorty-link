@@ -8,6 +8,19 @@ import {
 
 export const DEFAULT_HOSTNAME = "__default__";
 
+export const SYSTEM_ROLE_OWNER = "system_owner";
+export const SYSTEM_ROLE_ADMIN = "system_admin";
+
+export const roles = sqliteTable("role", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull().unique(),
+	description: text("description"),
+	permissions: text("permissions").notNull().default("[]"),
+	isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),
+	createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 export const user = sqliteTable("user", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
@@ -16,7 +29,9 @@ export const user = sqliteTable("user", {
 		.notNull()
 		.default(true),
 	image: text("image"),
-	role: text("role").notNull().default("admin"),
+	roleId: text("role_id")
+		.notNull()
+		.references(() => roles.id, { onDelete: "restrict" }),
 	locale: text("locale").notNull().default("en"),
 	isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 	createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
@@ -179,13 +194,51 @@ export const adminInvites = sqliteTable(
 		id: text("id").primaryKey(),
 		email: text("email").notNull(),
 		token: text("token").notNull().unique(),
-		role: text("role").notNull().default("admin"),
+		roleId: text("role_id")
+			.notNull()
+			.references(() => roles.id, { onDelete: "restrict" }),
 		invitedBy: text("invited_by"),
 		expiresAt: integer("expires_at").notNull(),
 		acceptedAt: integer("accepted_at"),
 		createdAt: integer("created_at").notNull(),
 	},
 	(table) => [index("admin_invite_email_idx").on(table.email)],
+);
+
+export const roleDomainScopes = sqliteTable(
+	"role_domain_scope",
+	{
+		id: text("id").primaryKey(),
+		roleId: text("role_id")
+			.notNull()
+			.references(() => roles.id, { onDelete: "cascade" }),
+		domainId: text("domain_id")
+			.notNull()
+			.references(() => managedDomains.id, { onDelete: "cascade" }),
+		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("role_domain_scope_unique").on(table.roleId, table.domainId),
+		index("role_domain_scope_role_idx").on(table.roleId),
+	],
+);
+
+export const roleLinkScopes = sqliteTable(
+	"role_link_scope",
+	{
+		id: text("id").primaryKey(),
+		roleId: text("role_id")
+			.notNull()
+			.references(() => roles.id, { onDelete: "cascade" }),
+		linkId: text("link_id")
+			.notNull()
+			.references(() => shortLinks.id, { onDelete: "cascade" }),
+		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("role_link_scope_unique").on(table.roleId, table.linkId),
+		index("role_link_scope_role_idx").on(table.roleId),
+	],
 );
 
 export const redirectEvents = sqliteTable(
@@ -234,6 +287,9 @@ export const schema = {
 	managedDomains,
 	passkey,
 	redirectEvents,
+	roleDomainScopes,
+	roleLinkScopes,
+	roles,
 	session,
 	shortLinks,
 	user,

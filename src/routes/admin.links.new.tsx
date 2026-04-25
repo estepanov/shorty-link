@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { LinkForm } from "@/components/admin-forms";
 import { Card, Notice } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminDomain } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/admin/links/new")({
 function NewLink() {
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
+	const { isAuthorized } = useRequirePermission("links.write");
 	const [domains, setDomains] = useState<AdminDomain[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,10 @@ function NewLink() {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
 	}
 
+	if (!isAuthorized) {
+		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
+	}
+
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
@@ -65,7 +70,7 @@ function NewLink() {
 					<LinkForm
 						domains={domains}
 						onSaved={() => {
-							void router.navigate({ to: "/admin" });
+							void router.navigate({ to: "/admin/links" });
 						}}
 						t={t}
 					/>

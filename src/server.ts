@@ -1,11 +1,10 @@
-import { env } from "cloudflare:workers";
 import handler from "@tanstack/react-start/server-entry";
 import { app } from "./server/api/app";
 import { createAuth } from "./server/auth/auth";
+import { getLogger, serializeError } from "./server/logging";
 
-const runtimeEnv = env as typeof env & {
-	DEBUG_AUTH_ERRORS?: string;
-};
+const serverLog = getLogger(["server"]);
+const authLog = getLogger(["auth"]);
 
 const RESERVED_EXACT_PATHS = new Set([
 	"/admin",
@@ -16,6 +15,7 @@ const RESERVED_EXACT_PATHS = new Set([
 ]);
 
 const RESERVED_PREFIXES = ["/admin/", "/api/", "/assets/", "/_build/"];
+
 const HTML_CONTENT_SECURITY_POLICY = [
 	"default-src 'self'",
 	"base-uri 'self'",
@@ -27,6 +27,20 @@ const HTML_CONTENT_SECURITY_POLICY = [
 	"script-src 'self' 'unsafe-inline'",
 	"style-src 'self' 'unsafe-inline'",
 ].join("; ");
+
+type RequestContext = {
+	requestId: string;
+	method: string;
+	path: string;
+};
+
+function makeContext(request: Request): RequestContext {
+	return {
+		requestId: crypto.randomUUID(),
+		method: request.method,
+		path: new URL(request.url).pathname,
+	};
+}
 
 function isReservedPath(pathname: string) {
 	return (
@@ -54,8 +68,7 @@ function shouldUseElysia(request: Request) {
 }
 
 function applySecurityHeaders(request: Request, response: Response) {
-	const next = new Response(response.body, response);
-	const { headers } = next;
+	const headers = new Headers(response.headers);
 	const contentType = headers.get("content-type")?.toLowerCase() ?? "";
 
 	headers.set("Cross-Origin-Opener-Policy", "same-origin");
@@ -75,65 +88,102 @@ function applySecurityHeaders(request: Request, response: Response) {
 		headers.set("Content-Security-Policy", HTML_CONTENT_SECURITY_POLICY);
 	}
 
-	return next;
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
+function passkeyFriendlyResponse() {
+	return Response.json(
+		{
+			code: "PASSKEY_VERIFY_FAILED",
+			message: "errors.passkeyVerifyFailed",
+		},
+		{ status: 400 },
+	);
+}
+
+function genericErrorResponse() {
+	return Response.json(
+		{ code: "INTERNAL_ERROR", message: "errors.unknown" },
+		{ status: 500 },
+	);
+}
+
+async function handleAuthRequest(request: Request, ctx: RequestContext) {
+	const isPasskeyPath = ctx.path.toLowerCase().includes("passkey");
+	authLog.debug("auth handler invoked", ctx);
+
+	try {
+		const auth = createAuth(request);
+		const response = await auth.handler(request);
+		const status = response.status;
+		const fields = { ...ctx, status };
+
+		if (status >= 500) {
+			const body = await response.text().catch(() => null);
+			authLog.error("auth handler returned 5xx", { ...fields, body });
+			if (isPasskeyPath) {
+				return applySecurityHeaders(request, passkeyFriendlyResponse());
+			}
+			return applySecurityHeaders(
+				request,
+				new Response(body ?? "", {
+					status,
+					statusText: response.statusText,
+					headers: response.headers,
+				}),
+			);
+		}
+
+		if (status >= 400) {
+			authLog.warn("auth handler returned 4xx", fields);
+		} else {
+			authLog.debug("auth handler returned ok", fields);
+		}
+		return applySecurityHeaders(request, response);
+	} catch (error) {
+		authLog.error("auth handler threw", {
+			...ctx,
+			error: serializeError(error),
+		});
+		if (isPasskeyPath) {
+			return applySecurityHeaders(request, passkeyFriendlyResponse());
+		}
+		return applySecurityHeaders(request, genericErrorResponse());
+	}
 }
 
 export default {
 	async fetch(request) {
-		const url = new URL(request.url);
+		const ctx = makeContext(request);
+		serverLog.debug(`${ctx.path}`, ctx);
 
-		if (url.pathname.startsWith("/api/auth/")) {
-			const isPasskeyPath = url.pathname.toLowerCase().includes("passkey");
-			const friendly = () =>
-				Response.json(
-					{
-						code: "PASSKEY_VERIFY_FAILED",
-						message: "errors.passkeyVerifyFailed",
-					},
-					{ status: 400 },
-				);
-
-			try {
-				const response = await createAuth(request).handler(request);
-				if (isPasskeyPath && response.status >= 500) {
-					if (runtimeEnv.DEBUG_AUTH_ERRORS === "true") {
-						const body = await response
-							.clone()
-							.text()
-							.catch(() => "");
-						console.error(
-							"auth handler 5xx",
-							url.pathname,
-							response.status,
-							body,
-						);
-					} else {
-						console.error("auth handler 5xx", url.pathname, response.status);
-					}
-					return applySecurityHeaders(request, friendly());
-				}
-				return applySecurityHeaders(request, response);
-			} catch (error) {
-				if (runtimeEnv.DEBUG_AUTH_ERRORS === "true") {
-					console.error("auth handler crashed", url.pathname, error);
-				} else {
-					console.error(
-						"auth handler crashed",
-						url.pathname,
-						error instanceof Error ? error.name : typeof error,
-					);
-				}
-				if (isPasskeyPath) {
-					return applySecurityHeaders(request, friendly());
-				}
-				throw error;
+		try {
+			if (ctx.path.startsWith("/api/auth/")) {
+				return await handleAuthRequest(request, ctx);
 			}
-		}
 
-		if (shouldUseElysia(request)) {
-			return applySecurityHeaders(request, await app.fetch(request));
-		}
+			if (shouldUseElysia(request)) {
+				const response = await app.fetch(request);
+				serverLog.debug("elysia response", {
+					...ctx,
+					status: response.status,
+				});
+				return applySecurityHeaders(request, response);
+			}
 
-		return applySecurityHeaders(request, await handler.fetch(request));
+			const response = await handler.fetch(request);
+			serverLog.debug("react response", { ...ctx, status: response.status });
+			return applySecurityHeaders(request, response);
+		} catch (error) {
+			serverLog.error("worker fetch threw", {
+				...ctx,
+				error: serializeError(error),
+			});
+			return applySecurityHeaders(request, genericErrorResponse());
+		}
 	},
 } satisfies ExportedHandler;
