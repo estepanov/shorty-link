@@ -246,16 +246,12 @@ function PasskeyLogin() {
 	}
 
 	return (
-		<Card className="mx-auto max-w-2xl">
-			<p className="text-sm font-black uppercase tracking-[0.24em] text-blue-800 dark:text-blue-300">
-				{t("auth.noPasswords")}
-			</p>
-			<h1 className="mt-4 text-4xl font-black tracking-tight text-stone-950 dark:text-amber-50">
+		<Card className="mx-auto max-w-2xl p-8">
+			<p className="eyebrow text-accent">{t("auth.noPasswords")}</p>
+			<h1 className="mt-4 font-display text-4xl tracking-tight">
 				{t("auth.signIn")}
 			</h1>
-			<p className="mt-4 text-stone-700 dark:text-stone-300">
-				{t("auth.loginHint")}
-			</p>
+			<p className="mt-4 text-muted-foreground">{t("auth.loginHint")}</p>
 			<Button className="mt-6" disabled={busy} onClick={signIn} type="button">
 				{busy ? t("auth.waiting") : t("auth.signIn")}
 			</Button>
@@ -321,11 +317,9 @@ function BootstrapForm({ locale }: { locale: string }) {
 	});
 
 	return (
-		<Card className="mx-auto max-w-3xl">
-			<p className="text-sm font-black uppercase tracking-[0.24em] text-orange-700 dark:text-orange-300">
-				{t("auth.noPasswords")}
-			</p>
-			<h1 className="mt-4 text-4xl font-black tracking-tight text-stone-950 dark:text-amber-50">
+		<Card className="mx-auto max-w-3xl p-8">
+			<p className="eyebrow text-accent">{t("auth.noPasswords")}</p>
+			<h1 className="mt-4 font-display text-4xl tracking-tight">
 				{t("auth.bootstrapTitle")}
 			</h1>
 			<form
@@ -419,32 +413,32 @@ function DashboardView({
 	return (
 		<div className="grid gap-6">
 			<section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-				<section className="rounded-[2rem] border border-stone-950/10 bg-stone-950 p-6 text-amber-50 shadow-[0_24px_80px_rgba(29,27,22,0.10)] dark:border-white/10 dark:bg-stone-900/95 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)]">
-					<p className="text-sm font-black uppercase tracking-[0.24em] text-amber-300">
-						{t("dashboard.title")}
-					</p>
-					<h1 className="mt-4 text-4xl font-black tracking-tight">
+				<Card variant="feature" className="p-8">
+					<p className="eyebrow text-background/70">{t("dashboard.title")}</p>
+					<h1 className="mt-3 font-display text-4xl tracking-tight">
 						{data.session.user.name}
 					</h1>
-					<p className="mt-2 text-amber-100/80">{data.session.user.email}</p>
-					<div className="mt-6 flex flex-wrap gap-3">
+					<p className="mt-2 text-sm text-background/70">
+						{data.session.user.email}
+					</p>
+					<div className="mt-7 flex flex-wrap gap-2">
 						{showLinksWrite ? (
-							<ActionLink to="/admin/links/new">
+							<ActionLink to="/admin/links/new" tone="invert">
 								{t("actions.addLink")}
 							</ActionLink>
 						) : null}
 						{showDomainsWrite ? (
-							<ActionLink to="/admin/domains/new">
+							<ActionLink to="/admin/domains/new" tone="invert">
 								{t("actions.addDomain")}
 							</ActionLink>
 						) : null}
 						{showInvites ? (
-							<ActionLink to="/admin/invites/new">
+							<ActionLink to="/admin/invites/new" tone="invert">
 								{t("actions.addInvite")}
 							</ActionLink>
 						) : null}
 					</div>
-				</section>
+				</Card>
 				<div className="grid gap-4 sm:grid-cols-2">
 					{showLinks ? (
 						<Stat label={t("dashboard.links")} value={data.summary.links} />
@@ -466,7 +460,7 @@ function DashboardView({
 
 			{!dashboardHasContent ? (
 				<Card>
-					<p className="text-sm text-stone-600 dark:text-stone-300">
+					<p className="text-sm text-muted-foreground">
 						{t("errors.permissionDenied")}
 					</p>
 				</Card>
@@ -474,13 +468,13 @@ function DashboardView({
 				<>
 					{showAnalytics ? (
 						<Card>
-							<h2 className="text-2xl font-black">
+							<h2 className="font-display text-2xl tracking-tight">
 								{t("dashboard.recentRedirects")}
 							</h2>
 							<div className="mt-5 overflow-x-auto">
 								<table className="min-w-full text-left text-sm">
 									<thead>
-										<tr className="border-b border-stone-950/10 text-stone-600 dark:border-white/10 dark:text-stone-300">
+										<tr className="border-b border-border text-muted-foreground">
 											<th className="py-3">{t("table.when")}</th>
 											<th className="py-3">{t("table.host")}</th>
 											<th className="py-3">{t("table.slug")}</th>
@@ -492,7 +486,7 @@ function DashboardView({
 										{data.events.length ? (
 											data.events.map((event) => (
 												<tr
-													className="border-b border-stone-950/5 dark:border-white/5"
+													className="border-b border-border/60"
 													key={event.id}
 												>
 													<td className="py-3">
@@ -501,7 +495,7 @@ function DashboardView({
 													<td className="py-3">
 														{formatHostname(event.hostname, t)}
 													</td>
-													<td className="py-3 font-black">{event.slug}</td>
+													<td className="py-3 font-medium">{event.slug}</td>
 													<td className="py-3">
 														{event.country ?? t("table.direct")}
 													</td>
@@ -526,7 +520,7 @@ function DashboardView({
 						{showLinks ? (
 							<Card>
 								<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-									<h2 className="text-2xl font-black">
+									<h2 className="font-display text-2xl tracking-tight">
 										{t("dashboard.latestLinks")}
 									</h2>
 									<div className="flex flex-wrap gap-2">
@@ -543,7 +537,7 @@ function DashboardView({
 								<div className="mt-5 overflow-x-auto">
 									<table className="min-w-full text-left text-sm">
 										<thead>
-											<tr className="border-b border-stone-950/10 text-stone-600 dark:border-white/10 dark:text-stone-300">
+											<tr className="border-b border-border text-muted-foreground">
 												<th className="py-3">{t("table.slug")}</th>
 												<th className="py-3">{t("table.host")}</th>
 												<th className="py-3">{t("table.target")}</th>
@@ -555,12 +549,12 @@ function DashboardView({
 											{data.links.length ? (
 												data.links.map((link) => (
 													<tr
-														className="border-b border-stone-950/5 dark:border-white/5"
+														className="border-b border-border/60"
 														key={link.id}
 													>
 														<td className="py-3">
 															<Link
-																className="font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+																className="font-mono text-sm text-foreground underline decoration-accent decoration-2 underline-offset-4 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 																params={{ id: link.id }}
 																to="/admin/links/$id"
 															>
@@ -597,7 +591,7 @@ function DashboardView({
 							{showDomains ? (
 								<Card>
 									<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-										<h2 className="text-2xl font-black">
+										<h2 className="font-display text-2xl tracking-tight">
 											{t("dashboard.latestDomains")}
 										</h2>
 										{showDomainsWrite ? (
@@ -610,13 +604,13 @@ function DashboardView({
 										{data.domains.length ? (
 											data.domains.map((domain) => (
 												<div
-													className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+													className="rounded-md border border-border bg-card/60 p-4"
 													key={domain.id}
 												>
 													<div className="flex items-start justify-between gap-3">
 														<div>
-															<p className="font-black">{domain.hostname}</p>
-															<p className="text-sm text-stone-600 dark:text-stone-300">
+															<p className="font-medium">{domain.hostname}</p>
+															<p className="text-sm text-muted-foreground">
 																{domain.label ?? t("domains.noLabel")} ·{" "}
 																{domain.isPrimary
 																	? t("domains.primary")
@@ -634,7 +628,7 @@ function DashboardView({
 												</div>
 											))
 										) : (
-											<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+											<p className="rounded-md border border-border bg-card/60 p-4 text-sm text-muted-foreground">
 												{t("dashboard.noDomains")}
 											</p>
 										)}
@@ -645,7 +639,7 @@ function DashboardView({
 							{showInvites ? (
 								<Card>
 									<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-										<h2 className="text-2xl font-black">
+										<h2 className="font-display text-2xl tracking-tight">
 											{t("dashboard.latestInvites")}
 										</h2>
 										<ActionLink to="/admin/invites/new" tone="primary">
@@ -656,23 +650,23 @@ function DashboardView({
 										{data.invites.length ? (
 											data.invites.map((invite) => (
 												<div
-													className="flex items-start justify-between gap-3 rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+													className="flex items-start justify-between gap-3 rounded-md border border-border bg-card/60 p-4"
 													key={invite.id}
 												>
 													<div className="break-all text-sm">
 														<a
-															className="font-black underline decoration-blue-700 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:decoration-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950"
+															className="font-medium text-foreground underline decoration-accent decoration-2 underline-offset-4 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 															href={invite.inviteUrl}
 														>
 															{invite.email}
 														</a>
-														<span className="mt-1 block text-stone-600 dark:text-stone-300">
+														<span className="mt-1 block text-muted-foreground">
 															{t("table.expires")}{" "}
 															{new Date(invite.expiresAt).toLocaleDateString(
 																locale,
 															)}
 														</span>
-														<span className="mt-1 block text-xs text-stone-500 dark:text-stone-400">
+														<span className="mt-1 block text-xs text-muted-foreground/80">
 															{invite.inviteUrl}
 														</span>
 													</div>
@@ -685,7 +679,7 @@ function DashboardView({
 												</div>
 											))
 										) : (
-											<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+											<p className="rounded-md border border-border bg-card/60 p-4 text-sm text-muted-foreground">
 												{t("dashboard.noInvites")}
 											</p>
 										)}
@@ -714,16 +708,18 @@ function ActionLink({
 }: {
 	children: ReactNode;
 	to: string;
-	tone?: "primary" | "secondary";
+	tone?: "primary" | "secondary" | "invert";
 }) {
 	const styles =
 		tone === "primary"
-			? "bg-stone-950 text-white hover:bg-stone-800 dark:bg-white dark:text-stone-950 dark:hover:bg-stone-200"
-			: "border-stone-200 bg-white text-stone-900 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800";
+			? "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+			: tone === "invert"
+				? "bg-background/10 text-background border-background/20 hover:bg-background/20"
+				: "bg-card text-card-foreground border-border hover:bg-muted";
 
 	return (
 		<Link
-			className={`inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950 ${styles}`}
+			className={`inline-flex h-9 items-center justify-center rounded-md border px-3 text-xs font-medium tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${styles}`}
 			to={to}
 		>
 			{children}
@@ -734,10 +730,7 @@ function ActionLink({
 function EmptyTableRow({ colSpan, label }: { colSpan: number; label: string }) {
 	return (
 		<tr>
-			<td
-				className="py-4 text-sm text-stone-600 dark:text-stone-300"
-				colSpan={colSpan}
-			>
+			<td className="py-4 text-sm text-muted-foreground" colSpan={colSpan}>
 				{label}
 			</td>
 		</tr>
@@ -747,10 +740,8 @@ function EmptyTableRow({ colSpan, label }: { colSpan: number; label: string }) {
 function Stat({ label, value }: { label: string; value: number }) {
 	return (
 		<Card>
-			<p className="text-xs font-black uppercase tracking-[0.2em] text-stone-600 dark:text-stone-300">
-				{label}
-			</p>
-			<p className="mt-2 text-4xl font-black text-stone-950 dark:text-amber-50">
+			<p className="eyebrow">{label}</p>
+			<p className="mt-3 font-display text-4xl tracking-tight tabular-nums">
 				{value}
 			</p>
 		</Card>

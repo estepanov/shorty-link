@@ -53,13 +53,13 @@ function Sessions() {
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 					<div>
 						<Link
-							className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+							className="text-sm font-bold text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 							to="/admin/profile"
 						>
 							{t("nav.profile")}
 						</Link>
-						<h1 className="mt-4 text-4xl font-black">{t("sessions.title")}</h1>
-						<p className="mt-2 text-stone-700 dark:text-stone-300">
+						<h1 className="mt-4 text-4xl font-medium">{t("sessions.title")}</h1>
+						<p className="mt-2 text-muted-foreground">
 							{t("sessions.description")}
 						</p>
 					</div>
@@ -93,15 +93,15 @@ function Sessions() {
 					{sessions.length ? (
 						sessions.map((item) => (
 							<div
-								className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+								className="rounded-md border border-border bg-card/60 p-4"
 								key={item.token}
 							>
 								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 									<div>
-										<p className="font-black">
+										<p className="font-medium">
 											{item.userAgent ?? t("sessions.unknownBrowser")}
 										</p>
-										<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+										<p className="mt-1 text-sm text-muted-foreground">
 											{t("sessions.ip")}{" "}
 											{item.ipAddress ?? t("sessions.unknown")} ·{" "}
 											{t("sessions.expires")}{" "}
@@ -138,7 +138,7 @@ function Sessions() {
 							</div>
 						))
 					) : (
-						<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+						<p className="rounded-md border border-border bg-card/60 p-4 text-sm text-muted-foreground">
 							{t("sessions.empty")}
 						</p>
 					)}

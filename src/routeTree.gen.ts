@@ -13,11 +13,12 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSessionsRouteImport } from './routes/admin.sessions'
-import { Route as AdminRolesRouteImport } from './routes/admin.roles'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
 import { Route as AdminLinksRouteImport } from './routes/admin.links'
+import { Route as AdminDomainsRouteImport } from './routes/admin.domains'
 import { Route as AdminApiKeysRouteImport } from './routes/admin.api-keys'
 import { Route as AdminAccessRouteImport } from './routes/admin.access'
+import { Route as AdminRolesNewRouteImport } from './routes/admin.roles.new'
 import { Route as AdminLinksNewRouteImport } from './routes/admin.links.new'
 import { Route as AdminLinksIdRouteImport } from './routes/admin.links.$id'
 import { Route as AdminInvitesNewRouteImport } from './routes/admin.invites.new'
@@ -26,6 +27,7 @@ import { Route as AdminDomainsNewRouteImport } from './routes/admin.domains.new'
 import { Route as AdminAccessUsersRouteImport } from './routes/admin.access.users'
 import { Route as AdminAccessRolesRouteImport } from './routes/admin.access.roles'
 import { Route as AdminAccessInvitesRouteImport } from './routes/admin.access.invites'
+import { Route as AdminRolesIdEditRouteImport } from './routes/admin.roles.$id.edit'
 import { Route as AdminLinksIdEditRouteImport } from './routes/admin.links.$id.edit'
 import { Route as AdminDomainsIdEditRouteImport } from './routes/admin.domains.$id.edit'
 import { Route as AdminAccessRolesIdRouteImport } from './routes/admin.access.roles.$id'
@@ -50,11 +52,6 @@ const AdminSessionsRoute = AdminSessionsRouteImport.update({
   path: '/sessions',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminRolesRoute = AdminRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminProfileRoute = AdminProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -65,6 +62,11 @@ const AdminLinksRoute = AdminLinksRouteImport.update({
   path: '/links',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDomainsRoute = AdminDomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminApiKeysRoute = AdminApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
@@ -73,6 +75,11 @@ const AdminApiKeysRoute = AdminApiKeysRouteImport.update({
 const AdminAccessRoute = AdminAccessRouteImport.update({
   id: '/access',
   path: '/access',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRolesNewRoute = AdminRolesNewRouteImport.update({
+  id: '/roles/new',
+  path: '/roles/new',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminLinksNewRoute = AdminLinksNewRouteImport.update({
@@ -96,9 +103,9 @@ const AdminInviteTokenRoute = AdminInviteTokenRouteImport.update({
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminDomainsNewRoute = AdminDomainsNewRouteImport.update({
-  id: '/domains/new',
-  path: '/domains/new',
-  getParentRoute: () => AdminRoute,
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AdminDomainsRoute,
 } as any)
 const AdminAccessUsersRoute = AdminAccessUsersRouteImport.update({
   id: '/users',
@@ -115,15 +122,20 @@ const AdminAccessInvitesRoute = AdminAccessInvitesRouteImport.update({
   path: '/invites',
   getParentRoute: () => AdminAccessRoute,
 } as any)
+const AdminRolesIdEditRoute = AdminRolesIdEditRouteImport.update({
+  id: '/roles/$id/edit',
+  path: '/roles/$id/edit',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLinksIdEditRoute = AdminLinksIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
   getParentRoute: () => AdminLinksIdRoute,
 } as any)
 const AdminDomainsIdEditRoute = AdminDomainsIdEditRouteImport.update({
-  id: '/domains/$id/edit',
-  path: '/domains/$id/edit',
-  getParentRoute: () => AdminRoute,
+  id: '/$id/edit',
+  path: '/$id/edit',
+  getParentRoute: () => AdminDomainsRoute,
 } as any)
 const AdminAccessRolesIdRoute = AdminAccessRolesIdRouteImport.update({
   id: '/$id',
@@ -136,9 +148,9 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/admin/access': typeof AdminAccessRouteWithChildren
   '/admin/api-keys': typeof AdminApiKeysRoute
+  '/admin/domains': typeof AdminDomainsRouteWithChildren
   '/admin/links': typeof AdminLinksRouteWithChildren
   '/admin/profile': typeof AdminProfileRoute
-  '/admin/roles': typeof AdminRolesRoute
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
@@ -149,18 +161,20 @@ export interface FileRoutesByFullPath {
   '/admin/invites/new': typeof AdminInvitesNewRoute
   '/admin/links/$id': typeof AdminLinksIdRouteWithChildren
   '/admin/links/new': typeof AdminLinksNewRoute
+  '/admin/roles/new': typeof AdminRolesNewRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
+  '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/access': typeof AdminAccessRouteWithChildren
   '/admin/api-keys': typeof AdminApiKeysRoute
+  '/admin/domains': typeof AdminDomainsRouteWithChildren
   '/admin/links': typeof AdminLinksRouteWithChildren
   '/admin/profile': typeof AdminProfileRoute
-  '/admin/roles': typeof AdminRolesRoute
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
@@ -171,9 +185,11 @@ export interface FileRoutesByTo {
   '/admin/invites/new': typeof AdminInvitesNewRoute
   '/admin/links/$id': typeof AdminLinksIdRouteWithChildren
   '/admin/links/new': typeof AdminLinksNewRoute
+  '/admin/roles/new': typeof AdminRolesNewRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
+  '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -181,9 +197,9 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/admin/access': typeof AdminAccessRouteWithChildren
   '/admin/api-keys': typeof AdminApiKeysRoute
+  '/admin/domains': typeof AdminDomainsRouteWithChildren
   '/admin/links': typeof AdminLinksRouteWithChildren
   '/admin/profile': typeof AdminProfileRoute
-  '/admin/roles': typeof AdminRolesRoute
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
@@ -194,9 +210,11 @@ export interface FileRoutesById {
   '/admin/invites/new': typeof AdminInvitesNewRoute
   '/admin/links/$id': typeof AdminLinksIdRouteWithChildren
   '/admin/links/new': typeof AdminLinksNewRoute
+  '/admin/roles/new': typeof AdminRolesNewRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
+  '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -205,9 +223,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/access'
     | '/admin/api-keys'
+    | '/admin/domains'
     | '/admin/links'
     | '/admin/profile'
-    | '/admin/roles'
     | '/admin/sessions'
     | '/admin/users'
     | '/admin/access/invites'
@@ -218,18 +236,20 @@ export interface FileRouteTypes {
     | '/admin/invites/new'
     | '/admin/links/$id'
     | '/admin/links/new'
+    | '/admin/roles/new'
     | '/admin/access/roles/$id'
     | '/admin/domains/$id/edit'
     | '/admin/links/$id/edit'
+    | '/admin/roles/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/admin/access'
     | '/admin/api-keys'
+    | '/admin/domains'
     | '/admin/links'
     | '/admin/profile'
-    | '/admin/roles'
     | '/admin/sessions'
     | '/admin/users'
     | '/admin/access/invites'
@@ -240,18 +260,20 @@ export interface FileRouteTypes {
     | '/admin/invites/new'
     | '/admin/links/$id'
     | '/admin/links/new'
+    | '/admin/roles/new'
     | '/admin/access/roles/$id'
     | '/admin/domains/$id/edit'
     | '/admin/links/$id/edit'
+    | '/admin/roles/$id/edit'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/admin/access'
     | '/admin/api-keys'
+    | '/admin/domains'
     | '/admin/links'
     | '/admin/profile'
-    | '/admin/roles'
     | '/admin/sessions'
     | '/admin/users'
     | '/admin/access/invites'
@@ -262,9 +284,11 @@ export interface FileRouteTypes {
     | '/admin/invites/new'
     | '/admin/links/$id'
     | '/admin/links/new'
+    | '/admin/roles/new'
     | '/admin/access/roles/$id'
     | '/admin/domains/$id/edit'
     | '/admin/links/$id/edit'
+    | '/admin/roles/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -302,13 +326,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSessionsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/roles': {
-      id: '/admin/roles'
-      path: '/roles'
-      fullPath: '/admin/roles'
-      preLoaderRoute: typeof AdminRolesRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/profile': {
       id: '/admin/profile'
       path: '/profile'
@@ -323,6 +340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLinksRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/domains': {
+      id: '/admin/domains'
+      path: '/domains'
+      fullPath: '/admin/domains'
+      preLoaderRoute: typeof AdminDomainsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/api-keys': {
       id: '/admin/api-keys'
       path: '/api-keys'
@@ -335,6 +359,13 @@ declare module '@tanstack/react-router' {
       path: '/access'
       fullPath: '/admin/access'
       preLoaderRoute: typeof AdminAccessRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/roles/new': {
+      id: '/admin/roles/new'
+      path: '/roles/new'
+      fullPath: '/admin/roles/new'
+      preLoaderRoute: typeof AdminRolesNewRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/links/new': {
@@ -367,10 +398,10 @@ declare module '@tanstack/react-router' {
     }
     '/admin/domains/new': {
       id: '/admin/domains/new'
-      path: '/domains/new'
+      path: '/new'
       fullPath: '/admin/domains/new'
       preLoaderRoute: typeof AdminDomainsNewRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminDomainsRoute
     }
     '/admin/access/users': {
       id: '/admin/access/users'
@@ -393,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAccessInvitesRouteImport
       parentRoute: typeof AdminAccessRoute
     }
+    '/admin/roles/$id/edit': {
+      id: '/admin/roles/$id/edit'
+      path: '/roles/$id/edit'
+      fullPath: '/admin/roles/$id/edit'
+      preLoaderRoute: typeof AdminRolesIdEditRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/links/$id/edit': {
       id: '/admin/links/$id/edit'
       path: '/edit'
@@ -402,10 +440,10 @@ declare module '@tanstack/react-router' {
     }
     '/admin/domains/$id/edit': {
       id: '/admin/domains/$id/edit'
-      path: '/domains/$id/edit'
+      path: '/$id/edit'
       fullPath: '/admin/domains/$id/edit'
       preLoaderRoute: typeof AdminDomainsIdEditRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminDomainsRoute
     }
     '/admin/access/roles/$id': {
       id: '/admin/access/roles/$id'
@@ -444,6 +482,20 @@ const AdminAccessRouteWithChildren = AdminAccessRoute._addFileChildren(
   AdminAccessRouteChildren,
 )
 
+interface AdminDomainsRouteChildren {
+  AdminDomainsNewRoute: typeof AdminDomainsNewRoute
+  AdminDomainsIdEditRoute: typeof AdminDomainsIdEditRoute
+}
+
+const AdminDomainsRouteChildren: AdminDomainsRouteChildren = {
+  AdminDomainsNewRoute: AdminDomainsNewRoute,
+  AdminDomainsIdEditRoute: AdminDomainsIdEditRoute,
+}
+
+const AdminDomainsRouteWithChildren = AdminDomainsRoute._addFileChildren(
+  AdminDomainsRouteChildren,
+)
+
 interface AdminLinksIdRouteChildren {
   AdminLinksIdEditRoute: typeof AdminLinksIdEditRoute
 }
@@ -473,29 +525,29 @@ const AdminLinksRouteWithChildren = AdminLinksRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminAccessRoute: typeof AdminAccessRouteWithChildren
   AdminApiKeysRoute: typeof AdminApiKeysRoute
+  AdminDomainsRoute: typeof AdminDomainsRouteWithChildren
   AdminLinksRoute: typeof AdminLinksRouteWithChildren
   AdminProfileRoute: typeof AdminProfileRoute
-  AdminRolesRoute: typeof AdminRolesRoute
   AdminSessionsRoute: typeof AdminSessionsRoute
   AdminUsersRoute: typeof AdminUsersRoute
-  AdminDomainsNewRoute: typeof AdminDomainsNewRoute
   AdminInviteTokenRoute: typeof AdminInviteTokenRoute
   AdminInvitesNewRoute: typeof AdminInvitesNewRoute
-  AdminDomainsIdEditRoute: typeof AdminDomainsIdEditRoute
+  AdminRolesNewRoute: typeof AdminRolesNewRoute
+  AdminRolesIdEditRoute: typeof AdminRolesIdEditRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAccessRoute: AdminAccessRouteWithChildren,
   AdminApiKeysRoute: AdminApiKeysRoute,
+  AdminDomainsRoute: AdminDomainsRouteWithChildren,
   AdminLinksRoute: AdminLinksRouteWithChildren,
   AdminProfileRoute: AdminProfileRoute,
-  AdminRolesRoute: AdminRolesRoute,
   AdminSessionsRoute: AdminSessionsRoute,
   AdminUsersRoute: AdminUsersRoute,
-  AdminDomainsNewRoute: AdminDomainsNewRoute,
   AdminInviteTokenRoute: AdminInviteTokenRoute,
   AdminInvitesNewRoute: AdminInvitesNewRoute,
-  AdminDomainsIdEditRoute: AdminDomainsIdEditRoute,
+  AdminRolesNewRoute: AdminRolesNewRoute,
+  AdminRolesIdEditRoute: AdminRolesIdEditRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

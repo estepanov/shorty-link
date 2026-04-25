@@ -67,10 +67,10 @@ function InvitesTab() {
 		<div className="grid gap-6">
 			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-					<h2 className="text-2xl font-black">{t("users.invites")}</h2>
+					<h2 className="text-2xl font-medium">{t("users.invites")}</h2>
 					{hasPermission("invites.manage") ? (
 						<Link
-							className="inline-flex items-center justify-center rounded-2xl border border-stone-950 bg-stone-950 px-4 py-3 text-sm font-black text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:border-white dark:bg-white dark:text-stone-950 dark:hover:bg-stone-200 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
+							className="inline-flex items-center justify-center rounded-md border border-foreground bg-foreground px-4 py-3 text-sm font-medium text-white transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-white dark:bg-card dark:text-foreground dark:hover:bg-muted "
 							to="/admin/invites/new"
 						>
 							{t("access.createInvite")}
@@ -88,19 +88,19 @@ function InvitesTab() {
 					{invitesWithStatus.length ? (
 						invitesWithStatus.map((invite) => (
 							<div
-								className="flex items-start justify-between gap-3 rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+								className="flex items-start justify-between gap-3 rounded-md border border-border bg-card/60 p-4"
 								key={invite.id}
 							>
 								<div>
-									<p className="font-black">{invite.email}</p>
-									<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+									<p className="font-medium">{invite.email}</p>
+									<p className="mt-1 text-sm text-muted-foreground">
 										<span
 											className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
 												invite.status === "pending"
 													? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
 													: invite.status === "accepted"
 														? "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
-														: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300"
+														: "bg-muted text-muted-foreground"
 											}`}
 										>
 											{t(
@@ -117,7 +117,7 @@ function InvitesTab() {
 									{invite.inviteUrl ? (
 										<div className="mt-1 flex items-center gap-2">
 											<a
-												className="break-all text-xs text-blue-800 underline dark:text-blue-300"
+												className="break-all text-xs text-accent underline dark:text-accent"
 												href={invite.inviteUrl}
 											>
 												{invite.inviteUrl}
@@ -158,7 +158,7 @@ function InvitesTab() {
 							</div>
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyInvites")}
 						</p>
 					)}

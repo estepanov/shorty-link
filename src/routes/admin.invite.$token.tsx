@@ -93,11 +93,11 @@ function Invite() {
 		<AppShell>
 			<main className="mx-auto max-w-2xl px-5 py-10">
 				<Card>
-					<p className="text-sm font-black uppercase tracking-[0.24em] text-blue-800 dark:text-blue-300">
+					<p className="text-sm font-medium uppercase tracking-[0.24em] text-accent">
 						{t("auth.noPasswords")}
 					</p>
-					<h1 className="mt-4 text-4xl font-black">{t("auth.inviteTitle")}</h1>
-					<p className="mt-3 text-stone-700 dark:text-stone-300">
+					<h1 className="mt-4 text-4xl font-medium">{t("auth.inviteTitle")}</h1>
+					<p className="mt-3 text-muted-foreground">
 						{email
 							? `${t("auth.inviteFor")} ${email}.`
 							: t("auth.loadingInvite")}

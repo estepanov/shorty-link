@@ -1,70 +1,28 @@
-import {
-	createFileRoute,
-	Link,
-	Outlet,
-	useLocation,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import {
-	Button,
-	Card,
-	FieldLabel,
-	Input,
-	Notice,
-	TextArea,
-} from "@/components/ui";
+import { Button, Card, Notice } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
-import type {
-	AdminDomain,
-	AdminRole,
-	AdminRoleDetail,
-	LinkListItem,
-	PermissionCatalog,
-} from "@/lib/admin-types";
+import type { AdminRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
-import type { Permission } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin/access/roles")({
 	component: RolesTab,
 });
 
-type RoleEditorState = {
-	mode: "create" | "edit";
-	role: AdminRoleDetail | null;
-};
-
 function RolesTab() {
-	const location = useLocation();
+	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
 	const { hasPermission } = useAuthContext();
 	const [roles, setRoles] = useState<AdminRole[]>([]);
-	const [catalog, setCatalog] = useState<PermissionCatalog | null>(null);
-	const [domains, setDomains] = useState<AdminDomain[]>([]);
-	const [links, setLinks] = useState<LinkListItem[]>([]);
 	const [error, setError] = useState<string | null>(null);
-	const [editor, setEditor] = useState<RoleEditorState | null>(null);
-	const isRolesListRoute =
-		location.pathname === "/admin/access/roles" ||
-		location.pathname === "/admin/access/roles/";
 
 	async function refresh() {
 		setError(null);
 		try {
 			const api = getTreaty();
-			const [nextRoles, nextCatalog, nextDomains, nextLinks] =
-				await Promise.all([
-					unwrap<AdminRole[]>(await api.admin.roles.get()),
-					unwrap<PermissionCatalog>(await api.admin.permissions.get()),
-					unwrap<AdminDomain[]>(await api.admin.domains.get()),
-					unwrap<{ items: LinkListItem[] }>(
-						await api.admin.links.get({ query: { pageSize: 100 } }),
-					).then((r) => r.items),
-				]);
+			const nextRoles = await unwrap<AdminRole[]>(await api.admin.roles.get());
 			setRoles(nextRoles);
-			setCatalog(nextCatalog);
-			setDomains(nextDomains);
-			setLinks(nextLinks);
 		} catch (nextError) {
 			setError(
 				nextError instanceof Error ? nextError.message : "errors.unknown",
@@ -72,12 +30,11 @@ function RolesTab() {
 		}
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh stable; refetch when session identity changes.
 	useEffect(() => {
-		if (session && isRolesListRoute) {
+		if (session) {
 			void refresh();
 		}
-	}, [session?.user.id, isRolesListRoute]);
+	}, [session?.user.id]);
 
 	if (isPending) {
 		return <Card>{t("loading.app")}</Card>;
@@ -89,29 +46,6 @@ function RolesTab() {
 
 	if (!hasPermission("roles.manage")) {
 		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
-	}
-
-	if (!isRolesListRoute) {
-		return <Outlet />;
-	}
-
-	async function openCreate() {
-		setEditor({ mode: "create", role: null });
-	}
-
-	async function openEdit(roleId: string) {
-		setError(null);
-		try {
-			const api = getTreaty();
-			const detail = await unwrap<AdminRoleDetail>(
-				await api.admin.roles({ id: roleId }).get(),
-			);
-			setEditor({ mode: "edit", role: detail });
-		} catch (nextError) {
-			setError(
-				nextError instanceof Error ? nextError.message : "errors.unknown",
-			);
-		}
 	}
 
 	async function deleteRole(roleId: string) {
@@ -130,7 +64,7 @@ function RolesTab() {
 	return (
 		<div className="grid gap-6">
 			<Card>
-				<p className="text-sm text-stone-600 dark:text-stone-300">
+				<p className="text-sm text-muted-foreground">
 					{t("roles.description")}
 				</p>
 				{error ? (
@@ -138,13 +72,11 @@ function RolesTab() {
 						<Notice tone="error">{t(error)}</Notice>
 					</div>
 				) : null}
-				{hasPermission("roles.manage") ? (
-					<div className="mt-4">
-						<Button onClick={openCreate} type="button">
-							{t("roles.create")}
-						</Button>
-					</div>
-				) : null}
+				<div className="mt-4">
+					<Link to="/admin/roles/new">
+						<Button type="button">{t("roles.create")}</Button>
+					</Link>
+				</div>
 			</Card>
 
 			<Card>
@@ -152,31 +84,31 @@ function RolesTab() {
 					{roles.length ? (
 						roles.map((role) => (
 							<div
-								className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+								className="rounded-md border border-border bg-card/60 p-4"
 								key={role.id}
 							>
 								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 									<div className="flex-1">
-										<p className="font-black">
+										<p className="font-medium">
 											<Link
-												className="text-blue-800 underline underline-offset-4 dark:text-blue-300"
+												className="text-accent underline underline-offset-4 dark:text-accent"
 												params={{ id: role.id }}
-												to="/admin/access/roles/$id"
+												to="/admin/roles/$id/edit"
 											>
 												{role.name}
 											</Link>
 											{role.isSystem ? (
-												<span className="ml-2 inline-flex rounded-full bg-stone-200 px-2 py-0.5 text-xs font-bold text-stone-700 dark:bg-stone-700 dark:text-stone-200">
+												<span className="ml-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
 													{t("roles.systemBadge")}
 												</span>
 											) : null}
 										</p>
 										{role.description ? (
-											<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+											<p className="mt-1 text-sm text-muted-foreground">
 												{role.description}
 											</p>
 										) : null}
-										<p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+										<p className="mt-2 text-xs text-muted-foreground/80">
 											{t("roles.permissionsCount").replace(
 												"{{count}}",
 												String(role.permissions.length),
@@ -193,14 +125,13 @@ function RolesTab() {
 										</p>
 									</div>
 									<div className="flex gap-2">
-										<Button
-											disabled={role.isSystem}
-											onClick={() => openEdit(role.id)}
-											tone="secondary"
-											type="button"
-										>
-											{t("roles.edit")}
-										</Button>
+										{!role.isSystem && (
+											<Link params={{ id: role.id }} to="/admin/roles/$id/edit">
+												<Button tone="secondary" type="button">
+													{t("roles.edit")}
+												</Button>
+											</Link>
+										)}
 										<Button
 											disabled={role.isSystem || role.userCount > 0}
 											onClick={() => deleteRole(role.id)}
@@ -214,254 +145,10 @@ function RolesTab() {
 							</div>
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
-							{t("roles.empty")}
-						</p>
+						<p className="text-sm text-muted-foreground">{t("roles.empty")}</p>
 					)}
 				</div>
 			</Card>
-
-			{editor && catalog ? (
-				<Card>
-					<RoleEditor
-						catalog={catalog}
-						domains={domains}
-						links={links}
-						mode={editor.mode}
-						onCancel={() => setEditor(null)}
-						onSaved={async () => {
-							setEditor(null);
-							await refresh();
-						}}
-						role={editor.role}
-						t={t}
-					/>
-				</Card>
-			) : null}
 		</div>
-	);
-}
-
-function RoleEditor({
-	catalog,
-	domains,
-	links,
-	mode,
-	onCancel,
-	onSaved,
-	role,
-	t,
-}: {
-	catalog: PermissionCatalog;
-	domains: AdminDomain[];
-	links: LinkListItem[];
-	mode: "create" | "edit";
-	onCancel: () => void;
-	onSaved: () => Promise<void>;
-	role: AdminRoleDetail | null;
-	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
-}) {
-	const [name, setName] = useState(role?.name ?? "");
-	const [description, setDescription] = useState(role?.description ?? "");
-	const [permissions, setPermissions] = useState<Set<Permission>>(
-		new Set((role?.permissions ?? []) as Permission[]),
-	);
-	const [domainScope, setDomainScope] = useState<Set<string>>(
-		new Set(role?.domainScopeIds ?? []),
-	);
-	const [linkScope, setLinkScope] = useState<Set<string>>(
-		new Set(role?.linkScopeIds ?? []),
-	);
-	const [error, setError] = useState<string | null>(null);
-	const [submitting, setSubmitting] = useState(false);
-
-	function togglePermission(value: Permission) {
-		setPermissions((prev) => {
-			const next = new Set(prev);
-			if (next.has(value)) {
-				next.delete(value);
-			} else {
-				next.add(value);
-			}
-			return next;
-		});
-	}
-
-	function toggleSetItem(set: Set<string>, value: string) {
-		const next = new Set(set);
-		if (next.has(value)) {
-			next.delete(value);
-		} else {
-			next.add(value);
-		}
-		return next;
-	}
-
-	async function handleSubmit(event: React.FormEvent) {
-		event.preventDefault();
-		event.stopPropagation();
-		setError(null);
-		setSubmitting(true);
-		try {
-			const body = {
-				name,
-				description: description.trim() || undefined,
-				permissions: [...permissions] as string[],
-				domainScopeIds: [...domainScope],
-				linkScopeIds: [...linkScope],
-			};
-			const api = getTreaty();
-			if (mode === "edit" && role) {
-				await unwrap(await api.admin.roles({ id: role.id }).patch(body));
-			} else {
-				await unwrap(await api.admin.roles.post(body));
-			}
-			await onSaved();
-		} catch (nextError) {
-			setError(
-				nextError instanceof Error ? nextError.message : "errors.unknown",
-			);
-		} finally {
-			setSubmitting(false);
-		}
-	}
-
-	const groupOrder = Object.keys(catalog.groups);
-
-	return (
-		<form className="grid gap-5" onSubmit={handleSubmit}>
-			<h2 className="text-2xl font-black">
-				{mode === "edit" ? t("roles.edit") : t("roles.create")}
-			</h2>
-			<FieldLabel>
-				{t("forms.name")}
-				<Input
-					maxLength={64}
-					onChange={(event) => setName(event.target.value)}
-					placeholder={t("roles.namePlaceholder")}
-					required
-					value={name}
-				/>
-			</FieldLabel>
-			<FieldLabel>
-				{t("forms.notes")}
-				<TextArea
-					onChange={(event) => setDescription(event.target.value)}
-					placeholder={t("roles.descriptionPlaceholder")}
-					value={description}
-				/>
-			</FieldLabel>
-
-			<div>
-				<p className="text-sm font-bold text-stone-800 dark:text-stone-200">
-					{t("roles.permissions")}
-				</p>
-				<p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-					{t("roles.permissionsHelp")}
-				</p>
-				<div className="mt-3 grid gap-4 md:grid-cols-2">
-					{groupOrder.map((groupKey) => (
-						<div
-							className="rounded-2xl border border-stone-950/10 bg-white/50 p-3 dark:border-white/10 dark:bg-white/5"
-							key={groupKey}
-						>
-							<p className="mb-2 text-xs font-black uppercase tracking-wide text-stone-700 dark:text-stone-300">
-								{t(`roles.permissionGroup.${groupKey}`)}
-							</p>
-							<div className="grid gap-1">
-								{catalog.groups[groupKey].map((perm) => (
-									<label className="flex items-center gap-2 text-sm" key={perm}>
-										<input
-											checked={permissions.has(perm as Permission)}
-											onChange={() => togglePermission(perm as Permission)}
-											type="checkbox"
-										/>
-										{t(`permissions.${perm}`)}
-									</label>
-								))}
-							</div>
-						</div>
-					))}
-				</div>
-			</div>
-
-			<div>
-				<p className="text-sm font-bold text-stone-800 dark:text-stone-200">
-					{t("roles.scopeDomains")}
-				</p>
-				<p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-					{t("roles.scopeDomainsHelp")}
-				</p>
-				<div className="mt-3 grid max-h-48 gap-1 overflow-auto rounded-2xl border border-stone-950/10 bg-white/50 p-3 dark:border-white/10 dark:bg-white/5">
-					{domains.length === 0 ? (
-						<p className="text-xs text-stone-500">—</p>
-					) : (
-						domains.map((domain) => (
-							<label
-								className="flex items-center gap-2 text-sm"
-								key={domain.id}
-							>
-								<input
-									checked={domainScope.has(domain.id)}
-									onChange={() =>
-										setDomainScope((prev) => toggleSetItem(prev, domain.id))
-									}
-									type="checkbox"
-								/>
-								{domain.hostname}
-								{domain.label ? (
-									<span className="text-xs text-stone-500">
-										({domain.label})
-									</span>
-								) : null}
-							</label>
-						))
-					)}
-				</div>
-			</div>
-
-			<div>
-				<p className="text-sm font-bold text-stone-800 dark:text-stone-200">
-					{t("roles.scopeLinks")}
-				</p>
-				<p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-					{t("roles.scopeLinksHelp")}
-				</p>
-				<div className="mt-3 grid max-h-48 gap-1 overflow-auto rounded-2xl border border-stone-950/10 bg-white/50 p-3 dark:border-white/10 dark:bg-white/5">
-					{links.length === 0 ? (
-						<p className="text-xs text-stone-500">—</p>
-					) : (
-						links.map((link) => (
-							<label className="flex items-center gap-2 text-sm" key={link.id}>
-								<input
-									checked={linkScope.has(link.id)}
-									onChange={() =>
-										setLinkScope((prev) => toggleSetItem(prev, link.id))
-									}
-									type="checkbox"
-								/>
-								<span className="font-mono text-xs">
-									{link.hostname === "__default__" ? "" : `${link.hostname}/`}
-									{link.slug}
-								</span>
-								{link.title ? (
-									<span className="text-xs text-stone-500">— {link.title}</span>
-								) : null}
-							</label>
-						))
-					)}
-				</div>
-			</div>
-
-			{error ? <Notice tone="error">{t(error)}</Notice> : null}
-			<div className="flex gap-2">
-				<Button disabled={submitting} type="submit">
-					{mode === "edit" ? t("forms.update") : t("forms.create")}
-				</Button>
-				<Button onClick={onCancel} tone="secondary" type="button">
-					{t("forms.cancel")}
-				</Button>
-			</div>
-		</form>
 	);
 }

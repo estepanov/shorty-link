@@ -128,15 +128,15 @@ function LinksList() {
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<div>
 						<Link
-							className="text-sm font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+							className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 							to="/admin"
 						>
 							{t("pages.backDashboard")}
 						</Link>
-						<h1 className="mt-4 text-4xl font-black">{t("links.title")}</h1>
+						<h1 className="mt-4 text-4xl font-medium">{t("links.title")}</h1>
 					</div>
 					<Link
-						className="inline-flex items-center justify-center rounded-2xl border border-transparent bg-stone-950 px-4 py-3 text-sm font-black text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:bg-white dark:text-stone-950 dark:hover:bg-stone-200 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
+						className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 						to="/admin/links/new"
 					>
 						{t("actions.addLink")}
@@ -265,7 +265,7 @@ function LinksList() {
 
 			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-					<p className="text-sm font-bold text-stone-600 dark:text-stone-300">
+					<p className="text-sm font-bold text-muted-foreground">
 						{t("links.showing")} {firstItem}-{lastItem} {t("links.of")}{" "}
 						{data?.total ?? 0}
 					</p>
@@ -297,7 +297,7 @@ function LinksList() {
 						<LinkRow key={link.id} link={link} locale={locale} t={t} />
 					))}
 					{!data?.items.length ? (
-						<p className="rounded-2xl border border-stone-950/10 bg-white/70 p-6 text-center text-sm text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-stone-300">
+						<p className="rounded-md border border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
 							{t("dashboard.noLinks")}
 						</p>
 					) : null}
@@ -317,18 +317,18 @@ function LinkRow({
 	t: ReturnType<typeof createTranslator>;
 }) {
 	return (
-		<div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+		<div className="rounded-md border border-border bg-card/60 p-4">
 			<div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">
 						<Link
-							className="font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+							className="font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 							params={{ id: link.id }}
 							to="/admin/links/$id"
 						>
 							{link.slug}
 						</Link>
-						<span className="inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+						<span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
 							{formatHostname(link.hostname, t)}
 						</span>
 						<StatusBadge
@@ -346,34 +346,30 @@ function LinkRow({
 						) : null}
 					</div>
 					{link.title ? (
-						<div className="mt-2 font-bold text-stone-900 dark:text-stone-100">
-							{link.title}
-						</div>
+						<div className="mt-2 font-bold text-foreground">{link.title}</div>
 					) : null}
-					<div className="mt-1 truncate text-sm text-stone-700 dark:text-stone-300">
+					<div className="mt-1 truncate text-sm text-muted-foreground">
 						{link.targetUrl}
 					</div>
 					{link.notes ? (
-						<div className="mt-1 truncate text-xs text-stone-500 dark:text-stone-400">
+						<div className="mt-1 truncate text-xs text-muted-foreground/80">
 							{link.notes}
 						</div>
 					) : null}
-					<div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
+					<div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground/80">
 						<span>
 							{t("table.hits")}:{" "}
-							<span className="font-bold text-stone-700 dark:text-stone-200">
-								{link.hitCount}
-							</span>
+							<span className="font-bold text-foreground">{link.hitCount}</span>
 						</span>
 						<span>
 							{t("links.lastClick")}:{" "}
-							<span className="text-stone-600 dark:text-stone-300">
+							<span className="text-muted-foreground">
 								{formatDate(link.lastClickAt, locale, t)}
 							</span>
 						</span>
 						<span>
 							{t("links.created")}:{" "}
-							<span className="text-stone-600 dark:text-stone-300">
+							<span className="text-muted-foreground">
 								{new Date(link.createdAt).toLocaleDateString(locale)}
 							</span>
 						</span>
@@ -381,7 +377,7 @@ function LinkRow({
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
 					<Link
-						className="inline-flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-2 text-sm font-black text-stone-900 transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
+						className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 						params={{ id: link.id }}
 						to="/admin/links/$id/edit"
 					>
@@ -408,9 +404,8 @@ function StatusBadge({
 		green:
 			"bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100",
 		blue: "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100",
-		amber:
-			"bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100",
-		stone: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
+		amber: "bg-accent/10 text-accent border border-accent/20",
+		stone: "bg-muted text-muted-foreground",
 	};
 
 	return (

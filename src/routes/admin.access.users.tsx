@@ -1,6 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+function PencilIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			aria-hidden="true"
+			className={className}
+			fill="none"
+			stroke="currentColor"
+			strokeWidth={1.75}
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			viewBox="0 0 24 24"
+		>
+			<path d="m18 2 4 4-13 13H5v-4z" />
+			<path d="m14.5 5.5 4 4" />
+		</svg>
+	);
+}
+
 import { Button, Card, Notice, Select } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminUser, AssignableRole } from "@/lib/admin-types";
@@ -65,7 +83,7 @@ function UsersTab() {
 			) : null}
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("users.active")}</h2>
+				<h2 className="text-2xl font-medium">{t("users.active")}</h2>
 				<div className="mt-5 grid gap-3">
 					{activeUsers.length ? (
 						activeUsers.map((u) => (
@@ -80,7 +98,7 @@ function UsersTab() {
 							/>
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyActive")}
 						</p>
 					)}
@@ -88,7 +106,7 @@ function UsersTab() {
 			</Card>
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("users.disabled")}</h2>
+				<h2 className="text-2xl font-medium">{t("users.disabled")}</h2>
 				<div className="mt-5 grid gap-3">
 					{disabledUsers.length ? (
 						disabledUsers.map((u) => (
@@ -103,7 +121,7 @@ function UsersTab() {
 							/>
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyDisabled")}
 						</p>
 					)}
@@ -128,60 +146,103 @@ function UserRow({
 	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
 	user: AdminUser;
 }) {
+	const [editing, setEditing] = useState(false);
+	const [pendingRoleId, setPendingRoleId] = useState(u.roleId);
+
 	return (
-		<div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
-			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+		<div className="rounded-md border border-foreground/10 bg-card/60 p-2.5 ">
+			<div className="flex flex-col justify-between gap-2 md:flex-row md:items-start">
 				<div className="flex-1">
-					<p className="font-black">
+					<p className="font-medium">
 						{u.name}{" "}
-						<span className="text-sm font-normal text-stone-600 dark:text-stone-300">
+						<span className="text-sm font-normal text-muted-foreground">
 							({u.email})
 						</span>
 					</p>
-					<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-						{u.roleName} · {u.locale} ·{" "}
-						{new Date(u.createdAt).toLocaleDateString(locale)}
+					<p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+						{editing && roles.length > 0 ? (
+							<>
+								<Select
+									className="!w-auto !py-1"
+									onChange={(event) => {
+										setPendingRoleId(event.target.value);
+									}}
+									value={pendingRoleId}
+								>
+									{roles.map((role) => (
+										<option key={role.id} value={role.id}>
+											{role.name}
+										</option>
+									))}
+								</Select>
+								<Button
+									className="!rounded-xl !px-2.5 !py-1.5 !text-xs"
+									onClick={async () => {
+										if (pendingRoleId === u.roleId) {
+											setEditing(false);
+											return;
+										}
+										setError(null);
+										try {
+											const api = getTreaty();
+											await unwrap(
+												await api.admin
+													.users({ id: u.id })
+													.role.patch({ roleId: pendingRoleId }),
+											);
+											await onRefresh();
+											setEditing(false);
+										} catch (nextError) {
+											setError(
+												nextError instanceof Error
+													? nextError.message
+													: "errors.unknown",
+											);
+										}
+									}}
+									type="button"
+								>
+									{t("forms.save")}
+								</Button>
+								<Button
+									className="!rounded-xl !border-transparent !bg-transparent !px-2.5 !py-1.5 !text-xs hover:!bg-muted"
+									onClick={() => {
+										setEditing(false);
+										setPendingRoleId(u.roleId);
+									}}
+									tone="secondary"
+									type="button"
+								>
+									{t("forms.cancel")}
+								</Button>
+							</>
+						) : (
+							<>
+								<span className="font-bold">{u.roleName}</span>
+								{roles.length > 0 ? (
+									<Button
+										className="!rounded-md !border-transparent !bg-transparent !p-1 !h-auto !text-muted-foreground hover:!text-foreground hover:!bg-muted"
+										onClick={() => {
+											setPendingRoleId(u.roleId);
+											setEditing(true);
+										}}
+										tone="secondary"
+										type="button"
+									>
+										<PencilIcon className="size-3.5" />
+									</Button>
+								) : null}
+							</>
+						)}
+						<span>·</span>
+						<span>{u.locale}</span>
+						<span>·</span>
+						<span>{new Date(u.createdAt).toLocaleDateString(locale)}</span>
 					</p>
-					{roles.length > 0 ? (
-						<div className="mt-3 flex items-center gap-2">
-							<label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-								{t("users.role")}
-							</label>
-							<Select
-								className="!w-auto !py-2"
-								onChange={async (event) => {
-									const nextRoleId = event.target.value;
-									if (nextRoleId === u.roleId) return;
-									setError(null);
-									try {
-										const api = getTreaty();
-										await unwrap(
-											await api.admin
-												.users({ id: u.id })
-												.role.patch({ roleId: nextRoleId }),
-										);
-										await onRefresh();
-									} catch (nextError) {
-										setError(
-											nextError instanceof Error
-												? nextError.message
-												: "errors.unknown",
-										);
-									}
-								}}
-								value={u.roleId}
-							>
-								{roles.map((role) => (
-									<option key={role.id} value={role.id}>
-										{role.name}
-									</option>
-								))}
-							</Select>
-						</div>
-					) : null}
 				</div>
 				<div className="flex gap-2">
 					<Button
+						className="!rounded-xl !px-3 !py-1.5 !text-xs"
 						onClick={async () => {
 							setError(null);
 							try {
@@ -206,6 +267,7 @@ function UserRow({
 						{u.isActive ? t("users.disable") : t("users.enable")}
 					</Button>
 					<Button
+						className="!rounded-xl !px-3 !py-1.5 !text-xs"
 						onClick={async () => {
 							setError(null);
 							try {

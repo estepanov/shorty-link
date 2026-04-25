@@ -142,7 +142,7 @@ export function LinkForm({
 									</option>
 								))}
 							</Select>
-							<p className="text-xs font-normal text-stone-500 dark:text-stone-400">
+							<p className="text-xs font-normal text-muted-foreground/80">
 								{t("forms.statusCodeHelp")}
 							</p>
 						</FieldLabel>
@@ -201,7 +201,7 @@ export function LinkForm({
 			<div className="grid gap-3 sm:grid-cols-2">
 				<form.Field name="preserveQueryParams">
 					{(field) => (
-						<label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+						<label className="flex items-center gap-3 rounded-md bg-foreground/5 p-3 text-sm font-bold ">
 							<input
 								checked={field.state.value}
 								onChange={(event) => field.handleChange(event.target.checked)}
@@ -213,7 +213,7 @@ export function LinkForm({
 				</form.Field>
 				<form.Field name="isActive">
 					{(field) => (
-						<label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+						<label className="flex items-center gap-3 rounded-md bg-foreground/5 p-3 text-sm font-bold ">
 							<input
 								checked={field.state.value}
 								onChange={(event) => field.handleChange(event.target.checked)}
@@ -315,7 +315,7 @@ export function DomainForm({
 			<div className="grid gap-3 sm:grid-cols-2">
 				<form.Field name="isPrimary">
 					{(field) => (
-						<label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+						<label className="flex items-center gap-3 rounded-md bg-foreground/5 p-3 text-sm font-bold ">
 							<input
 								checked={field.state.value}
 								onChange={(event) => field.handleChange(event.target.checked)}
@@ -327,7 +327,7 @@ export function DomainForm({
 				</form.Field>
 				<form.Field name="isActive">
 					{(field) => (
-						<label className="flex items-center gap-3 rounded-2xl bg-stone-950/5 p-3 text-sm font-bold dark:bg-white/5">
+						<label className="flex items-center gap-3 rounded-md bg-foreground/5 p-3 text-sm font-bold ">
 							<input
 								checked={field.state.value}
 								onChange={(event) => field.handleChange(event.target.checked)}

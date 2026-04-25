@@ -29,12 +29,12 @@ function NewDomain() {
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
 				<Link
-					className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
+					className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
 					to="/admin"
 				>
 					{t("pages.backDashboard")}
 				</Link>
-				<h1 className="mt-4 text-4xl font-black">{t("pages.newDomain")}</h1>
+				<h1 className="mt-4 text-4xl font-medium">{t("pages.newDomain")}</h1>
 				<DomainForm
 					onSaved={() => {
 						void router.navigate({ to: "/admin" });

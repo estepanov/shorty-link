@@ -70,7 +70,7 @@ function Profile() {
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
-				<h1 className="text-4xl font-black">{t("profile.title")}</h1>
+				<h1 className="text-4xl font-medium">{t("profile.title")}</h1>
 				<form
 					className="mt-8 grid gap-4"
 					onSubmit={(event) => {
@@ -134,20 +134,20 @@ function Profile() {
 					</div>
 				) : null}
 				{authContext ? (
-					<div className="mt-8 border-t border-stone-950/10 pt-6 dark:border-white/10">
-						<h2 className="text-xl font-black">{authContext.role.name}</h2>
+					<div className="mt-8 border-t border-border pt-6">
+						<h2 className="text-xl font-medium">{authContext.role.name}</h2>
 						{authContext.role.isSystem ? (
-							<span className="mt-1 inline-block rounded-lg border border-stone-950/15 bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-600 dark:border-white/15 dark:bg-stone-800 dark:text-stone-300">
+							<span className="mt-1 inline-block rounded-lg border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
 								{t("roles.systemBadge")}
 							</span>
 						) : null}
 						<ul className="mt-4 grid gap-1 text-sm">
 							{Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
 								<li key={group}>
-									<span className="font-bold text-stone-600 dark:text-stone-300">
+									<span className="font-bold text-muted-foreground">
 										{t(`roles.permissionGroup.${group}`)}
 									</span>
-									<ul className="ml-4 list-disc text-stone-500 dark:text-stone-400">
+									<ul className="ml-4 list-disc text-muted-foreground/80">
 										{permissions.map((perm) => (
 											<li key={perm}>
 												<span
@@ -169,10 +169,10 @@ function Profile() {
 				) : null}
 				{(hasPermission("sessions.manage") ||
 					hasPermission("apikeys.manage")) && (
-					<div className="mt-8 flex flex-wrap gap-3 border-t border-stone-950/10 pt-6 dark:border-white/10">
+					<div className="mt-8 flex flex-wrap gap-3 border-t border-border pt-6">
 						{hasPermission("sessions.manage") ? (
 							<Link
-								className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+								className="text-sm font-bold text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 								to="/admin/sessions"
 							>
 								{t("nav.sessions")}
@@ -180,7 +180,7 @@ function Profile() {
 						) : null}
 						{hasPermission("apikeys.manage") ? (
 							<Link
-								className="text-sm font-bold text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+								className="text-sm font-bold text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 								to="/admin/api-keys"
 							>
 								{t("nav.apiKeys")}

@@ -58,20 +58,20 @@ function EditDomain() {
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
 				<Link
-					className="text-sm font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+					className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 					to="/admin"
 				>
 					{t("pages.backDashboard")}
 				</Link>
 				<div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-					<h1 className="text-4xl font-black">{t("pages.editDomain")}</h1>
+					<h1 className="text-4xl font-medium">{t("pages.editDomain")}</h1>
 					<Button
 						onClick={async () => {
 							setError(null);
 							try {
 								const api = getTreaty();
 								await unwrap(await api.admin.domains({ id }).delete());
-								await router.navigate({ to: "/admin" });
+								await router.navigate({ to: "/admin/domains" });
 							} catch (nextError) {
 								setError(
 									nextError instanceof Error
@@ -95,14 +95,12 @@ function EditDomain() {
 					<DomainForm
 						initialDomain={domain}
 						onSaved={() => {
-							void router.navigate({ to: "/admin" });
+							void router.navigate({ to: "/admin/domains" });
 						}}
 						t={t}
 					/>
 				) : (
-					<p className="mt-6 text-stone-600 dark:text-stone-300">
-						{t("loading.dashboard")}
-					</p>
+					<p className="mt-6 text-muted-foreground">{t("loading.dashboard")}</p>
 				)}
 			</Card>
 		</div>

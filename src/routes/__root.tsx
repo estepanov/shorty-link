@@ -22,6 +22,18 @@ export const Route = createRootRoute({
 			},
 			{ title: "Shorty Link" },
 		],
+		links: [
+			{ rel: "preconnect", href: "https://fonts.googleapis.com" },
+			{
+				rel: "preconnect",
+				href: "https://fonts.gstatic.com",
+				crossOrigin: "anonymous",
+			},
+			{
+				rel: "stylesheet",
+				href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap",
+			},
+		],
 	}),
 	component: RootComponent,
 });
@@ -36,16 +48,16 @@ function RootComponent() {
 
 const themeScript = `
 (() => {
-  try {
-    const storageKey = "shorty-link-theme";
-    const root = document.documentElement;
-    const stored = window.localStorage.getItem(storageKey);
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const theme = stored === "light" || stored === "dark" ? stored : prefersDark ? "dark" : "light";
-    root.classList.toggle("dark", theme === "dark");
-    root.style.colorScheme = theme;
-  } catch {
-  }
+ try {
+ const storageKey = "shorty-link-theme";
+ const root = document.documentElement;
+ const stored = window.localStorage.getItem(storageKey);
+ const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+ const theme = stored === "light" || stored === "dark" ? stored : prefersDark ? "dark" : "light";
+ root.classList.toggle("dark", theme === "dark");
+ root.style.colorScheme = theme;
+ } catch {
+ }
 })();
 `;
 

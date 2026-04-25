@@ -21,11 +21,11 @@ function TiltCard({ children }: { children: React.ReactNode }) {
 		const centerX = rect.width / 2;
 		const centerY = rect.height / 2;
 
-		const rotateX = ((y - centerY) / centerY) * -6;
-		const rotateY = ((x - centerX) / centerX) * 6;
+		const rotateX = ((y - centerY) / centerY) * -4;
+		const rotateY = ((x - centerX) / centerX) * 4;
 
 		setTransform(
-			`perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
+			`perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`,
 		);
 		setGlowPosition({
 			x: (x / rect.width) * 100,
@@ -35,7 +35,7 @@ function TiltCard({ children }: { children: React.ReactNode }) {
 
 	const handleMouseLeave = () => {
 		setTransform(
-			"perspective(800px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
+			"perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
 		);
 		setGlowPosition({ x: 50, y: 50 });
 	};
@@ -49,16 +49,21 @@ function TiltCard({ children }: { children: React.ReactNode }) {
 			className="[transform-style:preserve-3d] transition-transform duration-200 ease-out will-change-transform"
 			style={{ transform }}
 		>
-			<Card className="relative overflow-hidden !border-0 !bg-gradient-to-br !from-stone-800 !via-stone-950 !to-black text-amber-50 dark:border-white/10 dark:bg-stone-900/95">
-				{/* Mouse-following radial glow */}
+			<Card variant="feature" className="relative overflow-hidden p-8">
 				<div
-					className="pointer-events-none absolute inset-0 opacity-20 transition-opacity duration-300"
+					className="pointer-events-none absolute inset-0 opacity-60 transition-opacity duration-300"
 					style={{
-						background: `radial-gradient(circle 280px at ${glowPosition.x}% ${glowPosition.y}%, rgba(251,191,36,0.35), transparent)`,
+						background: `radial-gradient(circle 320px at ${glowPosition.x}% ${glowPosition.y}%, color-mix(in oklab, var(--accent) 35%, transparent), transparent 60%)`,
 					}}
 				/>
-				{/* Static ambient accent */}
-				<div className="absolute -right-16 -top-16 size-44 rounded-full bg-orange-500/60 blur-2xl" />
+				<div
+					className="pointer-events-none absolute inset-0 opacity-30"
+					style={{
+						backgroundImage:
+							"linear-gradient(color-mix(in oklab, var(--background) 8%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, var(--background) 8%, transparent) 1px, transparent 1px)",
+						backgroundSize: "32px 32px",
+					}}
+				/>
 				<div className="relative">{children}</div>
 			</Card>
 		</div>
@@ -70,36 +75,54 @@ function Home() {
 
 	return (
 		<AppShell>
-			<main className="mx-auto grid min-h-[calc(100vh-6rem)] w-full max-w-7xl items-center gap-8 px-5 py-10 lg:grid-cols-[1.15fr_0.85fr]">
-				<section>
-					<p className="mb-5 inline-flex rounded-full border border-stone-950 bg-amber-200 px-4 py-2 text-sm font-black uppercase tracking-[0.24em] text-stone-950 shadow-[4px_4px_0_#1d4ed8] dark:border-amber-200 dark:bg-amber-300">
+			<main className="mx-auto grid min-h-[calc(100vh-6rem)] w-full max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[1.15fr_0.85fr]">
+				<section className="animate-fade-up">
+					<p className="eyebrow inline-flex items-center gap-2 text-foreground">
+						<span
+							aria-hidden="true"
+							className="inline-block size-1.5 rounded-full bg-accent"
+						/>
 						{t("home.badge")}
 					</p>
-					<h1 className="max-w-4xl text-5xl font-black leading-[0.95] tracking-tight text-stone-950 dark:text-amber-50 sm:text-7xl">
+					<h1 className="mt-6 max-w-4xl font-display text-5xl leading-[1.02] tracking-[-0.025em] text-foreground sm:text-7xl">
 						{t("home.title")}
 					</h1>
-					<p className="mt-6 max-w-2xl text-lg leading-8 text-stone-700 dark:text-stone-300">
+					<p className="mt-7 max-w-xl text-lg leading-relaxed text-muted-foreground">
 						{t("home.description")}
 					</p>
-					<div className="mt-8 flex flex-wrap gap-3">
+					<div className="mt-9 flex flex-wrap gap-3">
 						<Link to="/admin">
-							<Button>{t("home.openAdmin")}</Button>
+							<Button size="lg">{t("home.openAdmin")}</Button>
 						</Link>
 						<a href="https://github.com/" rel="noreferrer">
-							<Button tone="secondary">{t("home.docs")}</Button>
+							<Button size="lg" tone="secondary">
+								{t("home.docs")}
+							</Button>
 						</a>
 					</div>
 				</section>
 
 				<TiltCard>
-					<p className="text-sm font-black uppercase tracking-[0.25em] text-amber-300">
+					<p className="eyebrow text-background/70">
 						{t("home.redirectModel")}
 					</p>
-					<ol className="mt-6 grid gap-4 text-base leading-7">
-						<li>1. {t("home.modelOne")}</li>
-						<li>2. {t("home.modelTwo")}</li>
-						<li>3. {t("home.modelThree")}</li>
-						<li>4. {t("home.modelFour")}</li>
+					<ol className="mt-6 grid gap-4 font-mono text-sm leading-7 text-background/90">
+						<li className="flex gap-4">
+							<span className="text-accent">01</span>
+							<span>{t("home.modelOne")}</span>
+						</li>
+						<li className="flex gap-4">
+							<span className="text-accent">02</span>
+							<span>{t("home.modelTwo")}</span>
+						</li>
+						<li className="flex gap-4">
+							<span className="text-accent">03</span>
+							<span>{t("home.modelThree")}</span>
+						</li>
+						<li className="flex gap-4">
+							<span className="text-accent">04</span>
+							<span>{t("home.modelFour")}</span>
+						</li>
 					</ol>
 				</TiltCard>
 			</main>

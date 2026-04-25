@@ -55,12 +55,12 @@ function NewLink() {
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
 				<Link
-					className="text-sm font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+					className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 					to="/admin"
 				>
 					{t("pages.backDashboard")}
 				</Link>
-				<h1 className="mt-4 text-4xl font-black">{t("pages.newLink")}</h1>
+				<h1 className="mt-4 text-4xl font-medium">{t("pages.newLink")}</h1>
 				{error ? (
 					<div className="mt-4">
 						<Notice tone="error">{t(error)}</Notice>
@@ -75,9 +75,7 @@ function NewLink() {
 						t={t}
 					/>
 				) : (
-					<p className="mt-6 text-stone-600 dark:text-stone-300">
-						{t("loading.dashboard")}
-					</p>
+					<p className="mt-6 text-muted-foreground">{t("loading.dashboard")}</p>
 				)}
 			</Card>
 		</div>

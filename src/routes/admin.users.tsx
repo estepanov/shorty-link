@@ -79,12 +79,12 @@ function UsersPage() {
 		<div className="mx-auto grid w-full max-w-7xl gap-6">
 			<Card>
 				<Link
-					className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
+					className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
 					to="/admin"
 				>
 					{t("pages.backDashboard")}
 				</Link>
-				<h1 className="mt-4 text-4xl font-black">{t("users.title")}</h1>
+				<h1 className="mt-4 text-4xl font-medium">{t("users.title")}</h1>
 				{error ? (
 					<div className="mt-4">
 						<Notice tone="error">{t(error)}</Notice>
@@ -93,7 +93,7 @@ function UsersPage() {
 			</Card>
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("users.active")}</h2>
+				<h2 className="text-2xl font-medium">{t("users.active")}</h2>
 				<div className="mt-5 grid gap-3">
 					{activeUsers.length ? (
 						activeUsers.map((u) => (
@@ -108,7 +108,7 @@ function UsersPage() {
 							/>
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyActive")}
 						</p>
 					)}
@@ -116,7 +116,7 @@ function UsersPage() {
 			</Card>
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("users.disabled")}</h2>
+				<h2 className="text-2xl font-medium">{t("users.disabled")}</h2>
 				<div className="mt-5 grid gap-3">
 					{disabledUsers.length ? (
 						disabledUsers.map((u) => (
@@ -131,7 +131,7 @@ function UsersPage() {
 							/>
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyDisabled")}
 						</p>
 					)}
@@ -139,25 +139,25 @@ function UsersPage() {
 			</Card>
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("users.invites")}</h2>
+				<h2 className="text-2xl font-medium">{t("users.invites")}</h2>
 				<div className="mt-5 grid gap-3">
 					{invitesWithStatus.length ? (
 						invitesWithStatus.map((invite) => (
 							<div
 								key={invite.id}
-								className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5"
+								className="rounded-md border border-border bg-card/60 p-4"
 							>
 								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 									<div>
-										<p className="font-black">{invite.email}</p>
-										<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+										<p className="font-medium">{invite.email}</p>
+										<p className="mt-1 text-sm text-muted-foreground">
 											<span
 												className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
 													invite.status === "pending"
 														? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
 														: invite.status === "accepted"
 															? "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
-															: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300"
+															: "bg-muted text-muted-foreground"
 												}`}
 											>
 												{t(
@@ -179,7 +179,7 @@ function UsersPage() {
 										{invite.inviteUrl ? (
 											<div className="mt-1 flex items-center gap-2">
 												<a
-													className="break-all text-xs text-blue-800 underline dark:text-blue-300"
+													className="break-all text-xs text-accent underline dark:text-accent"
 													href={invite.inviteUrl}
 												>
 													{invite.inviteUrl}
@@ -221,7 +221,7 @@ function UsersPage() {
 							</div>
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyInvites")}
 						</p>
 					)}
@@ -230,7 +230,7 @@ function UsersPage() {
 
 			{hasPermission("invites.manage") ? (
 				<Card>
-					<h2 className="text-2xl font-black">{t("actions.addInvite")}</h2>
+					<h2 className="text-2xl font-medium">{t("actions.addInvite")}</h2>
 					{createdInvite ? (
 						<div className="mt-4">
 							<Notice tone="success">
@@ -282,22 +282,22 @@ function UserRow({
 	user: AdminUser;
 }) {
 	return (
-		<div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+		<div className="rounded-md border border-border bg-card/60 p-4">
 			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 				<div className="flex-1">
-					<p className="font-black">
+					<p className="font-medium">
 						{u.name}{" "}
-						<span className="text-sm font-normal text-stone-600 dark:text-stone-300">
+						<span className="text-sm font-normal text-muted-foreground">
 							({u.email})
 						</span>
 					</p>
-					<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+					<p className="mt-1 text-sm text-muted-foreground">
 						{u.roleName} · {u.locale} ·{" "}
 						{new Date(u.createdAt).toLocaleDateString(locale)}
 					</p>
 					{roles.length > 0 ? (
 						<div className="mt-3 flex items-center gap-2">
-							<label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+							<label className="text-xs font-bold text-muted-foreground">
 								{t("users.role")}
 							</label>
 							<Select

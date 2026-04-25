@@ -87,7 +87,7 @@ function RoleDetailPage() {
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>
 					<Link
-						className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
+						className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
 						to="/admin/access/roles"
 					>
 						{t("pages.backDashboard")}
@@ -105,7 +105,7 @@ function RoleDetailPage() {
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>
 					<Link
-						className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
+						className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
 						to="/admin/access/roles"
 					>
 						{t("pages.backDashboard")}
@@ -127,23 +127,21 @@ function RoleDetailPage() {
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<div>
 						<Link
-							className="text-sm font-black text-blue-800 underline underline-offset-4 dark:text-blue-300"
+							className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
 							to="/admin/access/roles"
 						>
 							{t("pages.backDashboard")}
 						</Link>
-						<h1 className="mt-4 text-4xl font-black">
+						<h1 className="mt-4 text-4xl font-medium">
 							{role.name}
 							{role.isSystem ? (
-								<span className="ml-2 inline-flex rounded-full bg-stone-200 px-2 py-0.5 text-xs font-bold text-stone-700 dark:bg-stone-700 dark:text-stone-200">
+								<span className="ml-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
 									{t("roles.systemBadge")}
 								</span>
 							) : null}
 						</h1>
 						{role.description ? (
-							<p className="mt-2 text-stone-600 dark:text-stone-300">
-								{role.description}
-							</p>
+							<p className="mt-2 text-muted-foreground">{role.description}</p>
 						) : null}
 					</div>
 					<div className="flex gap-2">
@@ -160,18 +158,18 @@ function RoleDetailPage() {
 
 			{catalog && (
 				<Card>
-					<h2 className="text-2xl font-black">{t("roles.permissions")}</h2>
-					<p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+					<h2 className="text-2xl font-medium">{t("roles.permissions")}</h2>
+					<p className="mt-1 text-sm text-muted-foreground/80">
 						{role.permissions.length} of {catalog.permissions.length} enabled
 					</p>
 					<div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{Object.entries(PERMISSION_GROUPS).map(
 							([groupKey, groupPermissions]) => (
 								<div
-									className="rounded-2xl border border-stone-950/10 bg-white/50 p-3 dark:border-white/10 dark:bg-white/5"
+									className="rounded-md border border-foreground/10 bg-white/50 p-3 "
 									key={groupKey}
 								>
-									<p className="mb-3 text-xs font-black uppercase tracking-wide text-stone-700 dark:text-stone-300">
+									<p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
 										{t(`roles.permissionGroup.${groupKey}`)}
 									</p>
 									<div className="grid gap-2">
@@ -182,7 +180,7 @@ function RoleDetailPage() {
 													className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm ${
 														isEnabled
 															? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
-															: "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-500"
+															: "bg-muted text-muted-foreground/80 dark:bg-muted dark:text-muted-foreground/80"
 													}`}
 													key={perm}
 												>
@@ -190,7 +188,7 @@ function RoleDetailPage() {
 														className={`inline-flex h-2 w-2 shrink-0 rounded-full ${
 															isEnabled
 																? "bg-blue-500 dark:bg-blue-400"
-																: "bg-stone-300 dark:bg-stone-600"
+																: "bg-muted-foreground/30"
 														}`}
 													/>
 													<span className={isEnabled ? "font-medium" : ""}>
@@ -208,8 +206,8 @@ function RoleDetailPage() {
 			)}
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("roles.scopeDomains")}</h2>
-				<p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+				<h2 className="text-2xl font-medium">{t("roles.scopeDomains")}</h2>
+				<p className="mt-1 text-sm text-muted-foreground/80">
 					{role.domainScopeCount === 0
 						? t("roles.unrestricted")
 						: `${role.domainScopeCount} domains`}
@@ -217,8 +215,8 @@ function RoleDetailPage() {
 			</Card>
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("roles.scopeLinks")}</h2>
-				<p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+				<h2 className="text-2xl font-medium">{t("roles.scopeLinks")}</h2>
+				<p className="mt-1 text-sm text-muted-foreground/80">
 					{role.linkScopeCount === 0
 						? t("roles.unrestricted")
 						: `${role.linkScopeCount} links`}
@@ -226,7 +224,7 @@ function RoleDetailPage() {
 			</Card>
 
 			<Card>
-				<h2 className="text-2xl font-black">
+				<h2 className="text-2xl font-medium">
 					{t("users.active")} ({activeUsers.length})
 				</h2>
 				<div className="mt-5 grid gap-3">
@@ -235,7 +233,7 @@ function RoleDetailPage() {
 							<UserRow key={u.id} locale={locale} t={t} user={u} />
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyActive")}
 						</p>
 					)}
@@ -243,7 +241,7 @@ function RoleDetailPage() {
 			</Card>
 
 			<Card>
-				<h2 className="text-2xl font-black">
+				<h2 className="text-2xl font-medium">
 					{t("users.disabled")} ({disabledUsers.length})
 				</h2>
 				<div className="mt-5 grid gap-3">
@@ -252,7 +250,7 @@ function RoleDetailPage() {
 							<UserRow key={u.id} locale={locale} t={t} user={u} />
 						))
 					) : (
-						<p className="text-sm text-stone-600 dark:text-stone-300">
+						<p className="text-sm text-muted-foreground">
 							{t("users.emptyDisabled")}
 						</p>
 					)}
@@ -272,22 +270,22 @@ function UserRow({
 	user: AdminUser;
 }) {
 	return (
-		<div className="rounded-2xl border border-stone-950/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+		<div className="rounded-md border border-border bg-card/60 p-4">
 			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 				<div className="flex-1">
-					<p className="font-black">
+					<p className="font-medium">
 						{u.name}{" "}
-						<span className="text-sm font-normal text-stone-600 dark:text-stone-300">
+						<span className="text-sm font-normal text-muted-foreground">
 							({u.email})
 						</span>
 					</p>
-					<p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+					<p className="mt-1 text-sm text-muted-foreground">
 						{new Date(u.createdAt).toLocaleDateString(locale)}
 					</p>
 				</div>
 				<div>
 					<Link
-						className="text-sm font-bold text-blue-800 underline underline-offset-4 dark:text-blue-300"
+						className="text-sm font-bold text-accent underline underline-offset-4 dark:text-accent"
 						to="/admin/access/users"
 					>
 						{t("users.title")}

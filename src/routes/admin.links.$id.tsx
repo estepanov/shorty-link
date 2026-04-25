@@ -102,29 +102,27 @@ function LinkDetails() {
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<div>
 						<Link
-							className="text-sm font-black text-blue-800 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 dark:text-blue-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-stone-950 rounded"
+							className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
 							to="/admin/links"
 						>
 							{t("links.viewAll")}
 						</Link>
-						<h1 className="mt-4 text-4xl font-black tracking-tight">
+						<h1 className="mt-4 text-4xl font-medium tracking-tight">
 							{link.title ?? link.slug}
 						</h1>
-						<p className="mt-2 text-stone-700 dark:text-stone-300">
-							<span className="font-black">{hostLabel}</span>
+						<p className="mt-2 text-muted-foreground">
+							<span className="font-medium">{hostLabel}</span>
 							<span className="mx-2">/</span>
-							<span className="font-black">{link.slug}</span>
+							<span className="font-medium">{link.slug}</span>
 							<span className="mx-2">→</span>
 							<span className="break-all">{link.targetUrl}</span>
 						</p>
 						{link.notes ? (
-							<p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
-								{link.notes}
-							</p>
+							<p className="mt-2 text-sm text-muted-foreground">{link.notes}</p>
 						) : null}
 					</div>
 					<Link
-						className="inline-flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-black text-stone-900 transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800 dark:focus-visible:ring-white dark:focus-visible:ring-offset-stone-950"
+						className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border dark:text-white dark:hover:bg-muted "
 						params={{ id: link.id }}
 						to="/admin/links/$id/edit"
 					>
@@ -151,8 +149,8 @@ function LinkDetails() {
 
 			<Card>
 				<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-					<h2 className="text-2xl font-black">{t("stats.histogramTitle")}</h2>
-					<p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-600 dark:text-stone-300">
+					<h2 className="text-2xl font-medium">{t("stats.histogramTitle")}</h2>
+					<p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
 						{t("stats.lastDays").replace("{{days}}", String(stats.windowDays))}
 					</p>
 				</div>
@@ -173,11 +171,11 @@ function LinkDetails() {
 			</section>
 
 			<Card>
-				<h2 className="text-2xl font-black">{t("stats.recentTitle")}</h2>
+				<h2 className="text-2xl font-medium">{t("stats.recentTitle")}</h2>
 				<div className="mt-4 overflow-x-auto">
 					<table className="min-w-full text-left text-sm">
 						<thead>
-							<tr className="border-b border-stone-950/10 text-stone-600 dark:border-white/10 dark:text-stone-300">
+							<tr className="border-b border-foreground/10 text-muted-foreground ">
 								<th className="py-3">{t("table.when")}</th>
 								<th className="py-3">{t("table.country")}</th>
 								<th className="py-3">{t("stats.utmSource")}</th>
@@ -189,10 +187,7 @@ function LinkDetails() {
 						<tbody>
 							{stats.recentEvents.length ? (
 								stats.recentEvents.map((event) => (
-									<tr
-										className="border-b border-stone-950/5 dark:border-white/5"
-										key={event.id}
-									>
+									<tr className="border-b border-border/60" key={event.id}>
 										<td className="py-3">
 											{new Date(event.createdAt).toLocaleString(locale)}
 										</td>
@@ -210,7 +205,7 @@ function LinkDetails() {
 							) : (
 								<tr>
 									<td
-										className="py-5 text-sm text-stone-600 dark:text-stone-300"
+										className="py-5 text-sm text-muted-foreground"
 										colSpan={6}
 									>
 										{t("stats.noEvents")}
@@ -236,10 +231,10 @@ function Stat({
 }) {
 	return (
 		<Card>
-			<p className="text-xs font-black uppercase tracking-[0.2em] text-stone-600 dark:text-stone-300">
+			<p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
 				{label}
 			</p>
-			<p className="mt-2 text-4xl font-black text-stone-950 dark:text-amber-50">
+			<p className="mt-2 text-4xl font-medium text-foreground">
 				{text ?? value ?? 0}
 			</p>
 		</Card>
@@ -285,14 +280,14 @@ function Histogram({
 							title={`${dayFormatter.format(new Date(bucket.day))} · ${bucket.total}`}
 						>
 							<div
-								className="w-full rounded-t-md bg-stone-950 transition dark:bg-amber-200"
+								className="w-full rounded-t-md bg-foreground transition"
 								style={{ height: `${height}px` }}
 							/>
 						</div>
 					);
 				})}
 			</div>
-			<div className="mt-2 flex justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-stone-600 dark:text-stone-300">
+			<div className="mt-2 flex justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 				<span>{dayFormatter.format(new Date(firstBucket.day))}</span>
 				<span>{dayFormatter.format(new Date(lastBucket.day))}</span>
 			</div>
@@ -315,7 +310,7 @@ function UtmBreakdown({
 }) {
 	return (
 		<Card>
-			<h3 className="text-lg font-black">{title}</h3>
+			<h3 className="text-lg font-medium">{title}</h3>
 			<div className="mt-4 grid gap-2">
 				{rows.length ? (
 					rows.map((row) => {
@@ -331,9 +326,7 @@ function UtmBreakdown({
 						);
 					})
 				) : (
-					<p className="text-sm text-stone-600 dark:text-stone-300">
-						{t("stats.noEvents")}
-					</p>
+					<p className="text-sm text-muted-foreground">{t("stats.noEvents")}</p>
 				)}
 			</div>
 		</Card>
@@ -353,13 +346,13 @@ function BreakdownRow({
 		<div className="grid gap-1">
 			<div className="flex items-center justify-between gap-3 text-sm">
 				<span className="truncate font-bold">{label}</span>
-				<span className="font-black text-stone-900 dark:text-amber-100">
+				<span className="font-medium text-foreground dark:text-background">
 					{total} · {pct}%
 				</span>
 			</div>
-			<div className="h-2 w-full overflow-hidden rounded-full bg-stone-950/10 dark:bg-white/10">
+			<div className="h-2 w-full overflow-hidden rounded-full bg-foreground/10 dark:bg-white/10">
 				<div
-					className="h-full bg-stone-950 dark:bg-amber-200"
+					className="h-full bg-foreground"
 					style={{ width: `${Math.max(2, pct)}%` }}
 				/>
 			</div>
