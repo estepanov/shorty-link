@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -65,6 +65,8 @@ export function AppShell({
 	const t = useText(locale);
 	const { data: session, isPending } = authClient.useSession();
 	const { hasPermission } = useAuthContext();
+	const location = useLocation();
+	const [menuOpen, setMenuOpen] = useState(false);
 
 	async function handleSignOut() {
 		const api = getTreaty();
@@ -80,6 +82,44 @@ export function AppShell({
 		hasPermission("sessions.manage") ||
 		hasPermission("apikeys.manage") ||
 		hasPermission("roles.manage");
+
+	// Close mobile menu on navigation.
+	useEffect(() => {
+		setMenuOpen(false);
+	}, [location.pathname]);
+
+	// Close on Escape; lock body scroll while open.
+	useEffect(() => {
+		if (!menuOpen) return;
+		function onKey(event: KeyboardEvent) {
+			if (event.key === "Escape") setMenuOpen(false);
+		}
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+		window.addEventListener("keydown", onKey);
+		return () => {
+			window.removeEventListener("keydown", onKey);
+			document.body.style.overflow = previousOverflow;
+		};
+	}, [menuOpen]);
+
+	const navLinks = session ? (
+		<>
+			<HeaderLink to="/admin" activeOptions={{ exact: true }}>
+				{t("nav.dashboard")}
+			</HeaderLink>
+			{showLinks ? (
+				<HeaderLink to="/admin/links">{t("nav.shortLinks")}</HeaderLink>
+			) : null}
+			{showDomains ? (
+				<HeaderLink to="/admin/domains">{t("nav.domains")}</HeaderLink>
+			) : null}
+			{showAccess ? (
+				<HeaderLink to="/admin/access">{t("nav.access")}</HeaderLink>
+			) : null}
+			<HeaderLink to="/admin/profile">{t("nav.profile")}</HeaderLink>
+		</>
+	) : null;
 
 	return (
 		<div className="min-h-screen text-foreground">
@@ -106,36 +146,21 @@ export function AppShell({
 						<ThemeToggle t={t} />
 						{isPending ? null : session ? (
 							<>
-								<div className="hidden items-center gap-0.5 sm:flex">
-									<HeaderLink to="/admin" activeOptions={{ exact: true }}>
-										{t("nav.dashboard")}
-									</HeaderLink>
-									{showLinks ? (
-										<HeaderLink to="/admin/links">
-											{t("nav.shortLinks")}
-										</HeaderLink>
-									) : null}
-									{showDomains ? (
-										<HeaderLink to="/admin/domains">
-											{t("nav.domains")}
-										</HeaderLink>
-									) : null}
-									{showAccess ? (
-										<HeaderLink to="/admin/access">
-											{t("nav.access")}
-										</HeaderLink>
-									) : null}
-									<HeaderLink to="/admin/profile">
-										{t("nav.profile")}
-									</HeaderLink>
+								<div className="hidden items-center gap-0.5 md:flex">
+									{navLinks}
 								</div>
 								<button
 									type="button"
 									onClick={handleSignOut}
-									className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+									className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inline-flex"
 								>
 									{t("nav.signOut")}
 								</button>
+								<MenuToggle
+									open={menuOpen}
+									onToggle={() => setMenuOpen((prev) => !prev)}
+									label={menuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
+								/>
 							</>
 						) : (
 							<HeaderLink to="/admin">{t("nav.signIn")}</HeaderLink>
@@ -143,7 +168,137 @@ export function AppShell({
 					</nav>
 				</div>
 			</header>
+			{session ? (
+				<MobileMenu
+					open={menuOpen}
+					onDismiss={() => setMenuOpen(false)}
+					onSignOut={handleSignOut}
+					signOutLabel={t("nav.signOut")}
+					navLabel={t("nav.label")}
+				>
+					{navLinks}
+				</MobileMenu>
+			) : null}
 			{children}
+		</div>
+	);
+}
+
+function MenuToggle({
+	open,
+	onToggle,
+	label,
+}: {
+	open: boolean;
+	onToggle: () => void;
+	label: string;
+}) {
+	return (
+		<button
+			type="button"
+			aria-label={label}
+			aria-expanded={open}
+			aria-controls="app-mobile-menu"
+			onClick={onToggle}
+			className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-card-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:hidden"
+		>
+			<span className="sr-only">{label}</span>
+			<svg
+				aria-hidden="true"
+				className="size-4"
+				fill="none"
+				stroke="currentColor"
+				strokeWidth={1.75}
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				viewBox="0 0 24 24"
+			>
+				{open ? (
+					<>
+						<path d="M6 6l12 12" />
+						<path d="M18 6L6 18" />
+					</>
+				) : (
+					<>
+						<path d="M3 7h18" />
+						<path d="M3 12h18" />
+						<path d="M3 17h18" />
+					</>
+				)}
+			</svg>
+		</button>
+	);
+}
+
+function MobileMenu({
+	open,
+	onDismiss,
+	onSignOut,
+	signOutLabel,
+	navLabel,
+	children,
+}: {
+	open: boolean;
+	onDismiss: () => void;
+	onSignOut: () => void | Promise<void>;
+	signOutLabel: string;
+	navLabel: string;
+	children: ReactNode;
+}) {
+	return (
+		<div
+			id="app-mobile-menu"
+			className={cn(
+				"fixed inset-0 z-40 md:hidden",
+				open ? "pointer-events-auto" : "pointer-events-none",
+			)}
+			aria-hidden={!open}
+		>
+			<button
+				type="button"
+				tabIndex={open ? 0 : -1}
+				aria-label="Dismiss menu"
+				onClick={onDismiss}
+				className={cn(
+					"absolute inset-0 bg-background/60 backdrop-blur-sm transition-opacity duration-200",
+					open ? "opacity-100" : "opacity-0",
+				)}
+			/>
+			<nav
+				aria-label={navLabel}
+				className={cn(
+					"absolute inset-x-3 top-[calc(4rem+0.5rem)] origin-top rounded-xl border border-border bg-card p-3 shadow-lg transition-all duration-200",
+					open
+						? "translate-y-0 opacity-100 scale-100"
+						: "-translate-y-2 opacity-0 scale-[0.98]",
+				)}
+			>
+				<div className="grid gap-0.5">{children}</div>
+				<hr className="rule my-3" />
+				<button
+					type="button"
+					onClick={() => {
+						void onSignOut();
+					}}
+					className="inline-flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+				>
+					<span>{signOutLabel}</span>
+					<svg
+						aria-hidden="true"
+						className="size-4"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth={1.75}
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						viewBox="0 0 24 24"
+					>
+						<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+						<path d="M16 17l5-5-5-5" />
+						<path d="M21 12H9" />
+					</svg>
+				</button>
+			</nav>
 		</div>
 	);
 }
@@ -207,7 +362,7 @@ function HeaderLink({
 				className: "text-foreground bg-muted",
 			}}
 			activeOptions={activeOptions ?? { exact: false }}
-			className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+			className="block rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:py-2"
 		>
 			{children}
 		</Link>
