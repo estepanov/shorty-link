@@ -370,6 +370,172 @@ function HeaderLink({
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Tabs                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export type TabItem = {
+	to: string;
+	label: ReactNode;
+	exact?: boolean;
+};
+
+export function Tabs({
+	items,
+	ariaLabel,
+	className,
+}: {
+	items: TabItem[];
+	ariaLabel?: string;
+	className?: string;
+}) {
+	if (items.length === 0) return null;
+	return (
+		<nav
+			aria-label={ariaLabel}
+			className={cn("-mx-1 overflow-x-auto px-1", className)}
+		>
+			<div
+				role="tablist"
+				className="inline-flex w-fit min-w-full gap-1 rounded-md border border-border bg-card/60 p-1"
+			>
+				{items.map((tab) => (
+					<Link
+						key={tab.to}
+						to={tab.to}
+						role="tab"
+						activeOptions={{ exact: tab.exact ?? true }}
+						activeProps={{
+							className:
+								"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground shadow-sm",
+							"aria-selected": "true",
+						}}
+						inactiveProps={{ "aria-selected": "false" }}
+						className="whitespace-nowrap rounded-sm px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+					>
+						{tab.label}
+					</Link>
+				))}
+			</div>
+		</nav>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  PageHeader                                                                */
+/* -------------------------------------------------------------------------- */
+
+export function PageHeader({
+	title,
+	description,
+	actions,
+}: {
+	title: ReactNode;
+	description?: ReactNode;
+	actions?: ReactNode;
+}) {
+	return (
+		<Card>
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+				<div className="min-w-0 flex-1">
+					<h1 className="font-display text-4xl tracking-tight">{title}</h1>
+					{description ? (
+						<p className="mt-2 max-w-2xl text-muted-foreground">
+							{description}
+						</p>
+					) : null}
+				</div>
+				{actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+			</div>
+		</Card>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  DataRow                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Hairline list-row container. The chrome only — composition (flex layout,
+ * stacked content, action buttons on the right) is left to the caller.
+ */
+export function DataRow({
+	children,
+	className,
+	tone = "default",
+	...rest
+}: React.HTMLAttributes<HTMLDivElement> & {
+	tone?: "default" | "muted";
+}) {
+	const tones = {
+		default: "border-border bg-card/60",
+		muted: "border-transparent bg-muted/40",
+	} as const;
+
+	return (
+		<div
+			{...rest}
+			className={cn(
+				"rounded-md border p-4 transition-colors",
+				tones[tone],
+				className,
+			)}
+		>
+			{children}
+		</div>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  EmptyState                                                                */
+/* -------------------------------------------------------------------------- */
+
+export function EmptyState({
+	title,
+	description,
+	action,
+	compact = false,
+	className,
+}: {
+	title?: ReactNode;
+	description?: ReactNode;
+	action?: ReactNode;
+	compact?: boolean;
+	className?: string;
+}) {
+	const isText = description == null && action == null && title != null;
+
+	return (
+		<div
+			role="status"
+			className={cn(
+				"rounded-md border border-border bg-card/60 text-muted-foreground",
+				compact ? "p-4 text-sm" : "p-8 text-center",
+				isText && !compact ? "text-sm" : null,
+				className,
+			)}
+		>
+			{title ? (
+				<p
+					className={cn(
+						isText ? "" : "font-display text-lg tracking-tight text-foreground",
+					)}
+				>
+					{title}
+				</p>
+			) : null}
+			{description ? (
+				<p className={cn("mx-auto max-w-md text-sm", title ? "mt-1.5" : "")}>
+					{description}
+				</p>
+			) : null}
+			{action ? (
+				<div className="mt-4 flex flex-wrap justify-center gap-2">{action}</div>
+			) : null}
+		</div>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Card                                                                      */
 /* -------------------------------------------------------------------------- */
 

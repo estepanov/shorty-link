@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { LinkForm } from "@/components/admin-forms";
@@ -14,19 +14,28 @@ export const Route = createFileRoute("/admin/links/new")({
 function NewLink() {
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("links.write");
+	const {
+		hasPermission,
+		isAuthorized,
+		isPending: isPermissionPending,
+	} = useRequirePermission("links.write");
 	const [domains, setDomains] = useState<AdminDomain[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const canViewDomains = hasPermission("domains.read");
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: re-fetch only when the authenticated user identity changes.
 	useEffect(() => {
-		if (!session) {
+		if (!session || isPermissionPending || !isAuthorized) {
 			return;
 		}
 
 		async function loadDomains() {
 			setError(null);
 			try {
+				if (!canViewDomains) {
+					setDomains([]);
+					return;
+				}
 				const api = getTreaty();
 				setDomains(await unwrap<AdminDomain[]>(await api.admin.domains.get()));
 			} catch (nextError) {
@@ -37,9 +46,9 @@ function NewLink() {
 		}
 
 		void loadDomains();
-	}, [session?.user.id]);
+	}, [canViewDomains, isAuthorized, isPermissionPending, session?.user.id]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 
@@ -54,13 +63,7 @@ function NewLink() {
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
-				<Link
-					className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-					to="/admin"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<h1 className="mt-4 text-4xl font-medium">{t("pages.newLink")}</h1>
+				<h1 className="text-4xl font-medium">{t("pages.newLink")}</h1>
 				{error ? (
 					<div className="mt-4">
 						<Notice tone="error">{t(error)}</Notice>

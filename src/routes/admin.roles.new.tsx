@@ -75,13 +75,7 @@ function NewRole() {
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card className="rounded-xl border-foreground/10 bg-card/60 p-6 shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur dark:bg-foreground/70 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)]">
-				<Link
-					className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-					to="/admin/access/roles"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<h1 className="mt-4 text-4xl font-medium">{t("pages.newRole")}</h1>
+				<h1 className="text-4xl font-medium">{t("pages.newRole")}</h1>
 				{catalog ? (
 					<RoleCreateForm
 						catalog={catalog}

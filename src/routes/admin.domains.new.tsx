@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 
 import { DomainForm } from "@/components/admin-forms";
 import { Card, Notice } from "@/components/ui";
@@ -28,13 +28,7 @@ function NewDomain() {
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
-				<Link
-					className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-					to="/admin"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<h1 className="mt-4 text-4xl font-medium">{t("pages.newDomain")}</h1>
+				<h1 className="text-4xl font-medium">{t("pages.newDomain")}</h1>
 				<DomainForm
 					onSaved={() => {
 						void router.navigate({ to: "/admin" });

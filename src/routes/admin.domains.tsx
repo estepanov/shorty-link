@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import {
 	Button,
 	Card,
+	DataRow,
+	EmptyState,
 	FieldLabel,
 	Input,
 	Notice,
@@ -35,9 +37,6 @@ const defaultFilters: DomainFilters = {
 	pageSize: 25,
 	search: "",
 };
-
-const cardClass =
-	"rounded-xl border-foreground/10 bg-card/60 p-6 shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur dark:bg-foreground/70 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)]";
 
 function DomainList() {
 	const location = useLocation();
@@ -85,7 +84,7 @@ function DomainList() {
 	}
 
 	if (isPending) {
-		return <Card className={cardClass}>{t("loading.app")}</Card>;
+		return <Card>{t("loading.app")}</Card>;
 	}
 
 	if (!session) {
@@ -121,16 +120,10 @@ function DomainList() {
 
 	return (
 		<div className="mx-auto grid w-full max-w-7xl gap-6">
-			<Card className={cardClass}>
+			<Card>
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<div>
-						<Link
-							className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-							to="/admin"
-						>
-							{t("pages.backDashboard")}
-						</Link>
-						<h1 className="mt-4 text-4xl font-medium">{t("domains.title")}</h1>
+						<h1 className="text-4xl font-medium">{t("domains.title")}</h1>
 					</div>
 					<Link
 						className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -222,7 +215,7 @@ function DomainList() {
 				) : null}
 			</Card>
 
-			<Card className={cardClass}>
+			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
 					<p className="text-sm font-bold text-muted-foreground">
 						{t("domains.showing")} {firstItem}-{lastItem} {t("links.of")}{" "}
@@ -254,9 +247,7 @@ function DomainList() {
 						<DomainRow key={domain.id} domain={domain} t={t} />
 					))}
 					{!paginated.length ? (
-						<p className="rounded-md border border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-							{t("dashboard.noDomains")}
-						</p>
+						<EmptyState description={t("dashboard.noDomains")} />
 					) : null}
 				</div>
 			</Card>
@@ -272,7 +263,7 @@ function DomainRow({
 	t: ReturnType<typeof createTranslator>;
 }) {
 	return (
-		<div className="rounded-md border border-border bg-card/60 p-4">
+		<DataRow>
 			<div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">
@@ -284,15 +275,12 @@ function DomainRow({
 								{t("domains.primary")}
 							</span>
 						) : null}
-						<span
-							className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
-								domain.isActive
-									? "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
-									: "bg-muted text-muted-foreground"
-							}`}
-						>
-							{domain.isActive ? t("domains.active") : t("domains.inactive")}
-						</span>
+						<StatusBadge
+							label={
+								domain.isActive ? t("domains.active") : t("domains.inactive")
+							}
+							variant={domain.isActive ? "green" : "stone"}
+						/>
 					</div>
 					{domain.label ? (
 						<div className="mt-2 text-sm text-muted-foreground">
@@ -310,6 +298,28 @@ function DomainRow({
 					</Link>
 				</div>
 			</div>
-		</div>
+		</DataRow>
+	);
+}
+
+function StatusBadge({
+	label,
+	variant,
+}: {
+	label: string;
+	variant: "green" | "stone";
+}) {
+	const variants = {
+		green:
+			"bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100",
+		stone: "bg-muted text-muted-foreground",
+	} as const;
+
+	return (
+		<span
+			className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${variants[variant]}`}
+		>
+			{label}
+		</span>
 	);
 }

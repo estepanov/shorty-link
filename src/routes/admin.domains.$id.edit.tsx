@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { DomainForm } from "@/components/admin-forms";
@@ -57,13 +57,7 @@ function EditDomain() {
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
-				<Link
-					className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-					to="/admin"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<h1 className="text-4xl font-medium">{t("pages.editDomain")}</h1>
 					<Button
 						onClick={async () => {

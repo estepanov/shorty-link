@@ -1,13 +1,15 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { AccountTabs } from "@/components/account-tabs";
 import {
 	Button,
 	Card,
 	FieldLabel,
 	Input,
 	Notice,
+	PageHeader,
 	Select,
 } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
@@ -21,7 +23,7 @@ export const Route = createFileRoute("/admin/profile")({
 
 function Profile() {
 	const { session, isPending, locale, refetch, t } = useAdminAuthGuard();
-	const { authContext, hasPermission } = useAuthContext();
+	const { authContext } = useAuthContext();
 	const [notice, setNotice] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
@@ -60,135 +62,157 @@ function Profile() {
 	}, [locale, session?.user.email, session?.user.id, session?.user.name]);
 
 	if (isPending) {
-		return <Card>{t("loading.app")}</Card>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Card>{t("loading.app")}</Card>
+			</div>
+		);
 	}
 
 	if (!session) {
-		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Notice tone="error">{t("errors.unauthorized")}</Notice>
+			</div>
+		);
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-3xl">
-			<Card>
-				<h1 className="text-4xl font-medium">{t("profile.title")}</h1>
-				<form
-					className="mt-8 grid gap-4"
-					onSubmit={(event) => {
-						event.preventDefault();
-						event.stopPropagation();
-						void form.handleSubmit();
-					}}
-				>
-					<form.Field name="name">
-						{(field) => (
-							<FieldLabel>
-								{t("forms.name")}
-								<Input
-									onChange={(event) => field.handleChange(event.target.value)}
-									required
-									value={field.state.value}
-								/>
-							</FieldLabel>
-						)}
-					</form.Field>
-					<form.Field name="email">
-						{(field) => (
-							<FieldLabel>
-								{t("forms.email")}
-								<Input
-									onChange={(event) => field.handleChange(event.target.value)}
-									required
-									type="email"
-									value={field.state.value}
-								/>
-							</FieldLabel>
-						)}
-					</form.Field>
-					<form.Field name="locale">
-						{(field) => (
-							<FieldLabel>
-								{t("forms.locale")}
-								<Select
-									onChange={(event) => field.handleChange(event.target.value)}
-									value={field.state.value}
-								>
-									{supportedLocales.map((option) => (
-										<option key={option} value={option}>
-											{option.toUpperCase()}
-										</option>
-									))}
-								</Select>
-							</FieldLabel>
-						)}
-					</form.Field>
-					<Button type="submit">{t("forms.save")}</Button>
-				</form>
-				{notice ? (
-					<div className="mt-4">
-						<Notice tone="success">{t(notice)}</Notice>
-					</div>
-				) : null}
-				{error ? (
-					<div className="mt-4">
-						<Notice tone="error">{t(error)}</Notice>
-					</div>
-				) : null}
-				{authContext ? (
-					<div className="mt-8 border-t border-border pt-6">
-						<h2 className="text-xl font-medium">{authContext.role.name}</h2>
-						{authContext.role.isSystem ? (
-							<span className="mt-1 inline-block rounded-lg border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-								{t("roles.systemBadge")}
-							</span>
-						) : null}
-						<ul className="mt-4 grid gap-1 text-sm">
-							{Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
-								<li key={group}>
-									<span className="font-bold text-muted-foreground">
-										{t(`roles.permissionGroup.${group}`)}
-									</span>
-									<ul className="ml-4 list-disc text-muted-foreground/80">
-										{permissions.map((perm) => (
-											<li key={perm}>
-												<span
-													className={
-														authContext.permissions.includes(perm)
-															? ""
-															: "line-through opacity-40"
-													}
-												>
-													{t(`permissions.${perm}`)}
-												</span>
-											</li>
+		<div className="mx-auto grid w-full max-w-7xl gap-6">
+			<PageHeader
+				title={t("profile.title")}
+				description={t("profile.description")}
+			/>
+			<AccountTabs locale={locale} />
+
+			<div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+				<Card>
+					<h2 className="font-display text-2xl tracking-tight">
+						{t("profile.identity")}
+					</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						{t("profile.identityDescription")}
+					</p>
+					<form
+						className="mt-6 grid gap-4"
+						onSubmit={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							void form.handleSubmit();
+						}}
+					>
+						<form.Field name="name">
+							{(field) => (
+								<FieldLabel>
+									{t("forms.name")}
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										required
+										value={field.state.value}
+									/>
+								</FieldLabel>
+							)}
+						</form.Field>
+						<form.Field name="email">
+							{(field) => (
+								<FieldLabel>
+									{t("forms.email")}
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										required
+										type="email"
+										value={field.state.value}
+									/>
+								</FieldLabel>
+							)}
+						</form.Field>
+						<form.Field name="locale">
+							{(field) => (
+								<FieldLabel>
+									{t("forms.locale")}
+									<Select
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									>
+										{supportedLocales.map((option) => (
+											<option key={option} value={option}>
+												{option.toUpperCase()}
+											</option>
 										))}
-									</ul>
-								</li>
+									</Select>
+								</FieldLabel>
+							)}
+						</form.Field>
+						<div className="flex justify-end">
+							<Button type="submit">{t("forms.save")}</Button>
+						</div>
+					</form>
+					{notice ? (
+						<div className="mt-4">
+							<Notice tone="success">{t(notice)}</Notice>
+						</div>
+					) : null}
+					{error ? (
+						<div className="mt-4">
+							<Notice tone="error">{t(error)}</Notice>
+						</div>
+					) : null}
+				</Card>
+
+				{authContext ? (
+					<Card>
+						<p className="eyebrow">{t("profile.role")}</p>
+						<div className="mt-2 flex flex-wrap items-center gap-2">
+							<h2 className="font-display text-2xl tracking-tight">
+								{authContext.role.name}
+							</h2>
+							{authContext.role.isSystem ? (
+								<span className="inline-block rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+									{t("roles.systemBadge")}
+								</span>
+							) : null}
+						</div>
+						<hr className="rule my-5" />
+						<dl className="grid gap-4 text-sm">
+							{Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
+								<div key={group}>
+									<dt className="eyebrow text-foreground">
+										{t(`roles.permissionGroup.${group}`)}
+									</dt>
+									<dd>
+										<ul className="mt-2 grid gap-1">
+											{permissions.map((perm) => {
+												const granted = authContext.permissions.includes(perm);
+												return (
+													<li className="flex items-center gap-2" key={perm}>
+														<span
+															aria-hidden="true"
+															className={
+																granted
+																	? "inline-block size-1.5 rounded-full bg-success"
+																	: "inline-block size-1.5 rounded-full bg-muted-foreground/40"
+															}
+														/>
+														<span
+															className={
+																granted
+																	? "text-foreground"
+																	: "text-muted-foreground/70 line-through"
+															}
+														>
+															{t(`permissions.${perm}`)}
+														</span>
+													</li>
+												);
+											})}
+										</ul>
+									</dd>
+								</div>
 							))}
-						</ul>
-					</div>
+						</dl>
+					</Card>
 				) : null}
-				{(hasPermission("sessions.manage") ||
-					hasPermission("apikeys.manage")) && (
-					<div className="mt-8 flex flex-wrap gap-3 border-t border-border pt-6">
-						{hasPermission("sessions.manage") ? (
-							<Link
-								className="text-sm font-bold text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-								to="/admin/sessions"
-							>
-								{t("nav.sessions")}
-							</Link>
-						) : null}
-						{hasPermission("apikeys.manage") ? (
-							<Link
-								className="text-sm font-bold text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-								to="/admin/api-keys"
-							>
-								{t("nav.apiKeys")}
-							</Link>
-						) : null}
-					</div>
-				)}
-			</Card>
+			</div>
 		</div>
 	);
 }

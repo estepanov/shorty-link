@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import {
 	Button,
 	Card,
+	DataRow,
+	EmptyState,
 	FieldLabel,
 	Input,
 	Notice,
@@ -48,7 +50,11 @@ const defaultFilters: LinkFilters = {
 function LinksList() {
 	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("links.read");
+	const {
+		hasPermission,
+		isAuthorized,
+		isPending: isPermissionPending,
+	} = useRequirePermission("links.read");
 	const [domains, setDomains] = useState<AdminDomain[]>([]);
 	const [data, setData] = useState<LinkListData | null>(null);
 	const [filters, setFilters] = useState<LinkFilters>(defaultFilters);
@@ -57,6 +63,7 @@ function LinksList() {
 	const isLinksListRoute =
 		location.pathname === "/admin/links" ||
 		location.pathname === "/admin/links/";
+	const canViewDomains = hasPermission("domains.read");
 	const form = useForm({
 		defaultValues: filters,
 		onSubmit: ({ value }) => {
@@ -67,7 +74,7 @@ function LinksList() {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: re-fetch only when filters, page, route, or the authenticated user identity change.
 	useEffect(() => {
-		if (!session || !isLinksListRoute) {
+		if (!session || !isLinksListRoute || isPermissionPending || !isAuthorized) {
 			return;
 		}
 
@@ -75,21 +82,21 @@ function LinksList() {
 			setError(null);
 			try {
 				const api = getTreaty();
-				const [nextDomains, nextData] = await Promise.all([
-					unwrap<AdminDomain[]>(await api.admin.domains.get()),
-					unwrap<LinkListData>(
-						await api.admin.links.get({
-							query: {
-								active: filters.active,
-								hostname: filters.hostname,
-								page,
-								pageSize: filters.pageSize,
-								search: filters.search,
-								statusCode: parseRedirectStatusCodeFilter(filters.statusCode),
-							},
-						}),
-					),
-				]);
+				const nextData = await unwrap<LinkListData>(
+					await api.admin.links.get({
+						query: {
+							active: filters.active,
+							hostname: filters.hostname,
+							page,
+							pageSize: filters.pageSize,
+							search: filters.search,
+							statusCode: parseRedirectStatusCodeFilter(filters.statusCode),
+						},
+					}),
+				);
+				const nextDomains = canViewDomains
+					? await unwrap<AdminDomain[]>(await api.admin.domains.get())
+					: [];
 				setDomains(nextDomains);
 				setData(nextData);
 			} catch (nextError) {
@@ -100,13 +107,21 @@ function LinksList() {
 		}
 
 		void refresh();
-	}, [filters, isLinksListRoute, page, session?.user.id]);
+	}, [
+		canViewDomains,
+		filters,
+		isAuthorized,
+		isLinksListRoute,
+		isPermissionPending,
+		page,
+		session?.user.id,
+	]);
 
 	if (!isLinksListRoute) {
 		return <Outlet />;
 	}
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 
@@ -127,13 +142,7 @@ function LinksList() {
 			<Card>
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<div>
-						<Link
-							className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-							to="/admin"
-						>
-							{t("pages.backDashboard")}
-						</Link>
-						<h1 className="mt-4 text-4xl font-medium">{t("links.title")}</h1>
+						<h1 className="text-4xl font-medium">{t("links.title")}</h1>
 					</div>
 					<Link
 						className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -297,9 +306,7 @@ function LinksList() {
 						<LinkRow key={link.id} link={link} locale={locale} t={t} />
 					))}
 					{!data?.items.length ? (
-						<p className="rounded-md border border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
-							{t("dashboard.noLinks")}
-						</p>
+						<EmptyState description={t("dashboard.noLinks")} />
 					) : null}
 				</div>
 			</Card>
@@ -317,7 +324,7 @@ function LinkRow({
 	t: ReturnType<typeof createTranslator>;
 }) {
 	return (
-		<div className="rounded-md border border-border bg-card/60 p-4">
+		<DataRow>
 			<div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">
@@ -385,7 +392,7 @@ function LinkRow({
 					</Link>
 				</div>
 			</div>
-		</div>
+		</DataRow>
 	);
 }
 

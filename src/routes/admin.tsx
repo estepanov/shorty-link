@@ -14,6 +14,8 @@ import {
 	AppShell,
 	Button,
 	Card,
+	DataRow,
+	EmptyState,
 	FieldLabel,
 	Input,
 	Notice,
@@ -603,10 +605,7 @@ function DashboardView({
 									<div className="mt-5 grid gap-3">
 										{data.domains.length ? (
 											data.domains.map((domain) => (
-												<div
-													className="rounded-md border border-border bg-card/60 p-4"
-													key={domain.id}
-												>
+												<DataRow key={domain.id}>
 													<div className="flex items-start justify-between gap-3">
 														<div>
 															<p className="font-medium">{domain.hostname}</p>
@@ -625,12 +624,13 @@ function DashboardView({
 															{t("forms.update")}
 														</ActionLink>
 													</div>
-												</div>
+												</DataRow>
 											))
 										) : (
-											<p className="rounded-md border border-border bg-card/60 p-4 text-sm text-muted-foreground">
-												{t("dashboard.noDomains")}
-											</p>
+											<EmptyState
+												compact
+												description={t("dashboard.noDomains")}
+											/>
 										)}
 									</div>
 								</Card>
@@ -649,8 +649,8 @@ function DashboardView({
 									<div className="mt-5 grid gap-3">
 										{data.invites.length ? (
 											data.invites.map((invite) => (
-												<div
-													className="flex items-start justify-between gap-3 rounded-md border border-border bg-card/60 p-4"
+												<DataRow
+													className="flex items-start justify-between gap-3"
 													key={invite.id}
 												>
 													<div className="break-all text-sm">
@@ -676,12 +676,13 @@ function DashboardView({
 														copiedLabel={t("actions.copied")}
 														text={invite.inviteUrl}
 													/>
-												</div>
+												</DataRow>
 											))
 										) : (
-											<p className="rounded-md border border-border bg-card/60 p-4 text-sm text-muted-foreground">
-												{t("dashboard.noInvites")}
-											</p>
+											<EmptyState
+												compact
+												description={t("dashboard.noInvites")}
+											/>
 										)}
 									</div>
 								</Card>

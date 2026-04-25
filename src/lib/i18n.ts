@@ -19,6 +19,7 @@ export const messages = {
 		"nav.label": "Admin navigation",
 		"nav.openMenu": "Open menu",
 		"nav.closeMenu": "Close menu",
+		"nav.account": "Account navigation",
 		"actions.addDomain": "Add managed site",
 		"actions.addInvite": "Add invite",
 		"actions.addLink": "Add short link",
@@ -130,6 +131,12 @@ export const messages = {
 		"links.viewAll": "View all",
 		"profile.saved": "Saved.",
 		"profile.title": "Profile",
+		"profile.description":
+			"Manage your account, the devices signed into it, and the keys that talk to the API on your behalf.",
+		"profile.identity": "Identity",
+		"profile.identityDescription":
+			"Your name, email, and preferred language. Email is used for sign-in.",
+		"profile.role": "Role",
 		"sessions.title": "Sessions",
 		"sessions.description":
 			"Review active sessions and revoke devices you no longer use.",
@@ -311,6 +318,7 @@ export const messages = {
 		"nav.label": "Navegacion de admin",
 		"nav.openMenu": "Abrir menu",
 		"nav.closeMenu": "Cerrar menu",
+		"nav.account": "Navegacion de cuenta",
 		"actions.addDomain": "Agregar sitio",
 		"actions.addInvite": "Agregar invitacion",
 		"actions.addLink": "Agregar link corto",
@@ -422,6 +430,12 @@ export const messages = {
 		"links.viewAll": "Ver todos",
 		"profile.saved": "Guardado.",
 		"profile.title": "Perfil",
+		"profile.description":
+			"Gestiona tu cuenta, los dispositivos con sesion iniciada y las claves que hablan con la API en tu nombre.",
+		"profile.identity": "Identidad",
+		"profile.identityDescription":
+			"Tu nombre, correo e idioma preferido. El correo se usa para iniciar sesion.",
+		"profile.role": "Rol",
 		"sessions.title": "Sesiones",
 		"sessions.description":
 			"Revisa sesiones activas y revoca dispositivos que ya no uses.",

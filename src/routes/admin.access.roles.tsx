@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, Card, Notice } from "@/components/ui";
+import { Button, Card, DataRow, Notice } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -83,10 +83,7 @@ function RolesTab() {
 				<div className="grid gap-3">
 					{roles.length ? (
 						roles.map((role) => (
-							<div
-								className="rounded-md border border-border bg-card/60 p-4"
-								key={role.id}
-							>
+							<DataRow key={role.id}>
 								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 									<div className="flex-1">
 										<p className="font-medium">
@@ -142,7 +139,7 @@ function RolesTab() {
 										</Button>
 									</div>
 								</div>
-							</div>
+							</DataRow>
 						))
 					) : (
 						<p className="text-sm text-muted-foreground">{t("roles.empty")}</p>

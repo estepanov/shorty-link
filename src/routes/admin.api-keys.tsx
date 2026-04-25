@@ -1,9 +1,20 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, Card, FieldLabel, Input, Notice } from "@/components/ui";
+import { AccountTabs } from "@/components/account-tabs";
+import {
+	Button,
+	Card,
+	DataRow,
+	EmptyState,
+	FieldLabel,
+	Input,
+	Notice,
+	PageHeader,
+} from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
+import { formatApiKeyPreview } from "@/lib/api-keys";
 import type {
 	AdminApiKey,
 	AdminApiKeyList,
@@ -17,7 +28,7 @@ export const Route = createFileRoute("/admin/api-keys")({
 });
 
 function ApiKeys() {
-	const { session, isPending, t } = useAdminAuthGuard();
+	const { session, isPending, locale, t } = useAdminAuthGuard();
 	const { isAuthorized } = useRequirePermission("apikeys.manage");
 	const [keys, setKeys] = useState<AdminApiKey[]>([]);
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -75,30 +86,40 @@ function ApiKeys() {
 	}, [session?.user.id]);
 
 	if (isPending) {
-		return <Card>{t("loading.app")}</Card>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Card>{t("loading.app")}</Card>
+			</div>
+		);
 	}
 
 	if (!session) {
-		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Notice tone="error">{t("errors.unauthorized")}</Notice>
+			</div>
+		);
 	}
 
 	if (!isAuthorized) {
-		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Notice tone="error">{t("errors.permissionDenied")}</Notice>
+			</div>
+		);
 	}
 
 	return (
-		<div className="mx-auto grid w-full max-w-5xl gap-6">
+		<div className="mx-auto grid w-full max-w-7xl gap-6">
+			<PageHeader title={t("keys.title")} description={t("keys.description")} />
+			<AccountTabs locale={locale} />
+
 			<Card>
-				<Link
-					className="text-sm font-bold text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-					to="/admin/profile"
-				>
-					{t("nav.profile")}
-				</Link>
-				<h1 className="mt-4 text-4xl font-medium">{t("keys.title")}</h1>
-				<p className="mt-2 text-muted-foreground">{t("keys.description")}</p>
+				<h2 className="font-display text-2xl tracking-tight">
+					{t("keys.create")}
+				</h2>
 				<form
-					className="mt-6 grid gap-4 md:grid-cols-[1fr_12rem_auto]"
+					className="mt-5 grid gap-4 md:grid-cols-[1fr_12rem_auto] md:items-end"
 					onSubmit={(event) => {
 						event.preventDefault();
 						event.stopPropagation();
@@ -132,15 +153,13 @@ function ApiKeys() {
 							</FieldLabel>
 						)}
 					</form.Field>
-					<div className="flex items-end">
-						<Button type="submit">{t("keys.create")}</Button>
-					</div>
+					<Button type="submit">{t("keys.create")}</Button>
 				</form>
 				{createdKey ? (
 					<div className="mt-4">
 						<Notice tone="success">
-							<strong>{t("keys.created")}</strong>
-							<code className="mt-2 block break-all rounded-xl bg-foreground px-3 py-2 text-background dark:bg-black/40 dark:text-background">
+							<strong className="block">{t("keys.created")}</strong>
+							<code className="mt-2 block break-all rounded-md border border-border bg-foreground px-3 py-2 font-mono text-xs text-background">
 								{createdKey}
 							</code>
 						</Notice>
@@ -152,16 +171,18 @@ function ApiKeys() {
 					</div>
 				) : null}
 			</Card>
+
 			<Card>
-				<div className="grid gap-3">
+				<h2 className="font-display text-2xl tracking-tight">
+					{t("keys.title")}
+				</h2>
+				<div className="mt-5 grid gap-3">
 					{keys.length ? (
 						keys.map((key) => (
-							<ApiKeyRow key={key.id} item={key} onChange={refresh} t={t} />
+							<ApiKeyRow item={key} key={key.id} onChange={refresh} t={t} />
 						))
 					) : (
-						<p className="rounded-md border border-border bg-card/60 p-4 text-sm text-muted-foreground">
-							{t("keys.empty")}
-						</p>
+						<EmptyState description={t("keys.empty")} />
 					)}
 				</div>
 			</Card>
@@ -204,7 +225,7 @@ function ApiKeyRow({
 	});
 
 	return (
-		<div className="rounded-md border border-border bg-card/60 p-4">
+		<DataRow>
 			{editing ? (
 				<form
 					className="flex flex-col gap-3 md:flex-row"
@@ -223,9 +244,12 @@ function ApiKeyRow({
 							/>
 						)}
 					</form.Field>
-					<Button type="submit">{t("forms.save")}</Button>
+					<Button size="sm" type="submit">
+						{t("forms.save")}
+					</Button>
 					<Button
 						onClick={() => setEditing(false)}
+						size="sm"
 						tone="secondary"
 						type="button"
 					>
@@ -234,17 +258,27 @@ function ApiKeyRow({
 				</form>
 			) : (
 				<div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-					<div>
+					<div className="min-w-0">
 						<p className="font-medium">{item.name ?? t("keys.unnamed")}</p>
-						<p className="text-sm text-muted-foreground">
-							{item.prefix ?? "sl_"}
-							{item.start ?? "••••"} ·{" "}
-							{item.enabled === false ? t("keys.disabled") : t("keys.enabled")}
+						<p className="mt-1 font-mono text-xs text-muted-foreground">
+							{formatApiKeyPreview(item)}{" "}
+							<span
+								className={`ml-2 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+									item.enabled === false
+										? "border-destructive/30 bg-destructive/10 text-destructive"
+										: "border-success/30 bg-success/10 text-success"
+								}`}
+							>
+								{item.enabled === false
+									? t("keys.disabled")
+									: t("keys.enabled")}
+							</span>
 						</p>
 					</div>
 					<div className="flex gap-2">
 						<Button
 							onClick={() => setEditing(true)}
+							size="sm"
 							tone="secondary"
 							type="button"
 						>
@@ -267,6 +301,7 @@ function ApiKeyRow({
 									);
 								}
 							}}
+							size="sm"
 							tone="danger"
 							type="button"
 						>
@@ -280,6 +315,6 @@ function ApiKeyRow({
 					<Notice tone="error">{t(error)}</Notice>
 				</div>
 			) : null}
-		</div>
+		</DataRow>
 	);
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { InviteForm } from "@/components/admin-forms";
@@ -48,13 +48,7 @@ function NewInvite() {
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
-				<Link
-					className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-					to="/admin/access/invites"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<h1 className="mt-4 text-4xl font-medium">{t("pages.newInvite")}</h1>
+				<h1 className="text-4xl font-medium">{t("pages.newInvite")}</h1>
 				<InviteForm
 					onSaved={async () => {
 						await router.navigate({ to: "/admin/access/invites" });

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { LinkForm } from "@/components/admin-forms";
@@ -15,14 +15,19 @@ function EditLink() {
 	const { id } = Route.useParams();
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("links.write");
+	const {
+		hasPermission,
+		isAuthorized,
+		isPending: isPermissionPending,
+	} = useRequirePermission("links.write");
 	const [domains, setDomains] = useState<AdminDomain[] | null>(null);
 	const [link, setLink] = useState<AdminLink | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const canViewDomains = hasPermission("domains.read");
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: re-fetch only when the link id or authenticated user identity changes.
 	useEffect(() => {
-		if (!session) {
+		if (!session || isPermissionPending || !isAuthorized) {
 			return;
 		}
 
@@ -30,10 +35,12 @@ function EditLink() {
 			setError(null);
 			try {
 				const api = getTreaty();
-				const [nextDomains, nextLink] = await Promise.all([
-					unwrap<AdminDomain[]>(await api.admin.domains.get()),
-					unwrap<AdminLink>(await api.admin.links({ id }).get()),
-				]);
+				const nextLink = await unwrap<AdminLink>(
+					await api.admin.links({ id }).get(),
+				);
+				const nextDomains = canViewDomains
+					? await unwrap<AdminDomain[]>(await api.admin.domains.get())
+					: [];
 				setDomains(nextDomains);
 				setLink(nextLink);
 			} catch (nextError) {
@@ -44,9 +51,9 @@ function EditLink() {
 		}
 
 		void loadLink();
-	}, [id, session?.user.id]);
+	}, [canViewDomains, id, isAuthorized, isPermissionPending, session?.user.id]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 
@@ -61,13 +68,7 @@ function EditLink() {
 	return (
 		<div className="mx-auto w-full max-w-3xl">
 			<Card>
-				<Link
-					className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-					to="/admin"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<h1 className="text-4xl font-medium">{t("pages.editLink")}</h1>
 					<Button
 						onClick={async () => {

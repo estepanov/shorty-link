@@ -1,12 +1,11 @@
 import {
 	createFileRoute,
-	Link,
 	Navigate,
 	Outlet,
 	useLocation,
 } from "@tanstack/react-router";
 
-import { Card } from "@/components/ui";
+import { Card, PageHeader, type TabItem, Tabs } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { Permission } from "@/lib/permissions";
 
@@ -42,9 +41,7 @@ function AccessLayout() {
 	const location = useLocation();
 	const currentPath = location.pathname;
 
-	const visibleTabs = allTabs.filter((tab) =>
-		tab.permission ? hasPermission(tab.permission) : true,
-	);
+	const visibleTabs = allTabs.filter((tab) => hasPermission(tab.permission));
 
 	if (isPending) {
 		return (
@@ -74,37 +71,16 @@ function AccessLayout() {
 		return <Navigate to={visibleTabs[0].path} />;
 	}
 
+	const tabItems: TabItem[] = visibleTabs.map((tab) => ({
+		to: tab.path,
+		label: t(tab.labelKey),
+		exact: true,
+	}));
+
 	return (
 		<div className="mx-auto grid w-full max-w-7xl gap-6">
-			<Card>
-				<Link
-					className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-					to="/admin"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<h1 className="mt-4 text-4xl font-medium">{t("nav.access")}</h1>
-			</Card>
-
-			<div className="flex gap-1 rounded-md border border-foreground/10 bg-card/60 p-1 ">
-				{visibleTabs.map((tab) => {
-					const isActive = currentPath === tab.path;
-					return (
-						<Link
-							className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-								isActive
-									? "bg-foreground text-white dark:bg-card dark:text-foreground"
-									: "text-muted-foreground hover:bg-muted dark:hover:bg-muted"
-							}`}
-							key={tab.path}
-							to={tab.path}
-						>
-							{t(tab.labelKey)}
-						</Link>
-					);
-				})}
-			</div>
-
+			<PageHeader title={t("nav.access")} />
+			<Tabs ariaLabel={t("nav.access")} items={tabItems} />
 			<Outlet />
 		</div>
 	);

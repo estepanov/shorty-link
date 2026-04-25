@@ -21,6 +21,13 @@ import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
 
 const APIKEY_CREATE_PERMISSION: Permission = "apikeys.manage";
 
+function resolveHookHeaders(context: {
+	headers?: HeadersInit;
+	request?: Request;
+}) {
+	return new Headers(context.headers ?? context.request?.headers);
+}
+
 async function userHasPermission(
 	authDb: ReturnType<typeof createDb>,
 	userId: string,
@@ -127,8 +134,12 @@ export function createAuth(request?: Request) {
 				if (ctx.path !== "/api-key/create") {
 					return;
 				}
-				const session = await createAuth(ctx.request).api.getSession({
-					headers: ctx.request?.headers ?? new Headers(),
+				const headers = resolveHookHeaders(ctx);
+				const authRequest =
+					ctx.request ??
+					new Request(`${origin}/api/auth/api-key/create`, { headers });
+				const session = await createAuth(authRequest).api.getSession({
+					headers,
 				});
 				if (!session) {
 					throw new APIError("UNAUTHORIZED", {

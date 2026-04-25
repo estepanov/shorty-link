@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, Card, Notice } from "@/components/ui";
+import { Button, Card, DataRow, Notice } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type {
 	AdminRoleDetail,
@@ -86,13 +86,7 @@ function RoleDetailPage() {
 		return (
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>
-					<Link
-						className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-						to="/admin/access/roles"
-					>
-						{t("pages.backDashboard")}
-					</Link>
-					<div className="mt-4">
+					<div>
 						<Notice tone="error">{t(error)}</Notice>
 					</div>
 				</Card>
@@ -104,13 +98,7 @@ function RoleDetailPage() {
 		return (
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>
-					<Link
-						className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-						to="/admin/access/roles"
-					>
-						{t("pages.backDashboard")}
-					</Link>
-					<div className="mt-4">
+					<div>
 						<Notice tone="error">{t("errors.roleMissing")}</Notice>
 					</div>
 				</Card>
@@ -126,13 +114,7 @@ function RoleDetailPage() {
 			<Card>
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<div>
-						<Link
-							className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-							to="/admin/access/roles"
-						>
-							{t("pages.backDashboard")}
-						</Link>
-						<h1 className="mt-4 text-4xl font-medium">
+						<h1 className="text-4xl font-medium">
 							{role.name}
 							{role.isSystem ? (
 								<span className="ml-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
@@ -270,7 +252,7 @@ function UserRow({
 	user: AdminUser;
 }) {
 	return (
-		<div className="rounded-md border border-border bg-card/60 p-4">
+		<DataRow>
 			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 				<div className="flex-1">
 					<p className="font-medium">
@@ -292,6 +274,6 @@ function UserRow({
 					</Link>
 				</div>
 			</div>
-		</div>
+		</DataRow>
 	);
 }

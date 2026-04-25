@@ -1,7 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, Card, Notice } from "@/components/ui";
+import { AccountTabs } from "@/components/account-tabs";
+import {
+	Button,
+	Card,
+	DataRow,
+	EmptyState,
+	Notice,
+	PageHeader,
+} from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminSession } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -15,6 +23,7 @@ function Sessions() {
 	const { isAuthorized } = useRequirePermission("sessions.manage");
 	const [sessions, setSessions] = useState<AdminSession[]>([]);
 	const [error, setError] = useState<string | null>(null);
+	const [busy, setBusy] = useState(false);
 
 	async function refresh() {
 		try {
@@ -36,111 +45,114 @@ function Sessions() {
 	}, [session?.user.id]);
 
 	if (isPending) {
-		return <Card>{t("loading.app")}</Card>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Card>{t("loading.app")}</Card>
+			</div>
+		);
 	}
 
 	if (!session) {
-		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Notice tone="error">{t("errors.unauthorized")}</Notice>
+			</div>
+		);
 	}
 
 	if (!isAuthorized) {
-		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
+		return (
+			<div className="mx-auto grid w-full max-w-7xl gap-6">
+				<Notice tone="error">{t("errors.permissionDenied")}</Notice>
+			</div>
+		);
+	}
+
+	async function revokeOther() {
+		try {
+			setBusy(true);
+			setError(null);
+			const api = getTreaty();
+			await unwrap(await api.admin.sessions["revoke-other"].post());
+			await refresh();
+		} catch (nextError) {
+			setError(
+				nextError instanceof Error ? nextError.message : "errors.unknown",
+			);
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	async function revoke(token: string) {
+		try {
+			setError(null);
+			const api = getTreaty();
+			await unwrap(await api.admin.sessions.revoke.post({ token }));
+			await refresh();
+		} catch (nextError) {
+			setError(
+				nextError instanceof Error ? nextError.message : "errors.unknown",
+			);
+		}
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-5xl">
-			<Card>
-				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-					<div>
-						<Link
-							className="text-sm font-bold text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-							to="/admin/profile"
-						>
-							{t("nav.profile")}
-						</Link>
-						<h1 className="mt-4 text-4xl font-medium">{t("sessions.title")}</h1>
-						<p className="mt-2 text-muted-foreground">
-							{t("sessions.description")}
-						</p>
-					</div>
+		<div className="mx-auto grid w-full max-w-7xl gap-6">
+			<PageHeader
+				title={t("sessions.title")}
+				description={t("sessions.description")}
+				actions={
 					<Button
-						onClick={async () => {
-							try {
-								setError(null);
-								const api = getTreaty();
-								await unwrap(await api.admin.sessions["revoke-other"].post());
-								await refresh();
-							} catch (nextError) {
-								setError(
-									nextError instanceof Error
-										? nextError.message
-										: "errors.unknown",
-								);
-							}
-						}}
+						disabled={busy || sessions.length <= 1}
+						onClick={revokeOther}
 						tone="secondary"
 						type="button"
 					>
 						{t("sessions.revokeOther")}
 					</Button>
-				</div>
+				}
+			/>
+			<AccountTabs locale={locale} />
+
+			<Card>
 				{error ? (
-					<div className="mt-4">
+					<div className="mb-4">
 						<Notice tone="error">{t(error)}</Notice>
 					</div>
 				) : null}
-				<div className="mt-6 grid gap-3">
+				<div className="grid gap-3">
 					{sessions.length ? (
 						sessions.map((item) => (
-							<div
-								className="rounded-md border border-border bg-card/60 p-4"
-								key={item.token}
-							>
+							<DataRow key={item.token}>
 								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-									<div>
+									<div className="min-w-0">
 										<p className="font-medium">
 											{item.userAgent ?? t("sessions.unknownBrowser")}
 										</p>
 										<p className="mt-1 text-sm text-muted-foreground">
-											{t("sessions.ip")}{" "}
-											{item.ipAddress ?? t("sessions.unknown")} ·{" "}
-											{t("sessions.expires")}{" "}
+											<span className="font-mono">
+												{item.ipAddress ?? t("sessions.unknown")}
+											</span>{" "}
+											· {t("sessions.expires")}{" "}
 											{item.expiresAt
 												? new Date(item.expiresAt).toLocaleString(locale)
 												: t("sessions.unknown")}
 										</p>
 									</div>
 									<Button
-										onClick={async () => {
-											try {
-												setError(null);
-												const api = getTreaty();
-												await unwrap(
-													await api.admin.sessions.revoke.post({
-														token: item.token,
-													}),
-												);
-												await refresh();
-											} catch (nextError) {
-												setError(
-													nextError instanceof Error
-														? nextError.message
-														: "errors.unknown",
-												);
-											}
-										}}
+										onClick={() => revoke(item.token)}
+										size="sm"
 										tone="danger"
 										type="button"
 									>
 										{t("sessions.revoke")}
 									</Button>
 								</div>
-							</div>
+							</DataRow>
 						))
 					) : (
-						<p className="rounded-md border border-border bg-card/60 p-4 text-sm text-muted-foreground">
-							{t("sessions.empty")}
-						</p>
+						<EmptyState description={t("sessions.empty")} />
 					)}
 				</div>
 			</Card>

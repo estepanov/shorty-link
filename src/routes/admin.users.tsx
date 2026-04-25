@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
 import { CopyButton } from "@/components/copy-button";
-import { Button, Card, Notice, Select } from "@/components/ui";
+import { Button, Card, DataRow, Notice, Select } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminInvite, AdminUser, AssignableRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -78,13 +78,7 @@ function UsersPage() {
 	return (
 		<div className="mx-auto grid w-full max-w-7xl gap-6">
 			<Card>
-				<Link
-					className="text-sm font-medium text-accent underline underline-offset-4 dark:text-accent"
-					to="/admin"
-				>
-					{t("pages.backDashboard")}
-				</Link>
-				<h1 className="mt-4 text-4xl font-medium">{t("users.title")}</h1>
+				<h1 className="text-4xl font-medium">{t("users.title")}</h1>
 				{error ? (
 					<div className="mt-4">
 						<Notice tone="error">{t(error)}</Notice>
@@ -143,10 +137,7 @@ function UsersPage() {
 				<div className="mt-5 grid gap-3">
 					{invitesWithStatus.length ? (
 						invitesWithStatus.map((invite) => (
-							<div
-								key={invite.id}
-								className="rounded-md border border-border bg-card/60 p-4"
-							>
+							<DataRow key={invite.id}>
 								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 									<div>
 										<p className="font-medium">{invite.email}</p>
@@ -218,7 +209,7 @@ function UsersPage() {
 										{t("users.cancelInvite")}
 									</Button>
 								</div>
-							</div>
+							</DataRow>
 						))
 					) : (
 						<p className="text-sm text-muted-foreground">
@@ -282,7 +273,7 @@ function UserRow({
 	user: AdminUser;
 }) {
 	return (
-		<div className="rounded-md border border-border bg-card/60 p-4">
+		<DataRow>
 			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 				<div className="flex-1">
 					<p className="font-medium">
@@ -380,6 +371,6 @@ function UserRow({
 					</Button>
 				</div>
 			</div>
-		</div>
+		</DataRow>
 	);
 }

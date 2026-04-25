@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { CopyButton } from "@/components/copy-button";
-import { Button, Card, Notice } from "@/components/ui";
+import { Button, Card, DataRow, Notice } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminInvite } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -87,8 +87,8 @@ function InvitesTab() {
 				<div className="mt-5 grid gap-3">
 					{invitesWithStatus.length ? (
 						invitesWithStatus.map((invite) => (
-							<div
-								className="flex items-start justify-between gap-3 rounded-md border border-border bg-card/60 p-4"
+							<DataRow
+								className="flex items-start justify-between gap-3"
 								key={invite.id}
 							>
 								<div>
@@ -155,7 +155,7 @@ function InvitesTab() {
 								>
 									{t("users.cancelInvite")}
 								</Button>
-							</div>
+							</DataRow>
 						))
 					) : (
 						<p className="text-sm text-muted-foreground">
