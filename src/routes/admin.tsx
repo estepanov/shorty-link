@@ -6,15 +6,20 @@ import {
 	useLocation,
 	useRouter,
 } from "@tanstack/react-router";
+import {
+	type ColumnDef,
+	flexRender,
+	getCoreRowModel,
+	useReactTable,
+} from "@tanstack/react-table";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CopyButton } from "@/components/copy-button";
 import {
 	AppShell,
 	Button,
 	Card,
-	DataRow,
 	EmptyState,
 	FieldLabel,
 	Input,
@@ -25,6 +30,23 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui";
+import {
+	Item,
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemHeader,
+	ItemTitle,
+} from "@/components/ui/item";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { useAuthContext } from "@/lib/admin-auth";
 import { authClient } from "@/lib/auth-client";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -56,6 +78,8 @@ type DashboardData = {
 		id: string;
 		email: string;
 		inviteUrl: string;
+		invitedByName: string | null;
+		invitedByEmail: string | null;
 		createdAt: number;
 		expiresAt: number;
 	}>;
@@ -484,48 +508,11 @@ function DashboardView({
 							<h2 className="font-display text-2xl tracking-tight">
 								{t("dashboard.recentRedirects")}
 							</h2>
-							<div className="mt-5 overflow-x-auto">
-								<table className="min-w-full text-left text-sm">
-									<thead>
-										<tr className="border-b border-border text-muted-foreground">
-											<th className="py-3">{t("table.when")}</th>
-											<th className="py-3">{t("table.host")}</th>
-											<th className="py-3">{t("table.slug")}</th>
-											<th className="py-3">{t("table.country")}</th>
-											<th className="py-3">{t("table.referer")}</th>
-										</tr>
-									</thead>
-									<tbody>
-										{data.events.length ? (
-											data.events.map((event) => (
-												<tr
-													className="border-b border-border/60"
-													key={event.id}
-												>
-													<td className="py-3">
-														{new Date(event.createdAt).toLocaleString(locale)}
-													</td>
-													<td className="py-3">
-														{formatHostname(event.hostname, t)}
-													</td>
-													<td className="py-3 font-medium">{event.slug}</td>
-													<td className="py-3">
-														{event.country ?? t("table.direct")}
-													</td>
-													<td className="max-w-xs truncate py-3">
-														{event.referer ?? t("table.direct")}
-													</td>
-												</tr>
-											))
-										) : (
-											<EmptyTableRow
-												colSpan={5}
-												label={t("dashboard.noRedirects")}
-											/>
-										)}
-									</tbody>
-								</table>
-							</div>
+							<RecentRedirectsTable
+								events={data.events}
+								locale={locale}
+								t={t}
+							/>
 						</Card>
 					) : null}
 
@@ -547,58 +534,43 @@ function DashboardView({
 										) : null}
 									</div>
 								</div>
-								<div className="mt-5 overflow-x-auto">
-									<table className="min-w-full text-left text-sm">
-										<thead>
-											<tr className="border-b border-border text-muted-foreground">
-												<th className="py-3">{t("table.slug")}</th>
-												<th className="py-3">{t("table.host")}</th>
-												<th className="py-3">{t("table.target")}</th>
-												<th className="py-3">{t("table.hits")}</th>
-												<th className="py-3">{t("table.actions")}</th>
-											</tr>
-										</thead>
-										<tbody>
-											{data.links.length ? (
-												data.links.map((link) => (
-													<tr
-														className="border-b border-border/60"
-														key={link.id}
-													>
-														<td className="py-3">
+								<ItemGroup className="mt-5 gap-3">
+									{data.links.length ? (
+										data.links.map((link) => (
+											<Item key={link.id} variant="outline">
+												<ItemContent className="min-w-0">
+													<ItemHeader>
+														<ItemTitle>
 															<Link
-																className="font-mono text-sm text-foreground underline decoration-accent decoration-2 underline-offset-4 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
+																className="rounded font-mono underline decoration-accent decoration-2 underline-offset-4 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 																params={{ id: link.id }}
 																to="/admin/links/$id"
 															>
 																{link.slug}
 															</Link>
-														</td>
-														<td className="py-3">
-															{formatHostname(link.hostname, t)}
-														</td>
-														<td className="max-w-xs truncate py-3">
-															{link.targetUrl}
-														</td>
-														<td className="py-3">{link.hitCount}</td>
-														<td className="py-3">
+														</ItemTitle>
+														<ItemActions className="shrink-0">
+															<span className="text-sm tabular-nums text-muted-foreground">
+																{link.hitCount} {t("table.hits")}
+															</span>
 															{showLinksWrite ? (
 																<ActionLink to={`/admin/links/${link.id}/edit`}>
 																	{t("forms.update")}
 																</ActionLink>
 															) : null}
-														</td>
-													</tr>
-												))
-											) : (
-												<EmptyTableRow
-													colSpan={5}
-													label={t("dashboard.noLinks")}
-												/>
-											)}
-										</tbody>
-									</table>
-								</div>
+														</ItemActions>
+													</ItemHeader>
+													<ItemDescription className="break-all">
+														{formatHostname(link.hostname, t)} ·{" "}
+														{link.targetUrl}
+													</ItemDescription>
+												</ItemContent>
+											</Item>
+										))
+									) : (
+										<EmptyState compact description={t("dashboard.noLinks")} />
+									)}
+								</ItemGroup>
 							</Card>
 						) : null}
 
@@ -615,33 +587,35 @@ function DashboardView({
 											</ActionLink>
 										) : null}
 									</div>
-									<div className="mt-5 grid gap-3">
+									<ItemGroup className="mt-5 gap-3">
 										{data.domains.length ? (
 											data.domains.map((domain) => (
-												<DataRow key={domain.id}>
-													<div className="flex items-start justify-between gap-3">
-														<div>
-															<p className="font-medium">{domain.hostname}</p>
-															<p className="text-sm text-muted-foreground">
-																{domain.label ?? t("domains.noLabel")} ·{" "}
-																{domain.isPrimary
-																	? t("domains.primary")
-																	: t("domains.secondary")}{" "}
-																·{" "}
-																{domain.isActive
-																	? t("domains.active")
-																	: t("domains.inactive")}
-															</p>
-														</div>
-														{showDomainsWrite ? (
-															<ActionLink
-																to={`/admin/domains/${domain.id}/edit`}
-															>
-																{t("forms.update")}
-															</ActionLink>
-														) : null}
-													</div>
-												</DataRow>
+												<Item key={domain.id} variant="outline">
+													<ItemContent className="min-w-0">
+														<ItemHeader>
+															<ItemTitle>{domain.hostname}</ItemTitle>
+															{showDomainsWrite ? (
+																<ItemActions className="shrink-0">
+																	<ActionLink
+																		to={`/admin/domains/${domain.id}/edit`}
+																	>
+																		{t("forms.update")}
+																	</ActionLink>
+																</ItemActions>
+															) : null}
+														</ItemHeader>
+														<ItemDescription>
+															{domain.label ?? t("domains.noLabel")} ·{" "}
+															{domain.isPrimary
+																? t("domains.primary")
+																: t("domains.secondary")}{" "}
+															·{" "}
+															{domain.isActive
+																? t("domains.active")
+																: t("domains.inactive")}
+														</ItemDescription>
+													</ItemContent>
+												</Item>
 											))
 										) : (
 											<EmptyState
@@ -649,7 +623,7 @@ function DashboardView({
 												description={t("dashboard.noDomains")}
 											/>
 										)}
-									</div>
+									</ItemGroup>
 								</Card>
 							) : null}
 
@@ -665,31 +639,41 @@ function DashboardView({
 											</ActionLink>
 										) : null}
 									</div>
-									<div className="mt-5 grid gap-3">
+									<ItemGroup className="mt-5 gap-3">
 										{data.invites.length ? (
 											data.invites.map((invite) => (
-												<DataRow
-													className="flex items-start justify-between gap-3"
-													key={invite.id}
-												>
-													<div className="break-all text-sm">
-														<span className="font-medium text-foreground">
-															{invite.email}
-														</span>
-														<span className="mt-1 block text-muted-foreground">
+												<Item key={invite.id} variant="outline">
+													<ItemContent className="min-w-0">
+														<ItemHeader>
+															<ItemTitle className="break-all">
+																{invite.email}
+															</ItemTitle>
+															<ItemActions className="shrink-0">
+																<CopyButton
+																	label={t("actions.copyLink")}
+																	copiedLabel={t("actions.copied")}
+																	text={invite.inviteUrl}
+																/>
+															</ItemActions>
+														</ItemHeader>
+														<ItemDescription>
 															{t("table.expires")}{" "}
 															{new Date(invite.expiresAt).toLocaleDateString(
 																locale,
 															)}
-														</span>
-													</div>
-													<CopyButton
-														className="shrink-0"
-														label={t("actions.copyLink")}
-														copiedLabel={t("actions.copied")}
-														text={invite.inviteUrl}
-													/>
-												</DataRow>
+															{invite.invitedByName ? (
+																<>
+																	{" "}
+																	· {t("users.invitedBy")}{" "}
+																	{invite.invitedByName}
+																	{invite.invitedByEmail
+																		? ` (${invite.invitedByEmail})`
+																		: ""}
+																</>
+															) : null}
+														</ItemDescription>
+													</ItemContent>
+												</Item>
 											))
 										) : (
 											<EmptyState
@@ -697,7 +681,7 @@ function DashboardView({
 												description={t("dashboard.noInvites")}
 											/>
 										)}
-									</div>
+									</ItemGroup>
 								</Card>
 							) : null}
 						</div>
@@ -713,6 +697,104 @@ function formatHostname(
 	t: ReturnType<typeof createTranslator>,
 ) {
 	return hostname === "__default__" ? t("domains.default") : hostname;
+}
+
+function RecentRedirectsTable({
+	events,
+	locale,
+	t,
+}: {
+	events: DashboardData["events"];
+	locale: string;
+	t: ReturnType<typeof createTranslator>;
+}) {
+	const columns = useMemo<ColumnDef<DashboardData["events"][number]>[]>(
+		() => [
+			{
+				accessorKey: "createdAt",
+				header: t("table.when"),
+				cell: ({ row }) =>
+					new Date(row.original.createdAt).toLocaleString(locale),
+			},
+			{
+				accessorKey: "hostname",
+				header: t("table.host"),
+				cell: ({ row }) => formatHostname(row.original.hostname, t),
+			},
+			{
+				accessorKey: "slug",
+				header: t("table.slug"),
+				cell: ({ row }) => (
+					<span className="font-medium">{row.original.slug}</span>
+				),
+			},
+			{
+				accessorKey: "country",
+				header: t("table.country"),
+				cell: ({ row }) => row.original.country ?? t("table.direct"),
+			},
+			{
+				accessorKey: "referer",
+				header: t("table.referer"),
+				cell: ({ row }) => (
+					<span className="block max-w-xs truncate">
+						{row.original.referer ?? t("table.direct")}
+					</span>
+				),
+			},
+		],
+		[locale, t],
+	);
+	const table = useReactTable({
+		data: events,
+		columns,
+		getCoreRowModel: getCoreRowModel(),
+	});
+
+	return (
+		<div className="mt-5 overflow-hidden rounded-md border border-border">
+			<Table>
+				<TableHeader>
+					{table.getHeaderGroups().map((headerGroup) => (
+						<TableRow key={headerGroup.id}>
+							{headerGroup.headers.map((header) => (
+								<TableHead key={header.id}>
+									{header.isPlaceholder
+										? null
+										: flexRender(
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
+								</TableHead>
+							))}
+						</TableRow>
+					))}
+				</TableHeader>
+				<TableBody>
+					{table.getRowModel().rows.length ? (
+						table.getRowModel().rows.map((row) => (
+							<TableRow key={row.id}>
+								{row.getVisibleCells().map((cell) => (
+									<TableCell key={cell.id}>
+										{flexRender(cell.column.columnDef.cell, cell.getContext())}
+									</TableCell>
+								))}
+							</TableRow>
+						))
+					) : (
+						<TableRow>
+							<TableCell
+								className="h-20 text-muted-foreground"
+								colSpan={columns.length}
+							>
+								{t("dashboard.noRedirects")}
+							</TableCell>
+						</TableRow>
+					)}
+				</TableBody>
+			</Table>
+		</div>
+	);
 }
 
 function ActionLink({
@@ -738,16 +820,6 @@ function ActionLink({
 		>
 			{children}
 		</Link>
-	);
-}
-
-function EmptyTableRow({ colSpan, label }: { colSpan: number; label: string }) {
-	return (
-		<tr>
-			<td className="py-4 text-sm text-muted-foreground" colSpan={colSpan}>
-				{label}
-			</td>
-		</tr>
 	);
 }
 

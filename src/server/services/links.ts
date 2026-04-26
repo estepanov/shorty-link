@@ -11,6 +11,7 @@ import {
 	or,
 	sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import { customAlphabet, nanoid } from "nanoid";
 import {
 	type ManagedDomainRootBehavior,
@@ -315,6 +316,7 @@ export async function getDashboardData(
 		eventLinkIds && eventHostnames
 			? or(eventLinkIds, eventHostnames)
 			: (eventLinkIds ?? eventHostnames);
+	const inviter = alias(user, "inviter");
 
 	const [domains, links, invites, events, counts] = await Promise.all([
 		db
@@ -330,8 +332,20 @@ export async function getDashboardData(
 			.orderBy(desc(shortLinks.createdAt))
 			.limit(10),
 		db
-			.select()
+			.select({
+				id: adminInvites.id,
+				email: adminInvites.email,
+				token: adminInvites.token,
+				roleId: adminInvites.roleId,
+				invitedBy: adminInvites.invitedBy,
+				invitedByName: inviter.name,
+				invitedByEmail: inviter.email,
+				expiresAt: adminInvites.expiresAt,
+				acceptedAt: adminInvites.acceptedAt,
+				createdAt: adminInvites.createdAt,
+			})
 			.from(adminInvites)
+			.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
 			.where(
 				and(isNull(adminInvites.acceptedAt), gt(adminInvites.expiresAt, now())),
 			)
