@@ -5,12 +5,11 @@ import { Elysia, t } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 
 import { createTranslator, interpolate, normalizeLocale } from "@/lib/i18n";
-import { getLogger, serializeError } from "../logging";
 import {
 	isPermission,
-	type Permission,
 	PERMISSION_GROUPS,
 	PERMISSIONS,
+	type Permission,
 } from "@/lib/permissions";
 import {
 	isRedirectStatusCode,
@@ -23,10 +22,10 @@ import {
 } from "../auth/onboarding";
 import { assertTrustedAdminWrite } from "../auth/security";
 import {
+	type AuthContext,
 	assertDomainInScope,
 	assertHostnameInScope,
 	assertLinkInScope,
-	type AuthContext,
 	buildDomainScopeForCtx,
 	buildLinkScopeForCtx,
 	getSession,
@@ -36,6 +35,7 @@ import {
 } from "../auth/session";
 import { createDb } from "../db/client";
 import { DEFAULT_HOSTNAME, SYSTEM_ROLE_ADMIN, user } from "../db/schema";
+import { getLogger, serializeError } from "../logging";
 import {
 	appendDomainToRoleScopeIfScoped,
 	appendLinkToRoleScopeIfScoped,
@@ -49,10 +49,10 @@ import {
 	getBootstrapState,
 	getDashboardData,
 	getDomainById,
-	getManagedDomainByHostname,
 	getInviteByToken,
 	getLinkById,
 	getLinkStats,
+	getManagedDomainByHostname,
 	listDomains,
 	listShortLinks,
 	normalizeHostname,
@@ -73,8 +73,8 @@ import {
 } from "../services/roles";
 import {
 	assignUserRole,
-	deleteUser,
 	deleteInvite,
+	deleteUser,
 	listAllInvites,
 	listUsers,
 	toggleUserActive,
@@ -661,14 +661,14 @@ export const app = new Elysia({
 			.get(
 				"/links/:id/stats",
 				async ({ db, params, query, request }) => {
-					const ctx = await requirePermissionOrError(request, [
-						"links.read",
-						"analytics.read",
-					]);
+					const ctx = await requirePermissionOrError(request, "links.read");
 					const link = await fetchLinkInScope(db, ctx, params.id);
-					const stats = await getLinkStats(db, params.id, {
-						days: query.days,
-					});
+					const hasAnalytics = ctx.permissions.has("analytics.read");
+					const stats = hasAnalytics
+						? await getLinkStats(db, params.id, {
+								days: query.days,
+							})
+						: null;
 					return { link, stats };
 				},
 				{
@@ -789,7 +789,7 @@ export const app = new Elysia({
 				async ({ body, db, request }) => {
 					const ctx = await requireSecurePermissionOrError(
 						request,
-						"invites.manage",
+						"invites.create",
 					);
 					const invite = await createInvite(db, {
 						email: body.email,
@@ -814,10 +814,32 @@ export const app = new Elysia({
 					}),
 				},
 			)
-			.get("/users", async ({ db, request }) => {
-				await requirePermissionOrError(request, "users.read");
-				return listUsers(db);
-			})
+			.get(
+				"/users",
+				async ({ db, query, request }) => {
+					await requirePermissionOrError(request, "users.read");
+					return listUsers(db, {
+						active: query.active,
+						page: query.page,
+						pageSize: query.pageSize,
+						search: query.search,
+					});
+				},
+				{
+					query: t.Object({
+						active: t.Optional(
+							t.Union([
+								t.Literal("active"),
+								t.Literal("inactive"),
+								t.Literal("all"),
+							]),
+						),
+						page: t.Optional(t.Number({ minimum: 1 })),
+						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+						search: t.Optional(t.String()),
+					}),
+				},
+			)
 			.patch(
 				"/users/:id",
 				async ({ body, db, params, request }) => {
@@ -970,21 +992,47 @@ export const app = new Elysia({
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
-			.get("/invites", async ({ db, request }) => {
-				await requirePermissionOrError(request, "invites.manage");
-				const invites = await listAllInvites(db);
-				const origin = new URL(request.url).origin;
-				return invites.map((invite) => ({
-					...invite,
-					inviteUrl: invite.acceptedAt
-						? null
-						: buildInviteUrl(origin, invite.token),
-				}));
-			})
+			.get(
+				"/invites",
+				async ({ db, query, request }) => {
+					await requirePermissionOrError(request, "invites.read");
+					const result = await listAllInvites(db, {
+						page: query.page,
+						pageSize: query.pageSize,
+						search: query.search,
+						status: query.status,
+					});
+					const origin = new URL(request.url).origin;
+					return {
+						...result,
+						items: result.items.map((invite) => ({
+							...invite,
+							inviteUrl: invite.acceptedAt
+								? null
+								: buildInviteUrl(origin, invite.token),
+						})),
+					};
+				},
+				{
+					query: t.Object({
+						page: t.Optional(t.Number({ minimum: 1 })),
+						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+						search: t.Optional(t.String()),
+						status: t.Optional(
+							t.Union([
+								t.Literal("pending"),
+								t.Literal("expired"),
+								t.Literal("accepted"),
+								t.Literal("all"),
+							]),
+						),
+					}),
+				},
+			)
 			.delete(
 				"/invites",
 				async ({ body, db, request }) => {
-					await requireSecurePermissionOrError(request, "invites.manage");
+					await requireSecurePermissionOrError(request, "invites.delete");
 					await deleteInvite(db, body.id);
 					return { ok: true };
 				},
@@ -1005,7 +1053,7 @@ export const app = new Elysia({
 				},
 			)
 			.get("/permissions", async ({ request }) => {
-				await requirePermissionOrError(request, "roles.manage");
+				await requirePermissionOrError(request, "roles.read");
 				return {
 					permissions: PERMISSIONS,
 					groups: PERMISSION_GROUPS,
@@ -1015,14 +1063,28 @@ export const app = new Elysia({
 				await requirePermissionOrError(request, "users.read");
 				return listAssignableRoles(db);
 			})
-			.get("/roles", async ({ db, request }) => {
-				await requirePermissionOrError(request, "roles.manage");
-				return listRoles(db);
-			})
+			.get(
+				"/roles",
+				async ({ db, query, request }) => {
+					await requirePermissionOrError(request, "roles.read");
+					return listRoles(db, {
+						page: query.page,
+						pageSize: query.pageSize,
+						search: query.search,
+					});
+				},
+				{
+					query: t.Object({
+						page: t.Optional(t.Number({ minimum: 1 })),
+						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+						search: t.Optional(t.String()),
+					}),
+				},
+			)
 			.get(
 				"/roles/:id",
 				async ({ db, params, request }) => {
-					await requirePermissionOrError(request, "roles.manage");
+					await requirePermissionOrError(request, "roles.read");
 					const role = await getRoleById(db, params.id);
 					if (!role) {
 						throw new Error("errors.roleMissing");
@@ -1036,7 +1098,7 @@ export const app = new Elysia({
 			.post(
 				"/roles",
 				async ({ body, db, request }) => {
-					await requireSecurePermissionOrError(request, "roles.manage");
+					await requireSecurePermissionOrError(request, "roles.create");
 					const id = await createRole(db, {
 						...body,
 						permissions: coercePermissionList(body.permissions),
@@ -1048,7 +1110,7 @@ export const app = new Elysia({
 			.patch(
 				"/roles/:id",
 				async ({ body, db, params, request }) => {
-					await requireSecurePermissionOrError(request, "roles.manage");
+					await requireSecurePermissionOrError(request, "roles.update");
 					await updateRole(db, params.id, {
 						...body,
 						permissions: coercePermissionList(body.permissions),
@@ -1063,7 +1125,7 @@ export const app = new Elysia({
 			.delete(
 				"/roles/:id",
 				async ({ db, params, request }) => {
-					await requireSecurePermissionOrError(request, "roles.manage");
+					await requireSecurePermissionOrError(request, "roles.delete");
 					await deleteRole(db, params.id);
 					return { ok: true };
 				},

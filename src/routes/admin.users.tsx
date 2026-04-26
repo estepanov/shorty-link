@@ -178,6 +178,11 @@ function UsersPage() {
 														)
 													: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
 										</p>
+										{invite.invitedByName ? (
+											<p className="mt-1 text-xs text-muted-foreground">
+												{t("users.invitedBy")} {invite.invitedByName}
+											</p>
+										) : null}
 										{invite.inviteUrl ? (
 											<div className="mt-1 flex items-center gap-2">
 												<a
@@ -234,7 +239,7 @@ function UsersPage() {
 				</div>
 			</Card>
 
-			{hasPermission("invites.manage") ? (
+			{hasPermission("invites.create") ? (
 				<Card>
 					<h2 className="text-2xl font-medium">{t("actions.addInvite")}</h2>
 					{createdInvite ? (
@@ -300,6 +305,9 @@ function UserRow({
 					<p className="mt-1 text-sm text-muted-foreground">
 						{u.roleName} · {u.locale} ·{" "}
 						{new Date(u.createdAt).toLocaleDateString(locale)}
+						{u.invitedByName
+							? ` · ${t("users.invitedBy")} ${u.invitedByName}`
+							: null}
 					</p>
 					{roles.length > 0 ? (
 						<div className="mt-3 flex items-center gap-2">

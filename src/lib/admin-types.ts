@@ -17,12 +17,13 @@ export type AdminLink = ApiData<LinkByIdApi["get"]>;
 export type LinkListData = ApiData<AdminApi["links"]["get"]>;
 export type LinkListItem = LinkListData["items"][number];
 export type LinkStatsResponse = ApiData<LinkByIdApi["stats"]["get"]>;
-export type LinkStats = LinkStatsResponse["stats"];
+export type LinkStats = NonNullable<LinkStatsResponse["stats"]>;
 export type UtmDimension = keyof LinkStats["breakdowns"] & string;
 
-export type AdminUser = ApiData<AdminApi["users"]["get"]>[number];
-export type AdminInviteList = ApiData<AdminApi["invites"]["get"]>;
-export type AdminInvite = AdminInviteList[number];
+export type UserListData = ApiData<AdminApi["users"]["get"]>;
+export type AdminUser = UserListData["items"][number];
+export type InviteListData = ApiData<AdminApi["invites"]["get"]>;
+export type AdminInvite = InviteListData["items"][number];
 export type AdminSession = ApiData<AdminApi["sessions"]["get"]>[number];
 export type AdminApiKeyList = ApiData<AdminApi["api-keys"]["get"]>;
 export type AdminApiKey = AdminApiKeyList["apiKeys"][number];
@@ -30,7 +31,8 @@ export type AdminCreatedApiKey = ApiData<AdminApi["api-keys"]["post"]>;
 export type AdminUpdatedApiKey = ApiData<ApiKeyByIdApi["patch"]>;
 
 type RoleByIdApi = ReturnType<AdminApi["roles"]>;
-export type AdminRole = ApiData<AdminApi["roles"]["get"]>[number];
+export type AdminRoleList = ApiData<AdminApi["roles"]["get"]>;
+export type AdminRole = AdminRoleList["items"][number];
 export type AdminRoleDetail = ApiData<RoleByIdApi["get"]>;
 export type AssignableRole = ApiData<
 	AdminApi["roles"]["assignable"]["get"]

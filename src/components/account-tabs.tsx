@@ -6,19 +6,23 @@ export function AccountTabs({ locale }: { locale?: string | null }) {
 	const { hasPermission } = useAuthContext();
 
 	const items: TabItem[] = [
-		{ to: "/admin/profile", label: t("nav.profile"), exact: true },
+		{ to: "/admin/user/profile", label: t("nav.profile"), exact: true },
 	];
 
 	if (hasPermission("sessions.manage")) {
 		items.push({
-			to: "/admin/sessions",
+			to: "/admin/user/sessions",
 			label: t("nav.sessions"),
 			exact: true,
 		});
 	}
 
 	if (hasPermission("apikeys.manage")) {
-		items.push({ to: "/admin/api-keys", label: t("nav.apiKeys"), exact: true });
+		items.push({
+			to: "/admin/user/api-keys",
+			label: t("nav.apiKeys"),
+			exact: true,
+		});
 	}
 
 	return <Tabs ariaLabel={t("nav.account")} items={items} />;

@@ -1,4 +1,15 @@
-import { and, count, eq, inArray, ne } from "drizzle-orm";
+import {
+	and,
+	count,
+	desc,
+	eq,
+	gt,
+	inArray,
+	isNull,
+	ne,
+	or,
+	sql,
+} from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -9,6 +20,7 @@ import {
 
 import type { AppDb } from "../db/client";
 import {
+	adminInvites,
 	managedDomains,
 	roleDomainScopes,
 	roleLinkScopes,
@@ -17,6 +29,7 @@ import {
 	SYSTEM_ROLE_OWNER,
 	user,
 } from "../db/schema";
+import { escapeLikePattern, likeEscaped } from "./utils";
 
 export type RoleSummary = {
 	id: string;
@@ -25,6 +38,7 @@ export type RoleSummary = {
 	isSystem: boolean;
 	permissions: Permission[];
 	userCount: number;
+	pendingInviteCount: number;
 	domainScopeCount: number;
 	linkScopeCount: number;
 	createdAt: Date;
@@ -77,29 +91,83 @@ async function assertUniqueName(db: AppDb, name: string, excludeId?: string) {
 	}
 }
 
-export async function listRoles(db: AppDb): Promise<RoleSummary[]> {
-	const rows = await db.select().from(roles).orderBy(roles.name);
-	if (!rows.length) {
-		return [];
+export async function listRoles(
+	db: AppDb,
+	input: {
+		page?: number;
+		pageSize?: number;
+		search?: string;
+	} = {},
+) {
+	const page = Math.max(1, Math.floor(input.page ?? 1));
+	const pageSize = Math.max(1, Math.min(Math.floor(input.pageSize ?? 25), 100));
+	const offset = (page - 1) * pageSize;
+	const filters = [];
+	const search = input.search?.trim();
+
+	if (search) {
+		const pattern = escapeLikePattern(search);
+		filters.push(
+			or(
+				likeEscaped(roles.name, pattern),
+				likeEscaped(roles.description, pattern),
+			),
+		);
 	}
-	const ids = rows.map((row) => row.id);
-	const [userCounts, domainCounts, linkCounts] = await Promise.all([
+
+	const where = filters.length ? and(...filters) : undefined;
+
+	const [rows, [{ total }]] = await Promise.all([
 		db
-			.select({ roleId: user.roleId, total: count() })
-			.from(user)
-			.where(inArray(user.roleId, ids))
-			.groupBy(user.roleId),
-		db
-			.select({ roleId: roleDomainScopes.roleId, total: count() })
-			.from(roleDomainScopes)
-			.where(inArray(roleDomainScopes.roleId, ids))
-			.groupBy(roleDomainScopes.roleId),
-		db
-			.select({ roleId: roleLinkScopes.roleId, total: count() })
-			.from(roleLinkScopes)
-			.where(inArray(roleLinkScopes.roleId, ids))
-			.groupBy(roleLinkScopes.roleId),
+			.select()
+			.from(roles)
+			.where(where)
+			.orderBy(roles.name)
+			.limit(pageSize)
+			.offset(offset),
+		db.select({ total: count() }).from(roles).where(where),
 	]);
+
+	if (!rows.length) {
+		return {
+			items: [],
+			page,
+			pageSize,
+			total: Number(total ?? 0),
+			totalPages: Math.max(1, Math.ceil(Number(total ?? 0) / pageSize)),
+		};
+	}
+
+	const ids = rows.map((row) => row.id);
+	const [userCounts, domainCounts, linkCounts, pendingInviteCounts] =
+		await Promise.all([
+			db
+				.select({ roleId: user.roleId, total: count() })
+				.from(user)
+				.where(inArray(user.roleId, ids))
+				.groupBy(user.roleId),
+			db
+				.select({ roleId: roleDomainScopes.roleId, total: count() })
+				.from(roleDomainScopes)
+				.where(inArray(roleDomainScopes.roleId, ids))
+				.groupBy(roleDomainScopes.roleId),
+			db
+				.select({ roleId: roleLinkScopes.roleId, total: count() })
+				.from(roleLinkScopes)
+				.where(inArray(roleLinkScopes.roleId, ids))
+				.groupBy(roleLinkScopes.roleId),
+			db
+				.select({ roleId: adminInvites.roleId, total: count() })
+				.from(adminInvites)
+				.where(
+					and(
+						inArray(adminInvites.roleId, ids),
+						isNull(adminInvites.acceptedAt),
+						gt(adminInvites.expiresAt, Date.now()),
+					),
+				)
+				.groupBy(adminInvites.roleId),
+		]);
 
 	const userMap = new Map(
 		userCounts.map((row) => [row.roleId, Number(row.total)]),
@@ -110,19 +178,31 @@ export async function listRoles(db: AppDb): Promise<RoleSummary[]> {
 	const linkMap = new Map(
 		linkCounts.map((row) => [row.roleId, Number(row.total)]),
 	);
+	const pendingInviteMap = new Map(
+		pendingInviteCounts.map((row) => [row.roleId, Number(row.total)]),
+	);
 
-	return rows.map((row) => ({
+	const items: RoleSummary[] = rows.map((row) => ({
 		id: row.id,
 		name: row.name,
 		description: row.description,
 		isSystem: row.isSystem,
 		permissions: [...parsePermissions(row.permissions)],
 		userCount: userMap.get(row.id) ?? 0,
+		pendingInviteCount: pendingInviteMap.get(row.id) ?? 0,
 		domainScopeCount: domainMap.get(row.id) ?? 0,
 		linkScopeCount: linkMap.get(row.id) ?? 0,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	}));
+
+	return {
+		items,
+		page,
+		pageSize,
+		total: Number(total ?? 0),
+		totalPages: Math.max(1, Math.ceil(Number(total ?? 0) / pageSize)),
+	};
 }
 
 export async function getRoleById(
@@ -134,7 +214,7 @@ export async function getRoleById(
 		return null;
 	}
 
-	const [userRow, domainRows, linkRows] = await Promise.all([
+	const [userRow, domainRows, linkRows, pendingInviteRow] = await Promise.all([
 		db.select({ total: count() }).from(user).where(eq(user.roleId, id)),
 		db
 			.select({ domainId: roleDomainScopes.domainId })
@@ -144,6 +224,16 @@ export async function getRoleById(
 			.select({ linkId: roleLinkScopes.linkId })
 			.from(roleLinkScopes)
 			.where(eq(roleLinkScopes.roleId, id)),
+		db
+			.select({ total: count() })
+			.from(adminInvites)
+			.where(
+				and(
+					eq(adminInvites.roleId, id),
+					isNull(adminInvites.acceptedAt),
+					gt(adminInvites.expiresAt, Date.now()),
+				),
+			),
 	]);
 
 	return {
@@ -153,6 +243,7 @@ export async function getRoleById(
 		isSystem: row.isSystem,
 		permissions: [...parsePermissions(row.permissions)],
 		userCount: Number(userRow[0]?.total ?? 0),
+		pendingInviteCount: Number(pendingInviteRow[0]?.total ?? 0),
 		domainScopeCount: domainRows.length,
 		linkScopeCount: linkRows.length,
 		domainScopeIds: domainRows.map((r) => r.domainId),
@@ -308,6 +399,20 @@ export async function deleteRole(db: AppDb, id: string) {
 		.where(eq(user.roleId, id));
 	if (Number(usage?.total ?? 0) > 0) {
 		throw new Error("errors.roleInUse");
+	}
+
+	const [pendingInvites] = await db
+		.select({ total: count() })
+		.from(adminInvites)
+		.where(
+			and(
+				eq(adminInvites.roleId, id),
+				isNull(adminInvites.acceptedAt),
+				gt(adminInvites.expiresAt, Date.now()),
+			),
+		);
+	if (Number(pendingInvites?.total ?? 0) > 0) {
+		throw new Error("errors.roleHasPendingInvites");
 	}
 
 	await db.delete(roles).where(eq(roles.id, id));

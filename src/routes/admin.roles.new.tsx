@@ -26,7 +26,7 @@ export const Route = createFileRoute("/admin/roles/new")({
 function NewRole() {
 	const { session, isPending, t } = useAdminAuthGuard();
 	const { isAuthorized, isPending: isAuthPending } =
-		useRequirePermission("roles.manage");
+		useRequirePermission("roles.create");
 	const router = useRouter();
 	const [catalog, setCatalog] = useState<PermissionCatalog | null>(null);
 	const [domains, setDomains] = useState<AdminDomain[]>([]);

@@ -21,22 +21,27 @@ export const roles = sqliteTable("role", {
 	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
-export const user = sqliteTable("user", {
-	id: text("id").primaryKey(),
-	name: text("name").notNull(),
-	email: text("email").notNull().unique(),
-	emailVerified: integer("email_verified", { mode: "boolean" })
-		.notNull()
-		.default(true),
-	image: text("image"),
-	roleId: text("role_id")
-		.notNull()
-		.references(() => roles.id, { onDelete: "restrict" }),
-	locale: text("locale").notNull().default("en"),
-	isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
+export const user = sqliteTable(
+	"user",
+	{
+		id: text("id").primaryKey(),
+		name: text("name").notNull(),
+		email: text("email").notNull().unique(),
+		emailVerified: integer("email_verified", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		image: text("image"),
+		roleId: text("role_id")
+			.notNull()
+			.references(() => roles.id, { onDelete: "restrict" }),
+		locale: text("locale").notNull().default("en"),
+		isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+		invitedBy: text("invited_by"),
+		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [index("user_invited_by_idx").on(table.invitedBy)],
+);
 
 export const session = sqliteTable(
 	"session",

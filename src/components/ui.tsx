@@ -113,10 +113,10 @@ export function AppShell({
 	const showAccess =
 		!isAuthContextPending &&
 		(hasPermission("users.read") ||
-			hasPermission("invites.manage") ||
+			hasPermission("invites.read") ||
 			hasPermission("sessions.manage") ||
 			hasPermission("apikeys.manage") ||
-			hasPermission("roles.manage"));
+			hasPermission("roles.read"));
 
 	// Close mobile menu on navigation.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: path reset state
@@ -153,7 +153,7 @@ export function AppShell({
 			{showAccess ? (
 				<HeaderLink to="/admin/access">{t("nav.access")}</HeaderLink>
 			) : null}
-			<HeaderLink to="/admin/profile">{t("nav.profile")}</HeaderLink>
+			<HeaderLink to="/admin/user">{t("nav.profile")}</HeaderLink>
 		</>
 	) : null;
 

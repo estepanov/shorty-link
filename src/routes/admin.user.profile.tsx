@@ -21,7 +21,7 @@ import { getTreaty, unwrap } from "@/lib/eden";
 import { supportedLocales } from "@/lib/i18n";
 import { PERMISSION_GROUPS } from "@/lib/permissions";
 
-export const Route = createFileRoute("/admin/profile")({
+export const Route = createFileRoute("/admin/user/profile")({
 	component: Profile,
 });
 

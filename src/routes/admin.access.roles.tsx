@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -6,29 +7,64 @@ import {
 	Card,
 	DataRow,
 	DeleteConfirmationDialog,
+	EmptyState,
+	FieldLabel,
+	Input,
 	Notice,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
-import type { AdminRole } from "@/lib/admin-types";
+import type { AdminRole, AdminRoleList } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/access/roles")({
 	component: RolesTab,
 });
 
+type RoleFilters = {
+	pageSize: number;
+	search: string;
+};
+
+const defaultFilters: RoleFilters = {
+	pageSize: 25,
+	search: "",
+};
+
 function RolesTab() {
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
 	const { hasPermission } = useAuthContext();
-	const [roles, setRoles] = useState<AdminRole[]>([]);
+	const [data, setData] = useState<AdminRoleList | null>(null);
+	const [filters, setFilters] = useState<RoleFilters>(defaultFilters);
+	const [page, setPage] = useState(1);
 	const [error, setError] = useState<string | null>(null);
+	const form = useForm({
+		defaultValues: filters,
+		onSubmit: ({ value }) => {
+			setFilters(value);
+			setPage(1);
+		},
+	});
 
 	async function refresh() {
 		setError(null);
 		try {
 			const api = getTreaty();
-			const nextRoles = await unwrap<AdminRole[]>(await api.admin.roles.get());
-			setRoles(nextRoles);
+			const nextData = await unwrap<AdminRoleList>(
+				await api.admin.roles.get({
+					query: {
+						page,
+						pageSize: filters.pageSize,
+						search: filters.search,
+					},
+				}),
+			);
+			setData(nextData);
 		} catch (nextError) {
 			setError(
 				nextError instanceof Error ? nextError.message : "errors.unknown",
@@ -40,7 +76,7 @@ function RolesTab() {
 		if (session) {
 			void refresh();
 		}
-	}, [session?.user.id]);
+	}, [session?.user.id, filters, page]);
 
 	if (isPending) {
 		return <Card>{t("loading.app")}</Card>;
@@ -50,7 +86,7 @@ function RolesTab() {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
 	}
 
-	if (!hasPermission("roles.manage")) {
+	if (!hasPermission("roles.read")) {
 		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 
@@ -67,28 +103,124 @@ function RolesTab() {
 		}
 	}
 
+	const firstItem =
+		data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0;
+	const lastItem = data ? Math.min(data.page * data.pageSize, data.total) : 0;
+
 	return (
 		<div className="grid gap-6">
 			<Card>
-				<p className="text-sm text-muted-foreground">
+				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+					<h2 className="text-2xl font-medium">{t("roles.title")}</h2>
+					{hasPermission("roles.create") ? (
+						<Link
+							className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							to="/admin/roles/new"
+						>
+							{t("roles.create")}
+						</Link>
+					) : null}
+				</div>
+				<p className="mt-3 text-sm text-muted-foreground">
 					{t("roles.description")}
 				</p>
+
+				<form
+					className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_0.8fr_auto]"
+					onSubmit={(event) => {
+						event.preventDefault();
+						event.stopPropagation();
+						void form.handleSubmit();
+					}}
+				>
+					<form.Field name="search">
+						{(field) => (
+							<FieldLabel>
+								{t("roles.search")}
+								<Input
+									onChange={(event) => field.handleChange(event.target.value)}
+									value={field.state.value}
+								/>
+							</FieldLabel>
+						)}
+					</form.Field>
+					<form.Field name="pageSize">
+						{(field) => (
+							<FieldLabel>
+								{t("links.pageSize")}
+								<Select
+									onValueChange={(val) => field.handleChange(Number(val))}
+									value={String(field.state.value)}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{[10, 25, 50, 100].map((size) => (
+											<SelectItem key={size} value={String(size)}>
+												{size}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</FieldLabel>
+						)}
+					</form.Field>
+					<div className="flex items-end gap-2">
+						<Button type="submit">{t("forms.apply")}</Button>
+						<Button
+							onClick={() => {
+								form.reset(defaultFilters);
+								setFilters(defaultFilters);
+								setPage(1);
+							}}
+							tone="secondary"
+							type="button"
+						>
+							{t("forms.reset")}
+						</Button>
+					</div>
+				</form>
+
 				{error ? (
 					<div className="mt-4">
 						<Notice tone="error">{t(error)}</Notice>
 					</div>
 				) : null}
-				<div className="mt-4">
-					<Link to="/admin/roles/new">
-						<Button type="button">{t("roles.create")}</Button>
-					</Link>
-				</div>
 			</Card>
 
 			<Card>
-				<div className="grid gap-3">
-					{roles.length ? (
-						roles.map((role) => (
+				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+					<p className="text-sm font-bold text-muted-foreground">
+						{t("roles.showing")} {firstItem}-{lastItem} {t("roles.of")}{" "}
+						{data?.total ?? 0}
+					</p>
+					<div className="flex gap-2">
+						<Button
+							disabled={!data || data.page <= 1}
+							onClick={() => setPage((value) => Math.max(1, value - 1))}
+							tone="secondary"
+							type="button"
+						>
+							{t("roles.previous")}
+						</Button>
+						<Button
+							disabled={!data || data.page >= data.totalPages}
+							onClick={() =>
+								setPage((value) =>
+									Math.min(data?.totalPages ?? value, value + 1),
+								)
+							}
+							tone="secondary"
+							type="button"
+						>
+							{t("roles.next")}
+						</Button>
+					</div>
+				</div>
+				<div className="mt-5 grid gap-3">
+					{data?.items.length ? (
+						data.items.map((role) => (
 							<DataRow key={role.id}>
 								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 									<div className="flex-1">
@@ -121,6 +253,9 @@ function RolesTab() {
 												? t("roles.unrestricted")
 												: `${t("roles.scopeDomains")}: ${role.domainScopeCount}, ${t("roles.scopeLinks")}: ${role.linkScopeCount}`}{" "}
 											·{" "}
+											{role.pendingInviteCount > 0
+												? `${t("roles.pendingInvites").replace("{{count}}", String(role.pendingInviteCount))} · `
+												: ""}
 											{t("roles.usersCount").replace(
 												"{{count}}",
 												String(role.userCount),
@@ -128,34 +263,40 @@ function RolesTab() {
 										</p>
 									</div>
 									<div className="flex gap-2">
-										{!role.isSystem && (
+										{!role.isSystem && hasPermission("roles.update") ? (
 											<Link params={{ id: role.id }} to="/admin/roles/$id/edit">
 												<Button tone="secondary" type="button">
 													{t("roles.edit")}
 												</Button>
 											</Link>
-										)}
-										<DeleteConfirmationDialog
-											title={t("forms.confirmDelete")}
-											description={t("forms.confirmDeleteDescription")}
-											confirmLabel={t("forms.delete")}
-											cancelLabel={t("forms.cancel")}
-											onConfirm={() => deleteRole(role.id)}
-										>
-											<Button
-												disabled={role.isSystem || role.userCount > 0}
-												tone="danger"
-												type="button"
+										) : null}
+										{hasPermission("roles.delete") ? (
+											<DeleteConfirmationDialog
+												title={t("forms.confirmDelete")}
+												description={t("forms.confirmDeleteDescription")}
+												confirmLabel={t("forms.delete")}
+												cancelLabel={t("forms.cancel")}
+												onConfirm={() => deleteRole(role.id)}
 											>
-												{t("roles.delete")}
-											</Button>
-										</DeleteConfirmationDialog>
+												<Button
+													disabled={
+														role.isSystem ||
+														role.userCount > 0 ||
+														role.pendingInviteCount > 0
+													}
+													tone="danger"
+													type="button"
+												>
+													{t("roles.delete")}
+												</Button>
+											</DeleteConfirmationDialog>
+										) : null}
 									</div>
 								</div>
 							</DataRow>
 						))
 					) : (
-						<p className="text-sm text-muted-foreground">{t("roles.empty")}</p>
+						<EmptyState description={t("roles.empty")} />
 					)}
 				</div>
 			</Card>

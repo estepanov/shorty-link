@@ -14,7 +14,7 @@ import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminSession } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
-export const Route = createFileRoute("/admin/sessions")({
+export const Route = createFileRoute("/admin/user/sessions")({
 	component: Sessions,
 });
 

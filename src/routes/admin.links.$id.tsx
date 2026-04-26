@@ -7,7 +7,7 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Card, Notice } from "@/components/ui";
+import { Button, Card, Notice } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { LinkStatsResponse, UtmDimension } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -29,7 +29,7 @@ function LinkDetails() {
 	const { id } = Route.useParams();
 	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("links.read");
+	const { isAuthorized, hasPermission } = useRequirePermission("links.read");
 	const [data, setData] = useState<LinkStatsResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const isDetailsRoute =
@@ -121,25 +121,27 @@ function LinkDetails() {
 							<p className="mt-2 text-sm text-muted-foreground">{link.notes}</p>
 						) : null}
 					</div>
-					<Link
-						className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border dark:text-white dark:hover:bg-muted "
-						params={{ id: link.id }}
-						to="/admin/links/$id/edit"
-					>
-						{t("forms.update")}
-					</Link>
+					{hasPermission("links.write") ? (
+						<Link params={{ id: link.id }} to="/admin/links/$id/edit">
+							<Button type="button">{t("forms.update")}</Button>
+						</Link>
+					) : null}
 				</div>
 			</Card>
 
 			<section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<Stat label={t("stats.allTimeHits")} value={stats.totals.allTime} />
-				<Stat
-					label={t("stats.windowHits").replace(
-						"{{days}}",
-						String(stats.windowDays),
-					)}
-					value={stats.totals.window}
-				/>
+				{stats ? (
+					<>
+						<Stat label={t("stats.allTimeHits")} value={stats.totals.allTime} />
+						<Stat
+							label={t("stats.windowHits").replace(
+								"{{days}}",
+								String(stats.windowDays),
+							)}
+							value={stats.totals.window}
+						/>
+					</>
+				) : null}
 				<Stat label={t("stats.statusCode")} value={link.statusCode} />
 				<Stat
 					label={t("stats.state")}
@@ -147,75 +149,84 @@ function LinkDetails() {
 				/>
 			</section>
 
-			<Card>
-				<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-					<h2 className="text-2xl font-medium">{t("stats.histogramTitle")}</h2>
-					<p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-						{t("stats.lastDays").replace("{{days}}", String(stats.windowDays))}
-					</p>
-				</div>
-				<Histogram buckets={stats.histogram} locale={locale} />
-			</Card>
+			{stats ? (
+				<>
+					<Card>
+						<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+							<h2 className="text-2xl font-medium">
+								{t("stats.histogramTitle")}
+							</h2>
+							<p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+								{t("stats.lastDays").replace(
+									"{{days}}",
+									String(stats.windowDays),
+								)}
+							</p>
+						</div>
+						<Histogram buckets={stats.histogram} locale={locale} />
+					</Card>
 
-			<section className="grid gap-4 lg:grid-cols-2">
-				{UTM_LABELS.map(({ dimension, key }) => (
-					<UtmBreakdown
-						dimension={dimension}
-						key={dimension}
-						rows={stats.breakdowns[dimension]}
-						title={t(key)}
-						total={stats.totals.window}
-						t={t}
-					/>
-				))}
-			</section>
+					<section className="grid gap-4 lg:grid-cols-2">
+						{UTM_LABELS.map(({ dimension, key }) => (
+							<UtmBreakdown
+								dimension={dimension}
+								key={dimension}
+								rows={stats.breakdowns[dimension]}
+								title={t(key)}
+								total={stats.totals.window}
+								t={t}
+							/>
+						))}
+					</section>
 
-			<Card>
-				<h2 className="text-2xl font-medium">{t("stats.recentTitle")}</h2>
-				<div className="mt-4 overflow-x-auto">
-					<table className="min-w-full text-left text-sm">
-						<thead>
-							<tr className="border-b border-foreground/10 text-muted-foreground ">
-								<th className="py-3">{t("table.when")}</th>
-								<th className="py-3">{t("table.country")}</th>
-								<th className="py-3">{t("stats.utmSource")}</th>
-								<th className="py-3">{t("stats.utmMedium")}</th>
-								<th className="py-3">{t("stats.utmCampaign")}</th>
-								<th className="py-3">{t("table.referer")}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{stats.recentEvents.length ? (
-								stats.recentEvents.map((event) => (
-									<tr className="border-b border-border/60" key={event.id}>
-										<td className="py-3">
-											{new Date(event.createdAt).toLocaleString(locale)}
-										</td>
-										<td className="py-3">
-											{event.country ?? t("table.direct")}
-										</td>
-										<td className="py-3">{event.utmSource ?? "—"}</td>
-										<td className="py-3">{event.utmMedium ?? "—"}</td>
-										<td className="py-3">{event.utmCampaign ?? "—"}</td>
-										<td className="max-w-xs truncate py-3">
-											{event.referer ?? t("table.direct")}
-										</td>
+					<Card>
+						<h2 className="text-2xl font-medium">{t("stats.recentTitle")}</h2>
+						<div className="mt-4 overflow-x-auto">
+							<table className="min-w-full text-left text-sm">
+								<thead>
+									<tr className="border-b border-foreground/10 text-muted-foreground ">
+										<th className="py-3">{t("table.when")}</th>
+										<th className="py-3">{t("table.country")}</th>
+										<th className="py-3">{t("stats.utmSource")}</th>
+										<th className="py-3">{t("stats.utmMedium")}</th>
+										<th className="py-3">{t("stats.utmCampaign")}</th>
+										<th className="py-3">{t("table.referer")}</th>
 									</tr>
-								))
-							) : (
-								<tr>
-									<td
-										className="py-5 text-sm text-muted-foreground"
-										colSpan={6}
-									>
-										{t("stats.noEvents")}
-									</td>
-								</tr>
-							)}
-						</tbody>
-					</table>
-				</div>
-			</Card>
+								</thead>
+								<tbody>
+									{stats.recentEvents.length ? (
+										stats.recentEvents.map((event) => (
+											<tr className="border-b border-border/60" key={event.id}>
+												<td className="py-3">
+													{new Date(event.createdAt).toLocaleString(locale)}
+												</td>
+												<td className="py-3">
+													{event.country ?? t("table.direct")}
+												</td>
+												<td className="py-3">{event.utmSource ?? "—"}</td>
+												<td className="py-3">{event.utmMedium ?? "—"}</td>
+												<td className="py-3">{event.utmCampaign ?? "—"}</td>
+												<td className="max-w-xs truncate py-3">
+													{event.referer ?? t("table.direct")}
+												</td>
+											</tr>
+										))
+									) : (
+										<tr>
+											<td
+												className="py-5 text-sm text-muted-foreground"
+												colSpan={6}
+											>
+												{t("stats.noEvents")}
+											</td>
+										</tr>
+									)}
+								</tbody>
+							</table>
+						</div>
+					</Card>
+				</>
+			) : null}
 		</div>
 	);
 }

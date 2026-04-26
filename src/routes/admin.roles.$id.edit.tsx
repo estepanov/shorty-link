@@ -11,7 +11,11 @@ import {
 	Notice,
 	TextArea,
 } from "@/components/ui";
-import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
+import {
+	useAdminAuthGuard,
+	useAuthContext,
+	useRequirePermission,
+} from "@/lib/admin-auth";
 import type {
 	AdminDomain,
 	AdminRoleDetail,
@@ -30,7 +34,8 @@ function EditRole() {
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
 	const { isAuthorized, isPending: isAuthPending } =
-		useRequirePermission("roles.manage");
+		useRequirePermission("roles.update");
+	const { hasPermission } = useAuthContext();
 	const [role, setRole] = useState<AdminRoleDetail | null>(null);
 	const [catalog, setCatalog] = useState<PermissionCatalog | null>(null);
 	const [domains, setDomains] = useState<AdminDomain[]>([]);
@@ -99,7 +104,10 @@ function EditRole() {
 			<Card>
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<h1 className="text-4xl font-medium">{t("pages.editRole")}</h1>
-					{role && !role.isSystem ? (
+					{role &&
+					!role.isSystem &&
+					role.userCount === 0 &&
+					hasPermission("roles.delete") ? (
 						<DeleteConfirmationDialog
 							title={t("forms.confirmDelete")}
 							description={t("forms.confirmDeleteDescription")}

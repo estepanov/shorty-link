@@ -17,6 +17,7 @@ type OnboardingContext = {
 	email: string;
 	exp: number;
 	inviteToken?: string;
+	invitedBy?: string;
 	locale: string;
 	name: string;
 	roleId: string;
@@ -157,6 +158,7 @@ export async function createInviteContext(
 			email: invite.email,
 			exp: Date.now() + 10 * 60 * 1000,
 			inviteToken: invite.token,
+			invitedBy: invite.invitedBy ?? undefined,
 			locale: normalizeLocale(input.locale),
 			name: input.name.trim(),
 			roleId: invite.roleId,
@@ -267,10 +269,11 @@ export async function completePasskeyRegistrationUser(
 					"role_id",
 					"locale",
 					"is_active",
+					"invited_by",
 					"created_at",
 					"updated_at"
 				)
-				select ?, ?, ?, 1, null, ?, ?, 1, ?, ?
+				select ?, ?, ?, 1, null, ?, ?, 1, null, ?, ?
 				where not exists (select 1 from "user")
 			`)
 			.bind(id, parsed.name, email, roleId, locale, timestamp, timestamp)
@@ -306,7 +309,11 @@ export async function completePasskeyRegistrationUser(
 		}
 		await db
 			.update(user)
-			.set({ roleId: roleId ?? SYSTEM_ROLE_ADMIN, updatedAt: new Date() })
+			.set({
+				roleId: roleId ?? SYSTEM_ROLE_ADMIN,
+				invitedBy: parsed.invitedBy ?? null,
+				updatedAt: new Date(),
+			})
 			.where(eq(user.id, existing.id));
 		return existing.id;
 	}
@@ -322,10 +329,11 @@ export async function completePasskeyRegistrationUser(
 				"role_id",
 				"locale",
 				"is_active",
+				"invited_by",
 				"created_at",
 				"updated_at"
 			)
-			select ?, ?, ?, 1, null, ?, ?, 1, ?, ?
+			select ?, ?, ?, 1, null, ?, ?, 1, ?, ?, ?
 			where exists (
 				select 1
 				from "admin_invite"
@@ -340,6 +348,7 @@ export async function completePasskeyRegistrationUser(
 			email,
 			roleId ?? SYSTEM_ROLE_ADMIN,
 			locale,
+			parsed.invitedBy ?? null,
 			timestamp,
 			timestamp,
 			parsed.inviteToken,

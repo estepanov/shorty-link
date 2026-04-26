@@ -25,6 +25,7 @@ async function applyMigrations(database: D1Database) {
 		"0005_managed_domain_fallbacks.sql",
 		"0003_user_is_active.sql",
 		"0004_roles_and_scopes.sql",
+		"0006_user_invited_by.sql",
 	]) {
 		const statements = readFileSync(
 			join(process.cwd(), "migrations", file),
@@ -80,6 +81,17 @@ describe("onboarding security", () => {
 	it("requires a valid unaccepted invite before attaching a passkey", async () => {
 		const timestamp = new Date();
 		await db.insert(user).values({
+			id: "inviter-admin",
+			email: "inviter@example.com",
+			emailVerified: true,
+			image: null,
+			locale: "en",
+			name: "Inviter Admin",
+			roleId: SYSTEM_ROLE_ADMIN,
+			createdAt: timestamp,
+			updatedAt: timestamp,
+		});
+		await db.insert(user).values({
 			id: "existing-admin",
 			email: "admin@example.com",
 			emailVerified: true,
@@ -95,7 +107,7 @@ describe("onboarding security", () => {
 			email: "admin@example.com",
 			token: "valid-invite-token-for-admin",
 			roleId: SYSTEM_ROLE_ADMIN,
-			invitedBy: null,
+			invitedBy: "inviter-admin",
 			expiresAt: Date.now() + 60_000,
 			acceptedAt: null,
 			createdAt: Date.now(),
@@ -130,6 +142,12 @@ describe("onboarding security", () => {
 			.from(adminInvites)
 			.where(eq(adminInvites.id, "invite-1"));
 		expect(invite?.acceptedAt).toEqual(expect.any(Number));
+
+		const [updatedUser] = await db
+			.select()
+			.from(user)
+			.where(eq(user.id, "existing-admin"));
+		expect(updatedUser?.invitedBy).toBe("inviter-admin");
 
 		await expect(
 			resolvePasskeyRegistrationUser(db, context, localRequest),

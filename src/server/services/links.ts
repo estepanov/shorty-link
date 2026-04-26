@@ -1,5 +1,4 @@
 import {
-	type AnyColumn,
 	and,
 	count,
 	desc,
@@ -13,13 +12,12 @@ import {
 	sql,
 } from "drizzle-orm";
 import { customAlphabet, nanoid } from "nanoid";
-
 import {
+	type ManagedDomainRootBehavior,
+	type ManagedDomainUnknownSlugBehavior,
 	normalizeManagedDomainRedirectStatusCode,
 	normalizeManagedDomainRootBehavior,
 	normalizeManagedDomainUnknownSlugBehavior,
-	type ManagedDomainRootBehavior,
-	type ManagedDomainUnknownSlugBehavior,
 } from "@/lib/domain-routing";
 import {
 	isRedirectStatusCode,
@@ -37,6 +35,7 @@ import {
 	shortLinks,
 	user,
 } from "../db/schema";
+import { escapeLikePattern, likeEscaped } from "./utils";
 
 export type ScopeFilter = {
 	hostnames: ReadonlySet<string> | null;
@@ -85,17 +84,6 @@ export { DEFAULT_HOSTNAME };
 
 export function now() {
 	return Date.now();
-}
-
-function escapeLikePattern(value: string) {
-	return `%${value
-		.replaceAll("\\", "\\\\")
-		.replaceAll("%", "\\%")
-		.replaceAll("_", "\\_")}%`;
-}
-
-function likeEscaped(column: AnyColumn, pattern: string) {
-	return sql`${column} like ${pattern} escape '\\'`;
 }
 
 function normalizeManagedDomainRedirectConfig(input: {

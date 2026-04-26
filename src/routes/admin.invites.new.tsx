@@ -41,7 +41,7 @@ function NewInvite() {
 		return <Notice tone="error">{t("errors.unauthorized")}</Notice>;
 	}
 
-	if (!hasPermission("invites.manage")) {
+	if (!hasPermission("invites.create")) {
 		return <Notice tone="error">{t("errors.permissionDenied")}</Notice>;
 	}
 

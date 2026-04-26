@@ -40,6 +40,7 @@ async function applyMigrations(database: D1Database) {
 		"0005_managed_domain_fallbacks.sql",
 		"0003_user_is_active.sql",
 		"0004_roles_and_scopes.sql",
+		"0006_user_invited_by.sql",
 	]) {
 		const statements = readFileSync(
 			join(process.cwd(), "migrations", file),
@@ -99,7 +100,7 @@ describe("roles and scopes", () => {
 	});
 
 	it("seeds owner and admin system roles with all permissions", async () => {
-		const list = await listRoles(db);
+		const { items: list } = await listRoles(db);
 		const owner = list.find((r) => r.id === SYSTEM_ROLE_OWNER);
 		const admin = list.find((r) => r.id === SYSTEM_ROLE_ADMIN);
 		expect(owner).toBeDefined();
@@ -107,7 +108,7 @@ describe("roles and scopes", () => {
 		expect(owner?.isSystem).toBe(true);
 		expect(admin?.isSystem).toBe(true);
 		expect(owner?.permissions).toContain("links.write");
-		expect(owner?.permissions).toContain("roles.manage");
+		expect(owner?.permissions).toContain("sessions.manage");
 	});
 
 	it("blocks editing or deleting system roles", async () => {

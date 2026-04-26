@@ -13,7 +13,11 @@ import {
 	DeleteConfirmationDialog,
 	Notice,
 } from "@/components/ui";
-import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
+import {
+	useAdminAuthGuard,
+	useAuthContext,
+	useRequirePermission,
+} from "@/lib/admin-auth";
 import type {
 	AdminRoleDetail,
 	AdminUser,
@@ -30,7 +34,8 @@ function RoleDetailPage() {
 	const { id } = useParams({ from: "/admin/access/roles/$id" });
 	const router = useRouter();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("roles.manage");
+	const { isAuthorized } = useRequirePermission("roles.read");
+	const { hasPermission } = useAuthContext();
 	const [role, setRole] = useState<AdminRoleDetail | null>(null);
 	const [users, setUsers] = useState<AdminUser[]>([]);
 	const [catalog, setCatalog] = useState<PermissionCatalog | null>(null);
@@ -151,23 +156,25 @@ function RoleDetailPage() {
 							<p className="mt-2 text-muted-foreground">{role.description}</p>
 						) : null}
 					</div>
-					<div className="flex gap-2">
-						<DeleteConfirmationDialog
-							title={t("forms.confirmDelete")}
-							description={t("forms.confirmDeleteDescription")}
-							confirmLabel={t("forms.delete")}
-							cancelLabel={t("forms.cancel")}
-							onConfirm={deleteRole}
-						>
-							<Button
-								disabled={role.isSystem || role.userCount > 0}
-								tone="danger"
-								type="button"
+					{hasPermission("roles.delete") ? (
+						<div className="flex gap-2">
+							<DeleteConfirmationDialog
+								title={t("forms.confirmDelete")}
+								description={t("forms.confirmDeleteDescription")}
+								confirmLabel={t("forms.delete")}
+								cancelLabel={t("forms.cancel")}
+								onConfirm={deleteRole}
 							>
-								{t("roles.delete")}
-							</Button>
-						</DeleteConfirmationDialog>
-					</div>
+								<Button
+									disabled={role.isSystem || role.userCount > 0}
+									tone="danger"
+									type="button"
+								>
+									{t("roles.delete")}
+								</Button>
+							</DeleteConfirmationDialog>
+						</div>
+					) : null}
 				</div>
 			</Card>
 

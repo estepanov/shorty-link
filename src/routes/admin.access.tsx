@@ -26,12 +26,12 @@ const allTabs: Array<{
 	{
 		path: "/admin/access/invites",
 		labelKey: "access.tabs.invites",
-		permission: "invites.manage" as Permission,
+		permission: "invites.read" as Permission,
 	},
 	{
 		path: "/admin/access/roles",
 		labelKey: "access.tabs.roles",
-		permission: "roles.manage" as Permission,
+		permission: "roles.read" as Permission,
 	},
 ];
 

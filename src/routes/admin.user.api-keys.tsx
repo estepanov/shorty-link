@@ -24,7 +24,7 @@ import type {
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
 
-export const Route = createFileRoute("/admin/api-keys")({
+export const Route = createFileRoute("/admin/user/api-keys")({
 	component: ApiKeys,
 });
 

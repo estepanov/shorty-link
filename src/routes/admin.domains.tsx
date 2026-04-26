@@ -21,7 +21,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui";
-import { useAdminAuthGuard } from "@/lib/admin-auth";
+import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminDomain } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
@@ -52,6 +52,8 @@ function DomainList() {
 	const isDomainListRoute =
 		location.pathname === "/admin/domains" ||
 		location.pathname === "/admin/domains/";
+	const { hasPermission } = useAuthContext();
+	const canWriteDomains = hasPermission("domains.write");
 	const form = useForm({
 		defaultValues: filters,
 		onSubmit: ({ value }) => {
@@ -129,12 +131,14 @@ function DomainList() {
 					<div>
 						<h1 className="text-4xl font-medium">{t("domains.title")}</h1>
 					</div>
-					<Link
-						className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-						to="/admin/domains/new"
-					>
-						{t("actions.addDomain")}
-					</Link>
+					{canWriteDomains ? (
+						<Link
+							className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							to="/admin/domains/new"
+						>
+							{t("actions.addDomain")}
+						</Link>
+					) : null}
 				</div>
 
 				<form
@@ -256,7 +260,12 @@ function DomainList() {
 				</div>
 				<div className="mt-5 grid gap-3">
 					{paginated.map((domain) => (
-						<DomainRow key={domain.id} domain={domain} t={t} />
+						<DomainRow
+							key={domain.id}
+							domain={domain}
+							t={t}
+							canWrite={canWriteDomains}
+						/>
 					))}
 					{!paginated.length ? (
 						<EmptyState description={t("dashboard.noDomains")} />
@@ -270,9 +279,11 @@ function DomainList() {
 function DomainRow({
 	domain,
 	t,
+	canWrite,
 }: {
 	domain: AdminDomain;
 	t: ReturnType<typeof createTranslator>;
+	canWrite: boolean;
 }) {
 	return (
 		<DataRow>
@@ -301,13 +312,15 @@ function DomainRow({
 					) : null}
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
-					<Link
-						className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-						params={{ id: domain.id }}
-						to="/admin/domains/$id/edit"
-					>
-						{t("forms.update")}
-					</Link>
+					{canWrite ? (
+						<Link
+							className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							params={{ id: domain.id }}
+							to="/admin/domains/$id/edit"
+						>
+							{t("forms.update")}
+						</Link>
+					) : null}
 				</div>
 			</div>
 		</DataRow>

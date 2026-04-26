@@ -68,6 +68,7 @@ function LinksList() {
 		location.pathname === "/admin/links" ||
 		location.pathname === "/admin/links/";
 	const canViewDomains = hasPermission("domains.read");
+	const canWriteLinks = hasPermission("links.write");
 	const form = useForm({
 		defaultValues: filters,
 		onSubmit: ({ value }) => {
@@ -148,12 +149,14 @@ function LinksList() {
 					<div>
 						<h1 className="text-4xl font-medium">{t("links.title")}</h1>
 					</div>
-					<Link
-						className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-						to="/admin/links/new"
-					>
-						{t("actions.addLink")}
-					</Link>
+					{canWriteLinks ? (
+						<Link
+							className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							to="/admin/links/new"
+						>
+							{t("actions.addLink")}
+						</Link>
+					) : null}
 				</div>
 
 				<form
@@ -329,7 +332,13 @@ function LinksList() {
 				</div>
 				<div className="mt-5 grid gap-3">
 					{data?.items.map((link) => (
-						<LinkRow key={link.id} link={link} locale={locale} t={t} />
+						<LinkRow
+							key={link.id}
+							link={link}
+							locale={locale}
+							t={t}
+							canWrite={canWriteLinks}
+						/>
 					))}
 					{!data?.items.length ? (
 						<EmptyState description={t("dashboard.noLinks")} />
@@ -344,10 +353,12 @@ function LinkRow({
 	link,
 	locale,
 	t,
+	canWrite,
 }: {
 	link: LinkListData["items"][number];
 	locale: string;
 	t: ReturnType<typeof createTranslator>;
+	canWrite: boolean;
 }) {
 	return (
 		<DataRow>
@@ -409,13 +420,15 @@ function LinkRow({
 					</div>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
-					<Link
-						className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-						params={{ id: link.id }}
-						to="/admin/links/$id/edit"
-					>
-						{t("forms.update")}
-					</Link>
+					{canWrite ? (
+						<Link
+							className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							params={{ id: link.id }}
+							to="/admin/links/$id/edit"
+						>
+							{t("forms.update")}
+						</Link>
+					) : null}
 				</div>
 			</div>
 		</DataRow>

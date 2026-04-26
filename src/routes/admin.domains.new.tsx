@@ -36,7 +36,7 @@ function NewDomain() {
 				</div>
 				<DomainForm
 					onSaved={() => {
-						void router.navigate({ to: "/admin" });
+						void router.navigate({ to: "/admin/domains" });
 					}}
 					t={t}
 				/>

@@ -416,11 +416,12 @@ function DashboardView({
 	const showLinksWrite = hasPermission("links.write");
 	const showDomains = hasPermission("domains.read");
 	const showDomainsWrite = hasPermission("domains.write");
-	const showInvites = hasPermission("invites.manage");
+	const showInvitesRead = hasPermission("invites.read");
+	const showInvitesCreate = hasPermission("invites.create");
 	const showAnalytics = hasPermission("analytics.read");
 
 	const dashboardHasContent =
-		showLinks || showDomains || showInvites || showAnalytics;
+		showLinks || showDomains || showInvitesRead || showAnalytics;
 
 	return (
 		<div className="grid gap-6">
@@ -444,7 +445,7 @@ function DashboardView({
 								{t("actions.addDomain")}
 							</ActionLink>
 						) : null}
-						{showInvites ? (
+						{showInvitesCreate ? (
 							<ActionLink to="/admin/invites/new" tone="invert">
 								{t("actions.addInvite")}
 							</ActionLink>
@@ -464,7 +465,7 @@ function DashboardView({
 					{showDomains ? (
 						<Stat label={t("dashboard.domains")} value={data.summary.domains} />
 					) : null}
-					{showInvites ? (
+					{showInvitesRead ? (
 						<Stat label={t("dashboard.invites")} value={data.summary.invites} />
 					) : null}
 				</div>
@@ -581,9 +582,11 @@ function DashboardView({
 														</td>
 														<td className="py-3">{link.hitCount}</td>
 														<td className="py-3">
-															<ActionLink to={`/admin/links/${link.id}/edit`}>
-																{t("forms.update")}
-															</ActionLink>
+															{showLinksWrite ? (
+																<ActionLink to={`/admin/links/${link.id}/edit`}>
+																	{t("forms.update")}
+																</ActionLink>
+															) : null}
 														</td>
 													</tr>
 												))
@@ -630,9 +633,13 @@ function DashboardView({
 																	: t("domains.inactive")}
 															</p>
 														</div>
-														<ActionLink to={`/admin/domains/${domain.id}/edit`}>
-															{t("forms.update")}
-														</ActionLink>
+														{showDomainsWrite ? (
+															<ActionLink
+																to={`/admin/domains/${domain.id}/edit`}
+															>
+																{t("forms.update")}
+															</ActionLink>
+														) : null}
 													</div>
 												</DataRow>
 											))
@@ -646,15 +653,17 @@ function DashboardView({
 								</Card>
 							) : null}
 
-							{showInvites ? (
+							{showInvitesRead ? (
 								<Card>
 									<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
 										<h2 className="font-display text-2xl tracking-tight">
 											{t("dashboard.latestInvites")}
 										</h2>
-										<ActionLink to="/admin/invites/new" tone="primary">
-											{t("actions.addInvite")}
-										</ActionLink>
+										{showInvitesCreate ? (
+											<ActionLink to="/admin/invites/new" tone="primary">
+												{t("actions.addInvite")}
+											</ActionLink>
+										) : null}
 									</div>
 									<div className="mt-5 grid gap-3">
 										{data.invites.length ? (

@@ -31,7 +31,6 @@
 		"setup:local": "pnpm install && pnpm cf-typegen && pnpm db:migrate:local"
 	},
 	"dependencies": {
-		"@base-ui/react": "^1.4.1",
 		"@better-auth/api-key": "^1.6.5",
 		"@better-auth/drizzle-adapter": "^1.6.5",
 		"@better-auth/i18n": "^1.6.5",
