@@ -6,8 +6,15 @@ import {
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { Button, Card, Notice } from "@/components/ui";
+import {
+	type ChartConfig,
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { LinkStatsResponse, UtmDimension } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -163,7 +170,11 @@ function LinkDetails() {
 								)}
 							</p>
 						</div>
-						<Histogram buckets={stats.histogram} locale={locale} />
+						<ClicksByDayChart
+							buckets={stats.histogram}
+							clickLabel={t("table.hits")}
+							locale={locale}
+						/>
 					</Card>
 
 					<section className="grid gap-4 lg:grid-cols-2">
@@ -252,16 +263,24 @@ function Stat({
 	);
 }
 
-function Histogram({
+function ClicksByDayChart({
 	buckets,
+	clickLabel,
 	locale,
 }: {
 	buckets: Array<{ day: number; total: number }>;
+	clickLabel: string;
 	locale: string;
 }) {
-	const max = useMemo(
-		() => buckets.reduce((acc, bucket) => Math.max(acc, bucket.total), 0),
-		[buckets],
+	const chartConfig = useMemo(
+		() =>
+			({
+				clicks: {
+					label: clickLabel,
+					color: "var(--chart-1)",
+				},
+			}) satisfies ChartConfig,
+		[clickLabel],
 	);
 	const dayFormatter = useMemo(
 		() =>
@@ -270,6 +289,24 @@ function Histogram({
 				month: "short",
 			}),
 		[locale],
+	);
+	const tooltipFormatter = useMemo(
+		() =>
+			new Intl.DateTimeFormat(locale, {
+				day: "numeric",
+				month: "long",
+				year: "numeric",
+			}),
+		[locale],
+	);
+	const chartData = useMemo(
+		() =>
+			buckets.map((bucket) => ({
+				clicks: bucket.total,
+				day: bucket.day,
+				label: dayFormatter.format(new Date(bucket.day)),
+			})),
+		[buckets, dayFormatter],
 	);
 
 	const firstBucket = buckets[0];
@@ -280,25 +317,53 @@ function Histogram({
 
 	return (
 		<div className="mt-4">
-			<div className="flex items-end gap-1" aria-hidden="true">
-				{buckets.map((bucket) => {
-					const height =
-						max > 0 ? Math.max(4, Math.round((bucket.total / max) * 100)) : 2;
-					return (
-						<div
-							key={bucket.day}
-							className="flex-1"
-							title={`${dayFormatter.format(new Date(bucket.day))} · ${bucket.total}`}
-						>
-							<div
-								className="w-full rounded-t-md bg-foreground transition"
-								style={{ height: `${height}px` }}
+			<ChartContainer
+				className="h-[260px] w-full sm:h-[320px]"
+				config={chartConfig}
+			>
+				<BarChart
+					accessibilityLayer
+					data={chartData}
+					margin={{ left: -12, right: 8, top: 8 }}
+				>
+					<CartesianGrid strokeDasharray="3 3" vertical={false} />
+					<XAxis
+						axisLine={false}
+						dataKey="label"
+						interval="preserveStartEnd"
+						minTickGap={18}
+						tickLine={false}
+						tickMargin={10}
+					/>
+					<YAxis
+						allowDecimals={false}
+						axisLine={false}
+						tickLine={false}
+						tickMargin={8}
+						width={36}
+					/>
+					<ChartTooltip
+						content={
+							<ChartTooltipContent
+								hideLabel={false}
+								indicator="line"
+								labelFormatter={(_label, payload) => {
+									const day = payload?.[0]?.payload?.day;
+									return typeof day === "number"
+										? tooltipFormatter.format(new Date(day))
+										: null;
+								}}
 							/>
-						</div>
-					);
-				})}
-			</div>
-			<div className="mt-2 flex justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+						}
+					/>
+					<Bar
+						dataKey="clicks"
+						fill="var(--color-clicks)"
+						radius={[5, 5, 2, 2]}
+					/>
+				</BarChart>
+			</ChartContainer>
+			<div className="mt-3 flex justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
 				<span>{dayFormatter.format(new Date(firstBucket.day))}</span>
 				<span>{dayFormatter.format(new Date(lastBucket.day))}</span>
 			</div>
