@@ -77,9 +77,10 @@ import {
 	deleteInvite,
 	deleteUser,
 	getInviteById,
+	getUserById,
 	listAllInvites,
 	listUsers,
-	toggleUserActive,
+	updateUser,
 } from "../services/users";
 
 type AiBinding = {
@@ -862,6 +863,16 @@ export const app = new Elysia({
 					}),
 				},
 			)
+			.get(
+				"/users/:id",
+				async ({ db, params, request }) => {
+					await requirePermissionOrError(request, "users.read");
+					return getUserById(db, params.id);
+				},
+				{
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
 			.patch(
 				"/users/:id",
 				async ({ body, db, params, request }) => {
@@ -869,15 +880,23 @@ export const app = new Elysia({
 						request,
 						"users.write",
 					);
-					if (params.id === ctx.user.id) {
+					if (params.id === ctx.user.id && body.isActive === false) {
 						throw new Error("errors.cannotSelfDisable");
 					}
-					await toggleUserActive(db, params.id, body.isActive);
+					await updateUser(db, params.id, {
+						name: body.name,
+						email: body.email,
+						locale: body.locale,
+						isActive: body.isActive,
+					});
 					return { ok: true };
 				},
 				{
 					body: t.Object({
-						isActive: t.Boolean(),
+						isActive: t.Optional(t.Boolean()),
+						name: t.Optional(t.String({ minLength: 2 })),
+						email: t.Optional(t.String({ format: "email" })),
+						locale: t.Optional(t.String()),
 					}),
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},

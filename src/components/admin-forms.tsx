@@ -37,7 +37,7 @@ import {
 
 const DEFAULT_HOSTNAME_SELECT_VALUE = "__default__";
 
-function AdminFormRoot({
+export function AdminFormRoot({
 	className,
 	...props
 }: FormHTMLAttributes<HTMLFormElement>) {
@@ -52,7 +52,7 @@ function AdminFormRoot({
 	);
 }
 
-function FormGrid({
+export function FormGrid({
 	children,
 	className,
 }: {
@@ -136,7 +136,7 @@ const toggleLabelStyles: Record<
 	},
 } as const;
 
-function ToggleTile({
+export function ToggleTile({
 	checked,
 	children,
 	onCheckedChange,
@@ -176,7 +176,7 @@ function ToggleTile({
 	);
 }
 
-function FormFooter({ children }: { children: ReactNode }) {
+export function FormFooter({ children }: { children: ReactNode }) {
 	return (
 		<div className="flex flex-col-reverse gap-3 border-t border-border/70 pt-5 sm:flex-row sm:justify-end">
 			{children}

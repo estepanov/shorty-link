@@ -1,5 +1,10 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	Outlet,
+	useLocation,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 function PencilIcon({ className }: { className?: string }) {
@@ -60,8 +65,12 @@ const defaultFilters: UserFilters = {
 };
 
 function UsersTab() {
+	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
 	const { isAuthorized } = useRequirePermission("users.read");
+	const isUsersListRoute =
+		location.pathname === "/admin/access/users" ||
+		location.pathname === "/admin/access/users/";
 	const [roles, setRoles] = useState<AssignableRole[]>([]);
 	const [data, setData] = useState<UserListData | null>(null);
 	const [filters, setFilters] = useState<UserFilters>(defaultFilters);
@@ -103,10 +112,14 @@ function UsersTab() {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh stable; refetch when session identity or filters change.
 	useEffect(() => {
-		if (session) {
+		if (session && isUsersListRoute) {
 			void refresh();
 		}
-	}, [session?.user.id, filters, page]);
+	}, [session?.user.id, filters, page, isUsersListRoute]);
+
+	if (!isUsersListRoute) {
+		return <Outlet />;
+	}
 
 	if (isPending) {
 		return <Card>{t("loading.app")}</Card>;
@@ -288,12 +301,14 @@ function UserRow({
 		<DataRow>
 			<div className="flex flex-col justify-between gap-2 md:flex-row md:items-start">
 				<div className="flex-1">
-					<p className="font-medium">
-						{u.name}{" "}
-						<span className="text-sm font-normal text-muted-foreground">
-							({u.email})
-						</span>
-					</p>
+					<Link
+						className="font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
+						params={{ id: u.id }}
+						to="/admin/access/users/$id"
+					>
+						{u.name}
+					</Link>{" "}
+					<span className="text-sm text-muted-foreground">({u.email})</span>
 					<p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
 						{editing && roles.length > 0 ? (
 							<>

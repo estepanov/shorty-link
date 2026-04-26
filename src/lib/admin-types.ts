@@ -22,6 +22,8 @@ export type UtmDimension = keyof LinkStats["breakdowns"] & string;
 
 export type UserListData = ApiData<AdminApi["users"]["get"]>;
 export type AdminUser = UserListData["items"][number];
+type UserWithIdApi = ReturnType<AdminApi["users"]>;
+export type AdminUserDetail = ApiData<UserWithIdApi["get"]>;
 export type InviteListData = ApiData<AdminApi["invites"]["get"]>;
 export type AdminInvite = InviteListData["items"][number];
 export type AdminSession = ApiData<AdminApi["sessions"]["get"]>[number];

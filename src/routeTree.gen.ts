@@ -32,7 +32,9 @@ import { Route as AdminRolesIdEditRouteImport } from './routes/admin.roles.$id.e
 import { Route as AdminLinksIdEditRouteImport } from './routes/admin.links.$id.edit'
 import { Route as AdminInvitesIdEditRouteImport } from './routes/admin.invites.$id.edit'
 import { Route as AdminDomainsIdEditRouteImport } from './routes/admin.domains.$id.edit'
+import { Route as AdminAccessUsersIdRouteImport } from './routes/admin.access.users.$id'
 import { Route as AdminAccessRolesIdRouteImport } from './routes/admin.access.roles.$id'
+import { Route as AdminAccessUsersIdEditRouteImport } from './routes/admin.access.users.$id.edit'
 
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
@@ -149,10 +151,20 @@ const AdminDomainsIdEditRoute = AdminDomainsIdEditRouteImport.update({
   path: '/$id/edit',
   getParentRoute: () => AdminDomainsRoute,
 } as any)
+const AdminAccessUsersIdRoute = AdminAccessUsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminAccessUsersRoute,
+} as any)
 const AdminAccessRolesIdRoute = AdminAccessRolesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AdminAccessRolesRoute,
+} as any)
+const AdminAccessUsersIdEditRoute = AdminAccessUsersIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AdminAccessUsersIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -165,7 +177,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
   '/admin/access/roles': typeof AdminAccessRolesRouteWithChildren
-  '/admin/access/users': typeof AdminAccessUsersRoute
+  '/admin/access/users': typeof AdminAccessUsersRouteWithChildren
   '/admin/domains/new': typeof AdminDomainsNewRoute
   '/admin/invite/$token': typeof AdminInviteTokenRoute
   '/admin/invites/new': typeof AdminInvitesNewRoute
@@ -176,10 +188,12 @@ export interface FileRoutesByFullPath {
   '/admin/user/profile': typeof AdminUserProfileRoute
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
+  '/admin/access/users/$id': typeof AdminAccessUsersIdRouteWithChildren
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
   '/admin/invites/$id/edit': typeof AdminInvitesIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
   '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
+  '/admin/access/users/$id/edit': typeof AdminAccessUsersIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -191,7 +205,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
   '/admin/access/roles': typeof AdminAccessRolesRouteWithChildren
-  '/admin/access/users': typeof AdminAccessUsersRoute
+  '/admin/access/users': typeof AdminAccessUsersRouteWithChildren
   '/admin/domains/new': typeof AdminDomainsNewRoute
   '/admin/invite/$token': typeof AdminInviteTokenRoute
   '/admin/invites/new': typeof AdminInvitesNewRoute
@@ -202,10 +216,12 @@ export interface FileRoutesByTo {
   '/admin/user/profile': typeof AdminUserProfileRoute
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
+  '/admin/access/users/$id': typeof AdminAccessUsersIdRouteWithChildren
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
   '/admin/invites/$id/edit': typeof AdminInvitesIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
   '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
+  '/admin/access/users/$id/edit': typeof AdminAccessUsersIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -218,7 +234,7 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
   '/admin/access/roles': typeof AdminAccessRolesRouteWithChildren
-  '/admin/access/users': typeof AdminAccessUsersRoute
+  '/admin/access/users': typeof AdminAccessUsersRouteWithChildren
   '/admin/domains/new': typeof AdminDomainsNewRoute
   '/admin/invite/$token': typeof AdminInviteTokenRoute
   '/admin/invites/new': typeof AdminInvitesNewRoute
@@ -229,10 +245,12 @@ export interface FileRoutesById {
   '/admin/user/profile': typeof AdminUserProfileRoute
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
+  '/admin/access/users/$id': typeof AdminAccessUsersIdRouteWithChildren
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
   '/admin/invites/$id/edit': typeof AdminInvitesIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
   '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
+  '/admin/access/users/$id/edit': typeof AdminAccessUsersIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -257,10 +275,12 @@ export interface FileRouteTypes {
     | '/admin/user/profile'
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
+    | '/admin/access/users/$id'
     | '/admin/domains/$id/edit'
     | '/admin/invites/$id/edit'
     | '/admin/links/$id/edit'
     | '/admin/roles/$id/edit'
+    | '/admin/access/users/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -283,10 +303,12 @@ export interface FileRouteTypes {
     | '/admin/user/profile'
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
+    | '/admin/access/users/$id'
     | '/admin/domains/$id/edit'
     | '/admin/invites/$id/edit'
     | '/admin/links/$id/edit'
     | '/admin/roles/$id/edit'
+    | '/admin/access/users/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -309,10 +331,12 @@ export interface FileRouteTypes {
     | '/admin/user/profile'
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
+    | '/admin/access/users/$id'
     | '/admin/domains/$id/edit'
     | '/admin/invites/$id/edit'
     | '/admin/links/$id/edit'
     | '/admin/roles/$id/edit'
+    | '/admin/access/users/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -483,12 +507,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDomainsIdEditRouteImport
       parentRoute: typeof AdminDomainsRoute
     }
+    '/admin/access/users/$id': {
+      id: '/admin/access/users/$id'
+      path: '/$id'
+      fullPath: '/admin/access/users/$id'
+      preLoaderRoute: typeof AdminAccessUsersIdRouteImport
+      parentRoute: typeof AdminAccessUsersRoute
+    }
     '/admin/access/roles/$id': {
       id: '/admin/access/roles/$id'
       path: '/$id'
       fullPath: '/admin/access/roles/$id'
       preLoaderRoute: typeof AdminAccessRolesIdRouteImport
       parentRoute: typeof AdminAccessRolesRoute
+    }
+    '/admin/access/users/$id/edit': {
+      id: '/admin/access/users/$id/edit'
+      path: '/edit'
+      fullPath: '/admin/access/users/$id/edit'
+      preLoaderRoute: typeof AdminAccessUsersIdEditRouteImport
+      parentRoute: typeof AdminAccessUsersIdRoute
     }
   }
 }
@@ -504,16 +542,38 @@ const AdminAccessRolesRouteChildren: AdminAccessRolesRouteChildren = {
 const AdminAccessRolesRouteWithChildren =
   AdminAccessRolesRoute._addFileChildren(AdminAccessRolesRouteChildren)
 
+interface AdminAccessUsersIdRouteChildren {
+  AdminAccessUsersIdEditRoute: typeof AdminAccessUsersIdEditRoute
+}
+
+const AdminAccessUsersIdRouteChildren: AdminAccessUsersIdRouteChildren = {
+  AdminAccessUsersIdEditRoute: AdminAccessUsersIdEditRoute,
+}
+
+const AdminAccessUsersIdRouteWithChildren =
+  AdminAccessUsersIdRoute._addFileChildren(AdminAccessUsersIdRouteChildren)
+
+interface AdminAccessUsersRouteChildren {
+  AdminAccessUsersIdRoute: typeof AdminAccessUsersIdRouteWithChildren
+}
+
+const AdminAccessUsersRouteChildren: AdminAccessUsersRouteChildren = {
+  AdminAccessUsersIdRoute: AdminAccessUsersIdRouteWithChildren,
+}
+
+const AdminAccessUsersRouteWithChildren =
+  AdminAccessUsersRoute._addFileChildren(AdminAccessUsersRouteChildren)
+
 interface AdminAccessRouteChildren {
   AdminAccessInvitesRoute: typeof AdminAccessInvitesRoute
   AdminAccessRolesRoute: typeof AdminAccessRolesRouteWithChildren
-  AdminAccessUsersRoute: typeof AdminAccessUsersRoute
+  AdminAccessUsersRoute: typeof AdminAccessUsersRouteWithChildren
 }
 
 const AdminAccessRouteChildren: AdminAccessRouteChildren = {
   AdminAccessInvitesRoute: AdminAccessInvitesRoute,
   AdminAccessRolesRoute: AdminAccessRolesRouteWithChildren,
-  AdminAccessUsersRoute: AdminAccessUsersRoute,
+  AdminAccessUsersRoute: AdminAccessUsersRouteWithChildren,
 }
 
 const AdminAccessRouteWithChildren = AdminAccessRoute._addFileChildren(

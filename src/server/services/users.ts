@@ -21,6 +21,7 @@ import {
 	session,
 	user,
 } from "../db/schema";
+import { normalizeLocale } from "../../lib/i18n";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export async function listUsers(
@@ -116,6 +117,79 @@ export async function toggleUserActive(
 export async function deleteUser(db: AppDb, userId: string) {
 	await assertOwnerSurvives(db, { excludeUserId: userId });
 	await db.delete(user).where(eq(user.id, userId));
+}
+
+export async function getUserById(db: AppDb, userId: string) {
+	const inviter = alias(user, "inviter");
+	const rows = await db
+		.select({
+			id: user.id,
+			name: user.name,
+			email: user.email,
+			emailVerified: user.emailVerified,
+			image: user.image,
+			roleId: user.roleId,
+			roleName: roles.name,
+			roleIsSystem: roles.isSystem,
+			locale: user.locale,
+			isActive: user.isActive,
+			invitedBy: user.invitedBy,
+			invitedByName: inviter.name,
+			invitedByEmail: inviter.email,
+			createdAt: user.createdAt,
+			updatedAt: user.updatedAt,
+		})
+		.from(user)
+		.innerJoin(roles, eq(user.roleId, roles.id))
+		.leftJoin(inviter, eq(user.invitedBy, inviter.id))
+		.where(eq(user.id, userId))
+		.limit(1);
+
+	if (!rows[0]) {
+		throw new Error("errors.userMissing");
+	}
+	return rows[0];
+}
+
+export async function updateUser(
+	db: AppDb,
+	userId: string,
+	input: {
+		name?: string;
+		email?: string;
+		locale?: string;
+		isActive?: boolean;
+	},
+) {
+	if (input.email) {
+		const trimmed = input.email.trim().toLowerCase();
+		const existing = await db
+			.select({ id: user.id })
+			.from(user)
+			.where(and(eq(user.email, trimmed), ne(user.id, userId)))
+			.limit(1);
+		if (existing[0]) {
+			throw new Error("errors.profileEmailTaken");
+		}
+	}
+
+	if (input.isActive === false) {
+		await assertOwnerSurvives(db, { excludeUserId: userId });
+	}
+
+	const updates: Record<string, unknown> = { updatedAt: new Date() };
+	if (input.name !== undefined) updates.name = input.name.trim();
+	if (input.email !== undefined)
+		updates.email = input.email.trim().toLowerCase();
+	if (input.locale !== undefined)
+		updates.locale = normalizeLocale(input.locale);
+	if (input.isActive !== undefined) updates.isActive = input.isActive;
+
+	await db.update(user).set(updates).where(eq(user.id, userId));
+
+	if (input.isActive === false) {
+		await db.delete(session).where(eq(session.userId, userId));
+	}
 }
 
 export async function assignUserRole(

@@ -673,20 +673,14 @@ function DashboardView({
 													key={invite.id}
 												>
 													<div className="break-all text-sm">
-														<a
-															className="font-medium text-foreground underline decoration-accent decoration-2 underline-offset-4 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
-															href={invite.inviteUrl}
-														>
+														<span className="font-medium text-foreground">
 															{invite.email}
-														</a>
+														</span>
 														<span className="mt-1 block text-muted-foreground">
 															{t("table.expires")}{" "}
 															{new Date(invite.expiresAt).toLocaleDateString(
 																locale,
 															)}
-														</span>
-														<span className="mt-1 block text-xs text-muted-foreground/80">
-															{invite.inviteUrl}
 														</span>
 													</div>
 													<CopyButton
