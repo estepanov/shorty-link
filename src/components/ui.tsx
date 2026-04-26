@@ -2,11 +2,34 @@ import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { Alert as ShadcnAlert } from "@/components/ui/alert";
+import { Button as ShadcnButton } from "@/components/ui/button";
+import { Card as ShadcnCard } from "@/components/ui/card";
+import { Input as ShadcnInput } from "@/components/ui/input";
+import { Label as ShadcnLabel } from "@/components/ui/label";
+import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
 import { useAuthContext } from "@/lib/admin-auth";
 import { authClient } from "@/lib/auth-client";
 import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, type Locale, type MessageKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+/* -------------------------------------------------------------------------- */
+/*  Re-exports                                                                */
+/* -------------------------------------------------------------------------- */
+
+export { MultiCombobox } from "@/components/ui/multi-combobox";
+export {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+
+/* -------------------------------------------------------------------------- */
+/*  Theme                                                                     */
+/* -------------------------------------------------------------------------- */
 
 type Theme = "light" | "dark";
 
@@ -64,7 +87,7 @@ export function AppShell({
 }) {
 	const t = useText(locale);
 	const { data: session, isPending } = authClient.useSession();
-	const { hasPermission } = useAuthContext();
+	const { hasPermission, isPending: isAuthContextPending } = useAuthContext();
 	const location = useLocation();
 	const [menuOpen, setMenuOpen] = useState(false);
 
@@ -74,16 +97,18 @@ export function AppShell({
 		window.location.href = "/";
 	}
 
-	const showLinks = hasPermission("links.read");
-	const showDomains = hasPermission("domains.read");
+	const showLinks = !isAuthContextPending && hasPermission("links.read");
+	const showDomains = !isAuthContextPending && hasPermission("domains.read");
 	const showAccess =
-		hasPermission("users.read") ||
-		hasPermission("invites.manage") ||
-		hasPermission("sessions.manage") ||
-		hasPermission("apikeys.manage") ||
-		hasPermission("roles.manage");
+		!isAuthContextPending &&
+		(hasPermission("users.read") ||
+			hasPermission("invites.manage") ||
+			hasPermission("sessions.manage") ||
+			hasPermission("apikeys.manage") ||
+			hasPermission("roles.manage"));
 
 	// Close mobile menu on navigation.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: path reset state
 	useEffect(() => {
 		setMenuOpen(false);
 	}, [location.pathname]);
@@ -454,10 +479,6 @@ export function PageHeader({
 /*  DataRow                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Hairline list-row container. The chrome only — composition (flex layout,
- * stacked content, action buttons on the right) is left to the caller.
- */
 export function DataRow({
 	children,
 	className,
@@ -549,14 +570,14 @@ export function Card({
 	variant?: "default" | "feature" | "muted";
 }) {
 	const variants = {
-		default: "bg-card text-card-foreground border-border",
+		default: "",
 		feature:
 			"bg-foreground text-background border-foreground shadow-[0_24px_60px_-20px_color-mix(in_oklab,var(--foreground)_45%,transparent)]",
 		muted: "bg-muted text-foreground border-transparent",
 	} as const;
 
 	return (
-		<section
+		<ShadcnCard
 			className={cn(
 				"rounded-xl border p-6 transition-colors",
 				variants[variant],
@@ -564,7 +585,7 @@ export function Card({
 			)}
 		>
 			{children}
-		</section>
+		</ShadcnCard>
 	);
 }
 
@@ -585,37 +606,54 @@ export function Button({
 	tone?: ButtonTone;
 	size?: ButtonSize;
 }) {
-	const tones: Record<ButtonTone, string> = {
-		primary:
-			"bg-primary text-primary-foreground border-primary hover:bg-primary/90",
-		secondary: "bg-card text-card-foreground border-border hover:bg-muted",
-		danger:
-			"bg-destructive text-destructive-foreground border-destructive hover:bg-destructive/90",
-		ghost: "bg-transparent text-foreground border-transparent hover:bg-muted",
-		accent: "bg-accent text-accent-foreground border-accent hover:bg-accent/90",
+	const variantMap: Record<
+		ButtonTone,
+		React.ComponentProps<typeof ShadcnButton>["variant"]
+	> = {
+		primary: "default",
+		secondary: "outline",
+		danger: "destructive",
+		ghost: "ghost",
+		accent: "default",
 	};
 
-	const sizes: Record<ButtonSize, string> = {
+	const sizeMap: Record<
+		ButtonSize,
+		React.ComponentProps<typeof ShadcnButton>["size"]
+	> = {
+		sm: "sm",
+		md: "default",
+		lg: "lg",
+	};
+
+	const toneClasses: Record<ButtonTone, string> = {
+		primary: "",
+		secondary: "",
+		danger: "",
+		ghost: "",
+		accent: "bg-accent text-accent-foreground hover:bg-accent/90",
+	};
+
+	const sizeClasses: Record<ButtonSize, string> = {
 		sm: "h-8 px-3 text-xs gap-1.5",
 		md: "h-10 px-4 text-sm gap-2",
 		lg: "h-11 px-5 text-sm gap-2",
 	};
 
 	return (
-		<button
+		<ShadcnButton
 			{...props}
+			variant={variantMap[tone]}
+			size={sizeMap[size]}
 			className={cn(
-				"inline-flex items-center justify-center rounded-md border font-medium tracking-tight transition-all",
-				"disabled:cursor-not-allowed disabled:opacity-60",
-				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-				"active:translate-y-px",
-				tones[tone],
-				sizes[size],
+				"rounded-md font-medium tracking-tight active:translate-y-px",
+				toneClasses[tone],
+				sizeClasses[size],
 				className,
 			)}
 		>
 			{children}
-		</button>
+		</ShadcnButton>
 	);
 }
 
@@ -623,33 +661,12 @@ export function Button({
 /*  Form fields                                                               */
 /* -------------------------------------------------------------------------- */
 
-const fieldBase =
-	"w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-card-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60";
-
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-	return (
-		<input {...props} className={cn(fieldBase, "h-10", props.className)} />
-	);
+export function Input(props: React.ComponentProps<typeof ShadcnInput>) {
+	return <ShadcnInput {...props} />;
 }
 
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-	return (
-		<select
-			{...props}
-			className={cn(fieldBase, "h-10 pr-8", props.className)}
-		/>
-	);
-}
-
-export function TextArea(
-	props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-) {
-	return (
-		<textarea
-			{...props}
-			className={cn(fieldBase, "min-h-28 py-2.5", props.className)}
-		/>
-	);
+export function TextArea(props: React.ComponentProps<typeof ShadcnTextarea>) {
+	return <ShadcnTextarea {...props} />;
 }
 
 export function FieldLabel({
@@ -660,12 +677,12 @@ export function FieldLabel({
 	htmlFor?: string;
 }) {
 	return (
-		<label
-			className="grid gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground [&_input]:normal-case [&_select]:normal-case [&_textarea]:normal-case"
+		<ShadcnLabel
+			className="grid gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground **:data-[slot=select-trigger]:w-full [&_input]:normal-case [&_select]:normal-case [&_textarea]:normal-case"
 			htmlFor={htmlFor}
 		>
 			{children}
-		</label>
+		</ShadcnLabel>
 	);
 }
 
@@ -680,15 +697,25 @@ export function Notice({
 	children: ReactNode;
 	tone?: "info" | "error" | "success";
 }) {
+	if (tone === "error") {
+		return (
+			<ShadcnAlert
+				variant="destructive"
+				className="rounded-md border px-4 py-3 text-sm leading-relaxed"
+			>
+				{children}
+			</ShadcnAlert>
+		);
+	}
+
 	const tones = {
 		info: "border-info/30 bg-info/10 text-info",
-		error: "border-destructive/30 bg-destructive/10 text-destructive",
 		success: "border-success/30 bg-success/10 text-success",
 	} as const;
 
 	return (
 		<div
-			role={tone === "error" ? "alert" : "status"}
+			role="status"
 			className={cn(
 				"rounded-md border px-4 py-3 text-sm leading-relaxed",
 				tones[tone],

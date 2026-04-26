@@ -10,6 +10,10 @@ import {
 	Input,
 	Notice,
 	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
 import { getTreaty } from "@/lib/eden";
@@ -127,14 +131,19 @@ function Invite() {
 								<FieldLabel>
 									{t("forms.locale")}
 									<Select
-										onChange={(event) => field.handleChange(event.target.value)}
+										onValueChange={field.handleChange}
 										value={field.state.value}
 									>
-										{supportedLocales.map((option) => (
-											<option key={option} value={option}>
-												{option.toUpperCase()}
-											</option>
-										))}
+										<SelectTrigger>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{supportedLocales.map((option) => (
+												<SelectItem key={option} value={option}>
+													{option.toUpperCase()}
+												</SelectItem>
+											))}
+										</SelectContent>
 									</Select>
 								</FieldLabel>
 							)}

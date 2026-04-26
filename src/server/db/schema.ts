@@ -158,6 +158,14 @@ export const managedDomains = sqliteTable("managed_domain", {
 		.notNull()
 		.default(false),
 	isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+	rootBehavior: text("root_behavior").notNull().default("landing"),
+	rootRedirectStatusCode: integer("root_redirect_status_code"),
+	rootRedirectTargetUrl: text("root_redirect_target_url"),
+	unknownSlugBehavior: text("unknown_slug_behavior")
+		.notNull()
+		.default("not_found"),
+	unknownSlugRedirectStatusCode: integer("unknown_slug_redirect_status_code"),
+	unknownSlugRedirectTargetUrl: text("unknown_slug_redirect_target_url"),
 	createdBy: text("created_by"),
 	createdAt: integer("created_at").notNull(),
 });

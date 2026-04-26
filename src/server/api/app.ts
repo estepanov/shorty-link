@@ -35,7 +35,7 @@ import {
 	requireSecurePermission,
 } from "../auth/session";
 import { createDb } from "../db/client";
-import { SYSTEM_ROLE_ADMIN, user } from "../db/schema";
+import { DEFAULT_HOSTNAME, SYSTEM_ROLE_ADMIN, user } from "../db/schema";
 import {
 	appendDomainToRoleScopeIfScoped,
 	appendLinkToRoleScopeIfScoped,
@@ -49,6 +49,7 @@ import {
 	getBootstrapState,
 	getDashboardData,
 	getDomainById,
+	getManagedDomainByHostname,
 	getInviteByToken,
 	getLinkById,
 	getLinkStats,
@@ -56,6 +57,7 @@ import {
 	listShortLinks,
 	normalizeHostname,
 	recordRedirectEvent,
+	resolveExactRedirect,
 	resolveRedirect,
 	saveDomain,
 	saveLink,
@@ -111,6 +113,16 @@ const domainBody = t.Object({
 	label: t.Optional(t.String()),
 	isPrimary: t.Optional(t.Boolean()),
 	isActive: t.Optional(t.Boolean()),
+	rootBehavior: t.Optional(
+		t.Union([t.Literal("landing"), t.Literal("redirect")]),
+	),
+	rootRedirectStatusCode: t.Optional(redirectStatusCodeSchema),
+	rootRedirectTargetUrl: t.Optional(t.String()),
+	unknownSlugBehavior: t.Optional(
+		t.Union([t.Literal("not_found"), t.Literal("redirect")]),
+	),
+	unknownSlugRedirectStatusCode: t.Optional(redirectStatusCodeSchema),
+	unknownSlugRedirectTargetUrl: t.Optional(t.String()),
 });
 
 const apiKeyListQuery = t.Object({
@@ -347,6 +359,23 @@ async function suggestSlugWithAi(targetUrl: string) {
 
 function expiresInSeconds(days?: number) {
 	return days ? days * 24 * 60 * 60 : null;
+}
+
+function managedDomainRedirectResponse(
+	request: Request,
+	input: {
+		statusCode: number | null;
+		targetUrl: string | null;
+	},
+) {
+	if (!input.statusCode || !input.targetUrl) {
+		return null;
+	}
+
+	return Response.redirect(
+		buildRedirectTarget(input.targetUrl, request.url, false),
+		input.statusCode,
+	);
 }
 
 async function signOutResponse(request: Request) {
@@ -1047,17 +1076,44 @@ export const app = new Elysia({
 		const url = new URL(request.url);
 		const tMessage = createTranslator(localeFromRequest(request));
 		const slug = url.pathname.replace(/^\/+/, "");
+		const hostname = url.hostname.toLowerCase();
+		const managedDomain =
+			hostname === DEFAULT_HOSTNAME
+				? null
+				: await getManagedDomainByHostname(db, hostname);
 
 		if (!slug) {
+			const rootRedirect = managedDomainRedirectResponse(request, {
+				statusCode: managedDomain?.rootRedirectStatusCode ?? null,
+				targetUrl: managedDomain?.rootRedirectTargetUrl ?? null,
+			});
+			if (managedDomain?.rootBehavior === "redirect" && rootRedirect) {
+				return rootRedirect;
+			}
 			return new Response(tMessage("redirect.online"), { status: 200 });
 		}
 
-		const link = await resolveRedirect(db, {
-			hostname: url.hostname.toLowerCase(),
-			slug,
-		});
+		const link = managedDomain
+			? await resolveExactRedirect(db, {
+					hostname,
+					slug,
+				})
+			: await resolveRedirect(db, {
+					hostname,
+					slug,
+				});
 
 		if (!link) {
+			const unknownSlugRedirect = managedDomainRedirectResponse(request, {
+				statusCode: managedDomain?.unknownSlugRedirectStatusCode ?? null,
+				targetUrl: managedDomain?.unknownSlugRedirectTargetUrl ?? null,
+			});
+			if (
+				managedDomain?.unknownSlugBehavior === "redirect" &&
+				unknownSlugRedirect
+			) {
+				return unknownSlugRedirect;
+			}
 			return new Response(tMessage("redirect.notFound"), { status: 404 });
 		}
 

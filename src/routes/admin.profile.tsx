@@ -11,6 +11,10 @@ import {
 	Notice,
 	PageHeader,
 	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -131,14 +135,19 @@ function Profile() {
 								<FieldLabel>
 									{t("forms.locale")}
 									<Select
-										onChange={(event) => field.handleChange(event.target.value)}
+										onValueChange={field.handleChange}
 										value={field.state.value}
 									>
-										{supportedLocales.map((option) => (
-											<option key={option} value={option}>
-												{option.toUpperCase()}
-											</option>
-										))}
+										<SelectTrigger>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{supportedLocales.map((option) => (
+												<SelectItem key={option} value={option}>
+													{option.toUpperCase()}
+												</SelectItem>
+											))}
+										</SelectContent>
 									</Select>
 								</FieldLabel>
 							)}

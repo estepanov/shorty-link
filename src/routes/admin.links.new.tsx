@@ -61,11 +61,16 @@ function NewLink() {
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-3xl">
-			<Card>
-				<h1 className="text-4xl font-medium">{t("pages.newLink")}</h1>
+		<div className="mx-auto w-full max-w-4xl animate-fade-up">
+			<Card className="p-5 sm:p-7">
+				<div className="flex flex-col gap-2 border-b border-border/70 pb-5">
+					<p className="eyebrow">{t("nav.shortLinks")}</p>
+					<h1 className="text-3xl font-medium sm:text-4xl">
+						{t("pages.newLink")}
+					</h1>
+				</div>
 				{error ? (
-					<div className="mt-4">
+					<div className="mt-5">
 						<Notice tone="error">{t(error)}</Notice>
 					</div>
 				) : null}

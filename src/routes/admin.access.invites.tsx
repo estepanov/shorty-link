@@ -70,7 +70,7 @@ function InvitesTab() {
 					<h2 className="text-2xl font-medium">{t("users.invites")}</h2>
 					{hasPermission("invites.manage") ? (
 						<Link
-							className="inline-flex items-center justify-center rounded-md border border-foreground bg-foreground px-4 py-3 text-sm font-medium text-white transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-white dark:bg-card dark:text-foreground dark:hover:bg-muted "
+							className="inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 							to="/admin/invites/new"
 						>
 							{t("access.createInvite")}
@@ -87,74 +87,77 @@ function InvitesTab() {
 				<div className="mt-5 grid gap-3">
 					{invitesWithStatus.length ? (
 						invitesWithStatus.map((invite) => (
-							<DataRow
-								className="flex items-start justify-between gap-3"
-								key={invite.id}
-							>
-								<div>
-									<p className="font-medium">{invite.email}</p>
-									<p className="mt-1 text-sm text-muted-foreground">
-										<span
-											className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
-												invite.status === "pending"
-													? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
-													: invite.status === "accepted"
-														? "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
-														: "bg-muted text-muted-foreground"
-											}`}
-										>
-											{t(
-												`users.status${invite.status.charAt(0).toUpperCase() + invite.status.slice(1)}`,
-											)}
-										</span>
-										{" · "}
-										{invite.status === "pending"
-											? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`
-											: invite.status === "accepted" && invite.acceptedAt
-												? new Date(invite.acceptedAt).toLocaleDateString(locale)
-												: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
-									</p>
-									{invite.inviteUrl ? (
-										<div className="mt-1 flex items-center gap-2">
-											<a
-												className="break-all text-xs text-accent underline dark:text-accent"
-												href={invite.inviteUrl}
+							<DataRow key={invite.id}>
+								<div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+									<div className="min-w-0 flex-1">
+										<p className="font-medium">{invite.email}</p>
+										<p className="mt-1 text-sm text-muted-foreground">
+											<span
+												className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
+													invite.status === "pending"
+														? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
+														: invite.status === "accepted"
+															? "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100"
+															: "bg-muted text-muted-foreground"
+												}`}
 											>
-												{invite.inviteUrl}
-											</a>
-											<CopyButton
-												className="shrink-0 !rounded-xl !px-2 !py-2"
-												copiedLabel={t("actions.copied")}
-												label={t("actions.copyLink")}
-												text={invite.inviteUrl}
-											/>
-										</div>
-									) : null}
+												{t(
+													`users.status${invite.status.charAt(0).toUpperCase() + invite.status.slice(1)}`,
+												)}
+											</span>
+											{" · "}
+											{invite.status === "pending"
+												? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`
+												: invite.status === "accepted" && invite.acceptedAt
+													? new Date(invite.acceptedAt).toLocaleDateString(
+															locale,
+														)
+													: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
+										</p>
+										{invite.inviteUrl ? (
+											<div className="mt-1 flex items-center gap-2">
+												<a
+													className="break-all text-xs text-accent underline dark:text-accent"
+													href={invite.inviteUrl}
+												>
+													{invite.inviteUrl}
+												</a>
+												<CopyButton
+													className="shrink-0 !rounded-xl !px-2 !py-2"
+													copiedLabel={t("actions.copied")}
+													label={t("actions.copyLink")}
+													text={invite.inviteUrl}
+												/>
+											</div>
+										) : null}
+									</div>
+									<div className="flex shrink-0 items-center gap-2">
+										<Button
+											onClick={async () => {
+												setError(null);
+												try {
+													const api = getTreaty();
+													await unwrap(
+														await api.admin.invites.delete({
+															id: invite.id,
+														}),
+													);
+													await refresh();
+												} catch (nextError) {
+													setError(
+														nextError instanceof Error
+															? nextError.message
+															: "errors.unknown",
+													);
+												}
+											}}
+											tone="danger"
+											type="button"
+										>
+											{t("users.cancelInvite")}
+										</Button>
+									</div>
 								</div>
-								<Button
-									onClick={async () => {
-										setError(null);
-										try {
-											const api = getTreaty();
-											await unwrap(
-												await api.admin.invites.delete({
-													id: invite.id,
-												}),
-											);
-											await refresh();
-										} catch (nextError) {
-											setError(
-												nextError instanceof Error
-													? nextError.message
-													: "errors.unknown",
-											);
-										}
-									}}
-									tone="danger"
-									type="button"
-								>
-									{t("users.cancelInvite")}
-								</Button>
 							</DataRow>
 						))
 					) : (

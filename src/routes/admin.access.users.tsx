@@ -19,7 +19,16 @@ function PencilIcon({ className }: { className?: string }) {
 	);
 }
 
-import { Button, Card, Notice, Select } from "@/components/ui";
+import {
+	Button,
+	Card,
+	Notice,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminUser, AssignableRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -163,17 +172,21 @@ function UserRow({
 						{editing && roles.length > 0 ? (
 							<>
 								<Select
-									className="!w-auto !py-1"
-									onChange={(event) => {
-										setPendingRoleId(event.target.value);
+									onValueChange={(val) => {
+										setPendingRoleId(val);
 									}}
 									value={pendingRoleId}
 								>
-									{roles.map((role) => (
-										<option key={role.id} value={role.id}>
-											{role.name}
-										</option>
-									))}
+									<SelectTrigger className="w-auto">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{roles.map((role) => (
+											<SelectItem key={role.id} value={role.id}>
+												{role.name}
+											</SelectItem>
+										))}
+									</SelectContent>
 								</Select>
 								<Button
 									className="!rounded-xl !px-2.5 !py-1.5 !text-xs"

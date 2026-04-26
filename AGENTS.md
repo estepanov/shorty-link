@@ -2,6 +2,9 @@
 
 This repo is a single deployable Cloudflare Workers app.
 
+Always use Context7 when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
+
 ## Architecture
 
 - `src/server.ts`: custom TanStack Start Worker entrypoint that routes `/api/*` and redirect candidates to Elysia, then falls back to TanStack Start.

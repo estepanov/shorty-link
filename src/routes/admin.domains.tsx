@@ -16,6 +16,10 @@ import {
 	Input,
 	Notice,
 	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui";
 import { useAdminAuthGuard } from "@/lib/admin-auth";
 import type { AdminDomain } from "@/lib/admin-types";
@@ -158,17 +162,23 @@ function DomainList() {
 							<FieldLabel htmlFor="domains-active">
 								{t("forms.active")}
 								<Select
-									id="domains-active"
-									onChange={(event) =>
-										field.handleChange(
-											event.target.value as DomainFilters["active"],
-										)
+									onValueChange={(val) =>
+										field.handleChange(val as DomainFilters["active"])
 									}
 									value={field.state.value}
 								>
-									<option value="all">{t("links.allStates")}</option>
-									<option value="active">{t("links.activeOnly")}</option>
-									<option value="inactive">{t("links.inactiveOnly")}</option>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">{t("links.allStates")}</SelectItem>
+										<SelectItem value="active">
+											{t("links.activeOnly")}
+										</SelectItem>
+										<SelectItem value="inactive">
+											{t("links.inactiveOnly")}
+										</SelectItem>
+									</SelectContent>
 								</Select>
 							</FieldLabel>
 						)}
@@ -178,17 +188,19 @@ function DomainList() {
 							<FieldLabel htmlFor="domains-page-size">
 								{t("links.pageSize")}
 								<Select
-									id="domains-page-size"
-									onChange={(event) =>
-										field.handleChange(Number(event.target.value))
-									}
-									value={field.state.value}
+									onValueChange={(val) => field.handleChange(Number(val))}
+									value={String(field.state.value)}
 								>
-									{[10, 25, 50, 100].map((size) => (
-										<option key={size} value={size}>
-											{size}
-										</option>
-									))}
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{[10, 25, 50, 100].map((size) => (
+											<SelectItem key={size} value={String(size)}>
+												{size}
+											</SelectItem>
+										))}
+									</SelectContent>
 								</Select>
 							</FieldLabel>
 						)}

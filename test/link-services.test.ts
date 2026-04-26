@@ -8,9 +8,11 @@ import { getPlatformProxy } from "wrangler";
 
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
 import {
+	getManagedDomainByHostname,
 	getLinkStats,
 	listShortLinks,
 	recordRedirectEvent,
+	resolveExactRedirect,
 	saveDomain,
 	saveLink,
 } from "../src/server/services/links";
@@ -28,6 +30,7 @@ async function applyMigrations(database: D1Database) {
 		"0000_fresh_shorty_link.sql",
 		"0001_redirect_event_utm.sql",
 		"0002_short_link_last_click.sql",
+		"0005_managed_domain_fallbacks.sql",
 	]) {
 		const statements = readFileSync(
 			join(process.cwd(), "migrations", file),
@@ -129,6 +132,75 @@ describe("link services", () => {
 				hostname: "renamed.example.com",
 			}),
 		).resolves.toBe(existingDomainId);
+	});
+
+	it("persists managed-domain fallback policies", async () => {
+		const domainId = await saveDomain(db, {
+			hostname: "brand.example.com",
+			rootBehavior: "redirect",
+			rootRedirectStatusCode: 308,
+			rootRedirectTargetUrl: "brand.example.com/home",
+			unknownSlugBehavior: "redirect",
+			unknownSlugRedirectStatusCode: 302,
+			unknownSlugRedirectTargetUrl: "https://brand.example.com/not-found",
+		});
+
+		const domain = await getManagedDomainByHostname(db, "brand.example.com");
+		expect(domain?.id).toBe(domainId);
+		expect(domain).toMatchObject({
+			rootBehavior: "redirect",
+			rootRedirectStatusCode: 308,
+			rootRedirectTargetUrl: "https://brand.example.com/home",
+			unknownSlugBehavior: "redirect",
+			unknownSlugRedirectStatusCode: 302,
+			unknownSlugRedirectTargetUrl: "https://brand.example.com/not-found",
+		});
+	});
+
+	it("requires complete redirect settings for managed-domain fallback policies", async () => {
+		await expect(
+			saveDomain(db, {
+				hostname: "brand.example.com",
+				rootBehavior: "redirect",
+			}),
+		).rejects.toThrow("errors.domainRootRedirectStatusRequired");
+
+		await expect(
+			saveDomain(db, {
+				hostname: "brand.example.com",
+				unknownSlugBehavior: "redirect",
+				unknownSlugRedirectStatusCode: 302,
+			}),
+		).rejects.toThrow("errors.domainUnknownSlugRedirectTargetRequired");
+	});
+
+	it("resolves exact host redirects without falling back to the default hostname", async () => {
+		await saveDomain(db, {
+			hostname: "brand.example.com",
+		});
+		await saveLink(db, {
+			slug: "launch",
+			targetUrl: "https://example.com/default-launch",
+		});
+		const customLinkId = await saveLink(db, {
+			hostname: "brand.example.com",
+			slug: "pricing",
+			targetUrl: "https://brand.example.com/pricing",
+		});
+
+		await expect(
+			resolveExactRedirect(db, {
+				hostname: "brand.example.com",
+				slug: "launch",
+			}),
+		).resolves.toBeNull();
+
+		await expect(
+			resolveExactRedirect(db, {
+				hostname: "brand.example.com",
+				slug: "pricing",
+			}),
+		).resolves.toMatchObject({ id: customLinkId });
 	});
 
 	it("supports the expanded redirect status code set in saves and filters", async () => {

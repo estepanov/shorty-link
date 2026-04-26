@@ -29,20 +29,44 @@ export function useAuthContext(): {
 	isPending: boolean;
 	hasPermission: (permission: Permission | Permission[]) => boolean;
 } {
+	const { data: session, isPending: isSessionPending } =
+		authClient.useSession();
+	const sessionUserId = session?.user.id ?? null;
 	const [authContext, setAuthContext] = useState<AuthContext | null>(null);
 	const [isPending, setIsPending] = useState(true);
 
 	useEffect(() => {
 		let cancelled = false;
+
+		if (isSessionPending) {
+			setIsPending(true);
+			return () => {
+				cancelled = true;
+			};
+		}
+
+		if (!sessionUserId) {
+			setAuthContext(null);
+			setIsPending(false);
+			return () => {
+				cancelled = true;
+			};
+		}
+
 		async function load() {
+			setIsPending(true);
 			try {
 				const result = await getTreaty().admin["auth-context"].get();
 				const data = (result as { data?: unknown; error?: unknown }).data;
 				if (!cancelled && data) {
 					setAuthContext(data as AuthContext);
+				} else if (!cancelled) {
+					setAuthContext(null);
 				}
 			} catch {
-				/* auth context fetch failed, leave as null */
+				if (!cancelled) {
+					setAuthContext(null);
+				}
 			} finally {
 				if (!cancelled) {
 					setIsPending(false);
@@ -53,7 +77,7 @@ export function useAuthContext(): {
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [isSessionPending, sessionUserId]);
 
 	function hasPermission(permission: Permission | Permission[]): boolean {
 		if (!authContext) return false;

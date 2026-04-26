@@ -16,6 +16,10 @@ import {
 	Input,
 	Notice,
 	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminDomain, LinkListData } from "@/lib/admin-types";
@@ -176,16 +180,23 @@ function LinksList() {
 							<FieldLabel>
 								{t("forms.hostname")}
 								<Select
-									onChange={(event) => field.handleChange(event.target.value)}
+									onValueChange={field.handleChange}
 									value={field.state.value}
 								>
-									<option value="all">{t("links.allHosts")}</option>
-									<option value="__default__">{t("domains.default")}</option>
-									{domains.map((domain) => (
-										<option key={domain.id} value={domain.hostname}>
-											{domain.hostname}
-										</option>
-									))}
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">{t("links.allHosts")}</SelectItem>
+										<SelectItem value="__default__">
+											{t("domains.default")}
+										</SelectItem>
+										{domains.map((domain) => (
+											<SelectItem key={domain.id} value={domain.hostname}>
+												{domain.hostname}
+											</SelectItem>
+										))}
+									</SelectContent>
 								</Select>
 							</FieldLabel>
 						)}
@@ -195,16 +206,23 @@ function LinksList() {
 							<FieldLabel>
 								{t("forms.active")}
 								<Select
-									onChange={(event) =>
-										field.handleChange(
-											event.target.value as LinkFilters["active"],
-										)
+									onValueChange={(val) =>
+										field.handleChange(val as LinkFilters["active"])
 									}
 									value={field.state.value}
 								>
-									<option value="all">{t("links.allStates")}</option>
-									<option value="active">{t("links.activeOnly")}</option>
-									<option value="inactive">{t("links.inactiveOnly")}</option>
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">{t("links.allStates")}</SelectItem>
+										<SelectItem value="active">
+											{t("links.activeOnly")}
+										</SelectItem>
+										<SelectItem value="inactive">
+											{t("links.inactiveOnly")}
+										</SelectItem>
+									</SelectContent>
 								</Select>
 							</FieldLabel>
 						)}
@@ -214,19 +232,24 @@ function LinksList() {
 							<FieldLabel>
 								{t("forms.statusCode")}
 								<Select
-									onChange={(event) =>
-										field.handleChange(
-											event.target.value as LinkFilters["statusCode"],
-										)
+									onValueChange={(val) =>
+										field.handleChange(val as LinkFilters["statusCode"])
 									}
 									value={field.state.value}
 								>
-									<option value="all">{t("links.allStatusCodes")}</option>
-									{redirectStatusOptions.map((option) => (
-										<option key={option.code} value={String(option.code)}>
-											{t(option.labelKey)}
-										</option>
-									))}
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">
+											{t("links.allStatusCodes")}
+										</SelectItem>
+										{redirectStatusOptions.map((option) => (
+											<SelectItem key={option.code} value={String(option.code)}>
+												{t(option.labelKey)}
+											</SelectItem>
+										))}
+									</SelectContent>
 								</Select>
 							</FieldLabel>
 						)}
@@ -236,16 +259,19 @@ function LinksList() {
 							<FieldLabel>
 								{t("links.pageSize")}
 								<Select
-									onChange={(event) =>
-										field.handleChange(Number(event.target.value))
-									}
-									value={field.state.value}
+									onValueChange={(val) => field.handleChange(Number(val))}
+									value={String(field.state.value)}
 								>
-									{[10, 25, 50, 100].map((size) => (
-										<option key={size} value={size}>
-											{size}
-										</option>
-									))}
+									<SelectTrigger className="w-full">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{[10, 25, 50, 100].map((size) => (
+											<SelectItem key={size} value={String(size)}>
+												{size}
+											</SelectItem>
+										))}
+									</SelectContent>
 								</Select>
 							</FieldLabel>
 						)}

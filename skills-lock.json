@@ -5,6 +5,11 @@
 			"source": "anthropics/skills",
 			"sourceType": "github",
 			"computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
+		},
+		"shadcn": {
+			"source": "shadcn/ui",
+			"sourceType": "github",
+			"computedHash": "2bc6cf38ec7b4a5778a43fabb3e87642c9897ad45e9eb42438b57fd2def6cca8"
 		}
 	}
 }

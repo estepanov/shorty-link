@@ -22,6 +22,7 @@ async function applyMigrations(database: D1Database) {
 		"0000_fresh_shorty_link.sql",
 		"0001_redirect_event_utm.sql",
 		"0002_short_link_last_click.sql",
+		"0005_managed_domain_fallbacks.sql",
 		"0003_user_is_active.sql",
 		"0004_roles_and_scopes.sql",
 	]) {

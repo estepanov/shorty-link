@@ -7,7 +7,7 @@ export const messages = {
 	en: {
 		"app.name": "Shorty Link",
 		"nav.dashboard": "Dashboard",
-		"nav.shortLinks": "Short links",
+		"nav.shortLinks": "Links",
 		"nav.domains": "Domains",
 		"nav.profile": "Profile",
 		"nav.sessions": "Sessions",
@@ -76,6 +76,16 @@ export const messages = {
 		"domains.secondary": "secondary",
 		"domains.active": "active",
 		"domains.inactive": "inactive",
+		"domains.rootBehavior": "Root domain behavior",
+		"domains.rootBehaviorHelp":
+			"Choose what happens when someone visits this domain without a slug.",
+		"domains.rootBehavior.landing": "Show the default landing page",
+		"domains.rootBehavior.redirect": "Redirect visitors",
+		"domains.unknownSlugBehavior": "Unknown slug behavior",
+		"domains.unknownSlugBehaviorHelp":
+			"Choose what happens when someone requests a slug that does not exist on this domain.",
+		"domains.unknownSlugBehavior.notFound": "Return the default 404 message",
+		"domains.unknownSlugBehavior.redirect": "Redirect visitors",
 		"forms.name": "Name",
 		"forms.email": "Email",
 		"forms.locale": "Language",
@@ -254,6 +264,14 @@ export const messages = {
 		"errors.unauthorized": "You need an admin session.",
 		"errors.forbidden": "Your account is not an admin.",
 		"errors.invalidHostname": "Enter a valid custom domain or subdomain.",
+		"errors.domainRootRedirectStatusRequired":
+			"Choose a status code for the root domain redirect.",
+		"errors.domainRootRedirectTargetRequired":
+			"Enter a destination URL for the root domain redirect.",
+		"errors.domainUnknownSlugRedirectStatusRequired":
+			"Choose a status code for the unknown slug redirect.",
+		"errors.domainUnknownSlugRedirectTargetRequired":
+			"Enter a destination URL for the unknown slug redirect.",
 		"errors.targetRequired": "Destination URL is required.",
 		"errors.httpOnly": "Only http and https URLs are supported.",
 		"errors.invalidTarget": "Enter a valid destination URL.",
@@ -306,7 +324,7 @@ export const messages = {
 	es: {
 		"app.name": "Shorty Link",
 		"nav.dashboard": "Panel",
-		"nav.shortLinks": "Links cortos",
+		"nav.shortLinks": "Links",
 		"nav.domains": "Dominios",
 		"nav.profile": "Perfil",
 		"nav.sessions": "Sesiones",
@@ -376,6 +394,17 @@ export const messages = {
 		"domains.secondary": "secundario",
 		"domains.active": "activo",
 		"domains.inactive": "inactivo",
+		"domains.rootBehavior": "Comportamiento del dominio raiz",
+		"domains.rootBehaviorHelp":
+			"Elige que pasa cuando alguien visita este dominio sin un slug.",
+		"domains.rootBehavior.landing": "Mostrar la pagina de inicio por defecto",
+		"domains.rootBehavior.redirect": "Redirigir visitantes",
+		"domains.unknownSlugBehavior": "Comportamiento de slug desconocido",
+		"domains.unknownSlugBehaviorHelp":
+			"Elige que pasa cuando alguien solicita un slug que no existe en este dominio.",
+		"domains.unknownSlugBehavior.notFound":
+			"Devolver el mensaje 404 por defecto",
+		"domains.unknownSlugBehavior.redirect": "Redirigir visitantes",
 		"forms.name": "Nombre",
 		"forms.email": "Email",
 		"forms.locale": "Idioma",
@@ -553,6 +582,14 @@ export const messages = {
 		"errors.unauthorized": "Necesitas una sesion de admin.",
 		"errors.forbidden": "Tu cuenta no es admin.",
 		"errors.invalidHostname": "Ingresa un dominio o subdominio valido.",
+		"errors.domainRootRedirectStatusRequired":
+			"Elige un codigo de estado para la redireccion del dominio raiz.",
+		"errors.domainRootRedirectTargetRequired":
+			"Ingresa una URL de destino para la redireccion del dominio raiz.",
+		"errors.domainUnknownSlugRedirectStatusRequired":
+			"Elige un codigo de estado para la redireccion de slug desconocido.",
+		"errors.domainUnknownSlugRedirectTargetRequired":
+			"Ingresa una URL de destino para la redireccion de slug desconocido.",
 		"errors.targetRequired": "La URL de destino es requerida.",
 		"errors.httpOnly": "Solo se admiten URLs http y https.",
 		"errors.invalidTarget": "Ingresa una URL de destino valida.",

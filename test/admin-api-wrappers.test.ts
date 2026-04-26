@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PERMISSIONS } from "../src/lib/permissions";
 
 const mocks = vi.hoisted(() => ({
+	getManagedDomainByHostname: vi.fn(),
 	createBootstrapContext: vi.fn(),
 	createApiKey: vi.fn(),
 	createInviteContext: vi.fn(),
@@ -13,6 +14,8 @@ const mocks = vi.hoisted(() => ({
 	listApiKeys: vi.fn(),
 	listSessions: vi.fn(),
 	loadAuthContext: vi.fn(),
+	resolveExactRedirect: vi.fn(),
+	resolveRedirect: vi.fn(),
 	revokeOtherSessions: vi.fn(),
 	revokeSession: vi.fn(),
 	updateApiKey: vi.fn(),
@@ -42,7 +45,10 @@ vi.mock("../src/server/services/links", async () => {
 	const actual = await vi.importActual("../src/server/services/links");
 	return {
 		...actual,
+		getManagedDomainByHostname: mocks.getManagedDomainByHostname,
 		getInviteByToken: mocks.getInviteByToken,
+		resolveExactRedirect: mocks.resolveExactRedirect,
+		resolveRedirect: mocks.resolveRedirect,
 	};
 });
 
@@ -98,8 +104,11 @@ const FAKE_CTX = {
 
 describe("admin api auth wrappers", () => {
 	beforeEach(() => {
+		mocks.getManagedDomainByHostname.mockResolvedValue(null);
 		mocks.getSession.mockResolvedValue(null);
 		mocks.loadAuthContext.mockResolvedValue(FAKE_CTX);
+		mocks.resolveExactRedirect.mockResolvedValue(null);
+		mocks.resolveRedirect.mockResolvedValue(null);
 	});
 
 	afterEach(() => {
@@ -228,6 +237,73 @@ describe("admin api auth wrappers", () => {
 				url: "https://shorty.test/api/auth/sign-out",
 			}),
 		);
+	});
+
+	it("redirects the managed domain root when that policy is enabled", async () => {
+		mocks.getManagedDomainByHostname.mockResolvedValue({
+			rootBehavior: "redirect",
+			rootRedirectStatusCode: 308,
+			rootRedirectTargetUrl: "brand.example.com/home",
+		});
+
+		const response = await app.fetch(new Request("https://brand.example.com/"));
+
+		expect(response.status).toBe(308);
+		expect(response.headers.get("location")).toBe(
+			"https://brand.example.com/home",
+		);
+		expect(mocks.resolveRedirect).not.toHaveBeenCalled();
+	});
+
+	it("uses the managed domain unknown-slug redirect without default-host fallback", async () => {
+		mocks.getManagedDomainByHostname.mockResolvedValue({
+			rootBehavior: "landing",
+			rootRedirectStatusCode: null,
+			rootRedirectTargetUrl: null,
+			unknownSlugBehavior: "redirect",
+			unknownSlugRedirectStatusCode: 302,
+			unknownSlugRedirectTargetUrl: "https://brand.example.com/help",
+		});
+		mocks.resolveRedirect.mockResolvedValue({
+			id: "default-link",
+			targetUrl: "https://example.com/default",
+		});
+
+		const response = await app.fetch(
+			new Request("https://brand.example.com/does-not-exist"),
+		);
+
+		expect(response.status).toBe(302);
+		expect(response.headers.get("location")).toBe(
+			"https://brand.example.com/help",
+		);
+		expect(mocks.resolveExactRedirect).toHaveBeenCalledWith(
+			{},
+			expect.objectContaining({
+				hostname: "brand.example.com",
+				slug: "does-not-exist",
+			}),
+		);
+		expect(mocks.resolveRedirect).not.toHaveBeenCalled();
+	});
+
+	it("returns the default 404 for managed domains without an unknown-slug redirect", async () => {
+		mocks.getManagedDomainByHostname.mockResolvedValue({
+			rootBehavior: "landing",
+			rootRedirectStatusCode: null,
+			rootRedirectTargetUrl: null,
+			unknownSlugBehavior: "not_found",
+			unknownSlugRedirectStatusCode: null,
+			unknownSlugRedirectTargetUrl: null,
+		});
+
+		const response = await app.fetch(
+			new Request("https://brand.example.com/does-not-exist"),
+		);
+
+		expect(response.status).toBe(404);
+		await expect(response.text()).resolves.toBe("Short link not found");
+		expect(mocks.resolveRedirect).not.toHaveBeenCalled();
 	});
 
 	it("rejects invite routes when a session is already active", async () => {

@@ -15,6 +15,13 @@ import {
 import { customAlphabet, nanoid } from "nanoid";
 
 import {
+	normalizeManagedDomainRedirectStatusCode,
+	normalizeManagedDomainRootBehavior,
+	normalizeManagedDomainUnknownSlugBehavior,
+	type ManagedDomainRootBehavior,
+	type ManagedDomainUnknownSlugBehavior,
+} from "@/lib/domain-routing";
+import {
 	isRedirectStatusCode,
 	normalizeRedirectStatusCode,
 	type RedirectStatusCode,
@@ -89,6 +96,37 @@ function escapeLikePattern(value: string) {
 
 function likeEscaped(column: AnyColumn, pattern: string) {
 	return sql`${column} like ${pattern} escape '\\'`;
+}
+
+function normalizeManagedDomainRedirectConfig(input: {
+	behavior: ManagedDomainRootBehavior | ManagedDomainUnknownSlugBehavior;
+	redirectStatusCode?: RedirectStatusCode;
+	redirectTargetUrl?: string;
+	statusRequiredError: string;
+	targetRequiredError: string;
+}) {
+	if (input.behavior !== "redirect") {
+		return {
+			redirectStatusCode: null,
+			redirectTargetUrl: null,
+		};
+	}
+
+	const redirectStatusCode = normalizeManagedDomainRedirectStatusCode(
+		input.redirectStatusCode,
+	);
+	if (!redirectStatusCode) {
+		throw new Error(input.statusRequiredError);
+	}
+
+	if (!input.redirectTargetUrl?.trim()) {
+		throw new Error(input.targetRequiredError);
+	}
+
+	return {
+		redirectStatusCode,
+		redirectTargetUrl: normalizeTargetUrl(input.redirectTargetUrl),
+	};
 }
 
 export function normalizeHostname(value?: string | null) {
@@ -366,6 +404,17 @@ export async function getDomainById(db: AppDb, id: string) {
 	return domains[0] ?? null;
 }
 
+export async function getManagedDomainByHostname(db: AppDb, hostname: string) {
+	const normalizedHostname = normalizeHostname(hostname);
+	const domains = await db
+		.select()
+		.from(managedDomains)
+		.where(eq(managedDomains.hostname, normalizedHostname))
+		.limit(1);
+
+	return domains[0] ?? null;
+}
+
 export async function getLinkById(db: AppDb, id: string) {
 	const links = await db
 		.select()
@@ -519,11 +568,35 @@ export async function saveDomain(
 		label?: string;
 		isPrimary?: boolean;
 		isActive?: boolean;
+		rootBehavior?: ManagedDomainRootBehavior;
+		rootRedirectStatusCode?: RedirectStatusCode;
+		rootRedirectTargetUrl?: string;
+		unknownSlugBehavior?: ManagedDomainUnknownSlugBehavior;
+		unknownSlugRedirectStatusCode?: RedirectStatusCode;
+		unknownSlugRedirectTargetUrl?: string;
 		createdBy?: string;
 	},
 ) {
 	const timestamp = now();
 	const hostname = normalizeHostname(input.hostname);
+	const rootBehavior = normalizeManagedDomainRootBehavior(input.rootBehavior);
+	const rootRedirect = normalizeManagedDomainRedirectConfig({
+		behavior: rootBehavior,
+		redirectStatusCode: input.rootRedirectStatusCode,
+		redirectTargetUrl: input.rootRedirectTargetUrl,
+		statusRequiredError: "errors.domainRootRedirectStatusRequired",
+		targetRequiredError: "errors.domainRootRedirectTargetRequired",
+	});
+	const unknownSlugBehavior = normalizeManagedDomainUnknownSlugBehavior(
+		input.unknownSlugBehavior,
+	);
+	const unknownSlugRedirect = normalizeManagedDomainRedirectConfig({
+		behavior: unknownSlugBehavior,
+		redirectStatusCode: input.unknownSlugRedirectStatusCode,
+		redirectTargetUrl: input.unknownSlugRedirectTargetUrl,
+		statusRequiredError: "errors.domainUnknownSlugRedirectStatusRequired",
+		targetRequiredError: "errors.domainUnknownSlugRedirectTargetRequired",
+	});
 	const existing = await db
 		.select({ id: managedDomains.id })
 		.from(managedDomains)
@@ -566,6 +639,12 @@ export async function saveDomain(
 				label: input.label?.trim() || null,
 				isPrimary: input.isPrimary ?? false,
 				isActive: input.isActive ?? true,
+				rootBehavior,
+				rootRedirectStatusCode: rootRedirect.redirectStatusCode,
+				rootRedirectTargetUrl: rootRedirect.redirectTargetUrl,
+				unknownSlugBehavior,
+				unknownSlugRedirectStatusCode: unknownSlugRedirect.redirectStatusCode,
+				unknownSlugRedirectTargetUrl: unknownSlugRedirect.redirectTargetUrl,
 			})
 			.where(eq(managedDomains.id, input.id));
 
@@ -579,6 +658,12 @@ export async function saveDomain(
 		label: input.label?.trim() || null,
 		isPrimary: input.isPrimary ?? false,
 		isActive: input.isActive ?? true,
+		rootBehavior,
+		rootRedirectStatusCode: rootRedirect.redirectStatusCode,
+		rootRedirectTargetUrl: rootRedirect.redirectTargetUrl,
+		unknownSlugBehavior,
+		unknownSlugRedirectStatusCode: unknownSlugRedirect.redirectStatusCode,
+		unknownSlugRedirectTargetUrl: unknownSlugRedirect.redirectTargetUrl,
 		createdBy: input.createdBy ?? null,
 		createdAt: timestamp,
 	});
@@ -931,6 +1016,31 @@ export async function resolveRedirect(
 		.limit(1);
 
 	return fallback[0] ?? null;
+}
+
+export async function resolveExactRedirect(
+	db: AppDb,
+	input: {
+		hostname: string;
+		slug: string;
+	},
+) {
+	const normalizedHost = normalizeHostname(input.hostname);
+	const normalizedSlug = normalizeSlug(input.slug);
+
+	const exact = await db
+		.select()
+		.from(shortLinks)
+		.where(
+			and(
+				eq(shortLinks.hostname, normalizedHost),
+				eq(shortLinks.slug, normalizedSlug),
+				eq(shortLinks.isActive, true),
+			),
+		)
+		.limit(1);
+
+	return exact[0] ?? null;
 }
 
 export function extractUtmParams(requestUrl: string) {

@@ -46,9 +46,14 @@ function NewInvite() {
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-3xl">
-			<Card>
-				<h1 className="text-4xl font-medium">{t("pages.newInvite")}</h1>
+		<div className="mx-auto w-full max-w-4xl animate-fade-up">
+			<Card className="p-5 sm:p-7">
+				<div className="flex flex-col gap-2 border-b border-border/70 pb-5">
+					<p className="eyebrow">{t("nav.access")}</p>
+					<h1 className="text-3xl font-medium sm:text-4xl">
+						{t("pages.newInvite")}
+					</h1>
+				</div>
 				<InviteForm
 					onSaved={async () => {
 						await router.navigate({ to: "/admin/access/invites" });

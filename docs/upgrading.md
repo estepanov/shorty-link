@@ -7,6 +7,7 @@ Use released Git tags for self-hosted deployments. Avoid upgrading production fr
 For production forks, keep your deployment config on your own branch and merge the upstream release tag into it. Replace `v0.1.0` with the target release:
 
 ```bash
+git remote add upstream git@github.com:estepanov/shorty-link.git
 git fetch --tags upstream
 git checkout main
 git merge --ff-only v0.1.0

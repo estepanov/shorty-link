@@ -20,6 +20,10 @@ import {
 	Input,
 	Notice,
 	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui";
 import { useAuthContext } from "@/lib/admin-auth";
 import { authClient } from "@/lib/auth-client";
@@ -102,7 +106,7 @@ function Admin() {
 	const [bootstrap, setBootstrap] = useState<BootstrapState | null>(null);
 	const [dashboard, setDashboard] = useState<DashboardData | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const { hasPermission } = useAuthContext();
+	const { hasPermission, isPending: isAuthContextPending } = useAuthContext();
 
 	async function refresh() {
 		setError(null);
@@ -163,6 +167,8 @@ function Admin() {
 					)
 				) : !isDashboardRoute ? (
 					<Outlet />
+				) : isDashboardRoute && isAuthContextPending ? (
+					<Card>{t("loading.dashboard")}</Card>
 				) : dashboard ? (
 					<DashboardView data={dashboard} hasPermission={hasPermission} />
 				) : (
@@ -366,15 +372,19 @@ function BootstrapForm({ locale }: { locale: string }) {
 						<FieldLabel>
 							{t("forms.locale")}
 							<Select
-								onBlur={field.handleBlur}
-								onChange={(event) => field.handleChange(event.target.value)}
+								onValueChange={field.handleChange}
 								value={field.state.value}
 							>
-								{supportedLocales.map((option) => (
-									<option key={option} value={option}>
-										{option.toUpperCase()}
-									</option>
-								))}
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{supportedLocales.map((option) => (
+										<SelectItem key={option} value={option}>
+											{option.toUpperCase()}
+										</SelectItem>
+									))}
+								</SelectContent>
 							</Select>
 						</FieldLabel>
 					)}
@@ -417,7 +427,7 @@ function DashboardView({
 			<section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
 				<Card variant="feature" className="p-8">
 					<p className="eyebrow text-background/70">{t("dashboard.title")}</p>
-					<h1 className="mt-3 font-display text-4xl tracking-tight">
+					<h1 className="mt-3 font-display text-4xl tracking-tight text-background">
 						{data.session.user.name}
 					</h1>
 					<p className="mt-2 text-sm text-background/70">

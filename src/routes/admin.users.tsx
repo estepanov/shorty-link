@@ -3,7 +3,17 @@ import { useEffect, useState } from "react";
 
 import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
 import { CopyButton } from "@/components/copy-button";
-import { Button, Card, DataRow, Notice, Select } from "@/components/ui";
+import {
+	Button,
+	Card,
+	DataRow,
+	Notice,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminInvite, AdminUser, AssignableRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -292,9 +302,7 @@ function UserRow({
 								{t("users.role")}
 							</label>
 							<Select
-								className="!w-auto !py-2"
-								onChange={async (event) => {
-									const nextRoleId = event.target.value;
+								onValueChange={async (nextRoleId) => {
 									if (nextRoleId === u.roleId) return;
 									setError(null);
 									try {
@@ -315,11 +323,16 @@ function UserRow({
 								}}
 								value={u.roleId}
 							>
-								{roles.map((role) => (
-									<option key={role.id} value={role.id}>
-										{role.name}
-									</option>
-								))}
+								<SelectTrigger className="w-auto">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{roles.map((role) => (
+										<SelectItem key={role.id} value={role.id}>
+											{role.name}
+										</SelectItem>
+									))}
+								</SelectContent>
 							</Select>
 						</div>
 					) : null}

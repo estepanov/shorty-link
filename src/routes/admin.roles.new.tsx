@@ -1,7 +1,15 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, Card, FieldLabel, Input, Notice } from "@/components/ui";
+import {
+	Button,
+	Card,
+	FieldLabel,
+	Input,
+	MultiCombobox,
+	Notice,
+	TextArea,
+} from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type {
 	AdminDomain,
@@ -49,9 +57,7 @@ function NewRole() {
 	if (isPending || isAuthPending) {
 		return (
 			<div className="mx-auto w-full max-w-3xl">
-				<Card className="rounded-xl border-foreground/10 bg-card/60 p-6 shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur dark:bg-foreground/70 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)]">
-					{t("loading.app")}
-				</Card>
+				<Card>{t("loading.app")}</Card>
 			</div>
 		);
 	}
@@ -74,7 +80,7 @@ function NewRole() {
 
 	return (
 		<div className="mx-auto w-full max-w-3xl">
-			<Card className="rounded-xl border-foreground/10 bg-card/60 p-6 shadow-[0_24px_80px_rgba(29,27,22,0.10)] backdrop-blur dark:bg-foreground/70 dark:shadow-[0_24px_80px_rgba(0,0,0,0.30)]">
+			<Card>
 				<h1 className="text-4xl font-medium">{t("pages.newRole")}</h1>
 				{catalog ? (
 					<RoleCreateForm
@@ -182,8 +188,7 @@ function RoleCreateForm({
 			</FieldLabel>
 			<FieldLabel>
 				{t("forms.notes")}
-				<textarea
-					className="min-h-28 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-card-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/40"
+				<TextArea
 					onChange={(event) => setDescription(event.target.value)}
 					placeholder={t("roles.descriptionPlaceholder")}
 					value={description}
@@ -200,7 +205,7 @@ function RoleCreateForm({
 				<div className="mt-3 grid gap-4 md:grid-cols-2">
 					{groupOrder.map((groupKey) => (
 						<div
-							className="rounded-md border border-foreground/10 bg-white/50 p-3 "
+							className="rounded-md border border-border bg-muted/40 p-3"
 							key={groupKey}
 						>
 							<p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -211,6 +216,7 @@ function RoleCreateForm({
 									<label className="flex items-center gap-2 text-sm" key={perm}>
 										<input
 											checked={permissions.has(perm as Permission)}
+											className="accent-primary"
 											onChange={() => togglePermission(perm as Permission)}
 											type="checkbox"
 										/>
@@ -230,31 +236,20 @@ function RoleCreateForm({
 				<p className="mt-1 text-xs text-muted-foreground/80">
 					{t("roles.scopeDomainsHelp")}
 				</p>
-				<div className="mt-3 grid max-h-48 gap-1 overflow-auto rounded-md border border-foreground/10 bg-white/50 p-3 ">
-					{domains.length === 0 ? (
-						<p className="text-xs text-muted-foreground/80">—</p>
-					) : (
-						domains.map((domain) => (
-							<label
-								className="flex items-center gap-2 text-sm"
-								key={domain.id}
-							>
-								<input
-									checked={domainScope.has(domain.id)}
-									onChange={() =>
-										setDomainScope((prev) => toggleSetItem(prev, domain.id))
-									}
-									type="checkbox"
-								/>
-								{domain.hostname}
-								{domain.label ? (
-									<span className="text-xs text-muted-foreground/80">
-										({domain.label})
-									</span>
-								) : null}
-							</label>
-						))
-					)}
+				<div className="mt-3">
+					<MultiCombobox
+						options={domains.map((domain) => ({
+							value: domain.id,
+							label: domain.label
+								? `${domain.hostname} (${domain.label})`
+								: domain.hostname,
+						}))}
+						selected={[...domainScope]}
+						onChange={(vals) => setDomainScope(new Set(vals))}
+						placeholder={t("roles.scopeDomains")}
+						searchPlaceholder="Search domains..."
+						emptyMessage="No domains found."
+					/>
 				</div>
 			</div>
 
@@ -265,31 +260,20 @@ function RoleCreateForm({
 				<p className="mt-1 text-xs text-muted-foreground/80">
 					{t("roles.scopeLinksHelp")}
 				</p>
-				<div className="mt-3 grid max-h-48 gap-1 overflow-auto rounded-md border border-foreground/10 bg-white/50 p-3 ">
-					{links.length === 0 ? (
-						<p className="text-xs text-muted-foreground/80">—</p>
-					) : (
-						links.map((link) => (
-							<label className="flex items-center gap-2 text-sm" key={link.id}>
-								<input
-									checked={linkScope.has(link.id)}
-									onChange={() =>
-										setLinkScope((prev) => toggleSetItem(prev, link.id))
-									}
-									type="checkbox"
-								/>
-								<span className="font-mono text-xs">
-									{link.hostname === "__default__" ? "" : `${link.hostname}/`}
-									{link.slug}
-								</span>
-								{link.title ? (
-									<span className="text-xs text-muted-foreground/80">
-										— {link.title}
-									</span>
-								) : null}
-							</label>
-						))
-					)}
+				<div className="mt-3">
+					<MultiCombobox
+						options={links.map((link) => ({
+							value: link.id,
+							label: link.title
+								? `${link.hostname === "__default__" ? "" : `${link.hostname}/`}${link.slug} — ${link.title}`
+								: `${link.hostname === "__default__" ? "" : `${link.hostname}/`}${link.slug}`,
+						}))}
+						selected={[...linkScope]}
+						onChange={(vals) => setLinkScope(new Set(vals))}
+						placeholder={t("roles.scopeLinks")}
+						searchPlaceholder="Search links..."
+						emptyMessage="No links found."
+					/>
 				</div>
 			</div>
 
