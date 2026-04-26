@@ -5,7 +5,8 @@ import {
 	useLocation,
 } from "@tanstack/react-router";
 
-import { Card, PageHeader, type TabItem, Tabs } from "@/components/ui";
+import { RouteTabs, type TabItem } from "@/components/route-tabs";
+import { Card, PageHeader } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { Permission } from "@/lib/permissions";
 
@@ -80,7 +81,7 @@ function AccessLayout() {
 	return (
 		<div className="mx-auto grid w-full max-w-7xl gap-6">
 			<PageHeader title={t("nav.access")} />
-			<Tabs ariaLabel={t("nav.access")} items={tabItems} />
+			<RouteTabs ariaLabel={t("nav.access")} items={tabItems} />
 			<Outlet />
 		</div>
 	);

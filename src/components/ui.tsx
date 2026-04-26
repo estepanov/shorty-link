@@ -406,57 +406,6 @@ function HeaderLink({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Tabs                                                                      */
-/* -------------------------------------------------------------------------- */
-
-export type TabItem = {
-	to: string;
-	label: ReactNode;
-	exact?: boolean;
-};
-
-export function Tabs({
-	items,
-	ariaLabel,
-	className,
-}: {
-	items: TabItem[];
-	ariaLabel?: string;
-	className?: string;
-}) {
-	if (items.length === 0) return null;
-	return (
-		<nav
-			aria-label={ariaLabel}
-			className={cn("-mx-1 overflow-x-auto px-1", className)}
-		>
-			<div
-				role="tablist"
-				className="inline-flex w-fit min-w-full gap-1 rounded-md border border-border bg-card/60 p-1"
-			>
-				{items.map((tab) => (
-					<Link
-						key={tab.to}
-						to={tab.to}
-						role="tab"
-						activeOptions={{ exact: tab.exact ?? true }}
-						activeProps={{
-							className:
-								"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground shadow-sm",
-							"aria-selected": "true",
-						}}
-						inactiveProps={{ "aria-selected": "false" }}
-						className="whitespace-nowrap rounded-sm px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-					>
-						{tab.label}
-					</Link>
-				))}
-			</div>
-		</nav>
-	);
-}
-
-/* -------------------------------------------------------------------------- */
 /*  PageHeader                                                                */
 /* -------------------------------------------------------------------------- */
 

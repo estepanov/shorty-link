@@ -1,4 +1,5 @@
-import { type TabItem, Tabs, useText } from "@/components/ui";
+import { RouteTabs, type TabItem } from "@/components/route-tabs";
+import { useText } from "@/components/ui";
 import { useAuthContext } from "@/lib/admin-auth";
 
 export function AccountTabs({ locale }: { locale?: string | null }) {
@@ -25,5 +26,5 @@ export function AccountTabs({ locale }: { locale?: string | null }) {
 		});
 	}
 
-	return <Tabs ariaLabel={t("nav.account")} items={items} />;
+	return <RouteTabs ariaLabel={t("nav.account")} items={items} />;
 }
