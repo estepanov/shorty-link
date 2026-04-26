@@ -17,8 +17,8 @@ import type { AppDb } from "../db/client";
 import {
 	adminInvites,
 	roles,
-	session,
 	SYSTEM_ROLE_OWNER,
+	session,
 	user,
 } from "../db/schema";
 import { escapeLikePattern, likeEscaped } from "./utils";
@@ -243,7 +243,11 @@ export async function listAllInvites(
 			.orderBy(desc(adminInvites.createdAt))
 			.limit(pageSize)
 			.offset(offset),
-		db.select({ total: count() }).from(adminInvites).where(where),
+		db
+			.select({ total: count() })
+			.from(adminInvites)
+			.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
+			.where(where),
 	]);
 
 	const items = rows.map((row) => {
@@ -269,4 +273,45 @@ export async function listAllInvites(
 
 export async function deleteInvite(db: AppDb, inviteId: string) {
 	await db.delete(adminInvites).where(eq(adminInvites.id, inviteId));
+}
+
+export async function getInviteById(db: AppDb, inviteId: string) {
+	const inviter = alias(user, "inviter");
+
+	const rows = await db
+		.select({
+			id: adminInvites.id,
+			email: adminInvites.email,
+			token: adminInvites.token,
+			roleId: adminInvites.roleId,
+			roleName: roles.name,
+			invitedBy: adminInvites.invitedBy,
+			invitedByName: inviter.name,
+			invitedByEmail: inviter.email,
+			expiresAt: adminInvites.expiresAt,
+			acceptedAt: adminInvites.acceptedAt,
+			createdAt: adminInvites.createdAt,
+		})
+		.from(adminInvites)
+		.innerJoin(roles, eq(adminInvites.roleId, roles.id))
+		.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
+		.where(eq(adminInvites.id, inviteId))
+		.limit(1);
+
+	const row = rows[0];
+	if (!row) {
+		throw new Error("errors.inviteMissing");
+	}
+
+	const nowMs = Date.now();
+	let status: "pending" | "expired" | "accepted";
+	if (row.acceptedAt) {
+		status = "accepted";
+	} else if (row.expiresAt < nowMs) {
+		status = "expired";
+	} else {
+		status = "pending";
+	}
+
+	return { ...row, status };
 }

@@ -94,7 +94,7 @@ function Home() {
 						<Link to="/admin">
 							<Button size="lg">{t("home.openAdmin")}</Button>
 						</Link>
-						<a href="https://github.com/" rel="noreferrer">
+						<a href="https://github.com/estepanov/shorty-link" rel="noreferrer">
 							<Button size="lg" tone="secondary">
 								{t("home.docs")}
 							</Button>

@@ -62,6 +62,7 @@ import {
 	saveDomain,
 	saveLink,
 	suggestSlugFromUrl,
+	updateInvite,
 } from "../services/links";
 import {
 	createRole,
@@ -75,6 +76,7 @@ import {
 	assignUserRole,
 	deleteInvite,
 	deleteUser,
+	getInviteById,
 	listAllInvites,
 	listUsers,
 	toggleUserActive,
@@ -480,44 +482,6 @@ export const app = new Elysia({
 					}),
 				},
 			)
-			.get(
-				"/invites/:token",
-				async ({ db, params, request }) => {
-					await requireSignedOutInviteRequest(request);
-					const invite = await getInviteByToken(db, params.token);
-					if (!invite) {
-						throw new Error("errors.inviteMissing");
-					}
-
-					return {
-						email: invite.email,
-						expiresAt: invite.expiresAt,
-						token: invite.token,
-					};
-				},
-				{
-					params: t.Object({
-						token: t.String({ minLength: 16 }),
-					}),
-				},
-			)
-			.post(
-				"/onboarding/invite",
-				async ({ body, db, request }) => {
-					assertTrustedAdminWrite(request);
-					await requireSignedOutInviteRequest(request);
-					return {
-						context: await createInviteContext(db, body, request),
-					};
-				},
-				{
-					body: t.Object({
-						locale: t.Optional(t.String()),
-						name: t.String({ minLength: 2 }),
-						token: t.String({ minLength: 16 }),
-					}),
-				},
-			)
 			.get("/dashboard", async ({ db, request }) => {
 				const ctx = await requireAuthOrError(request);
 				const linkScope = await buildLinkScopeForCtx(ctx);
@@ -812,6 +776,64 @@ export const app = new Elysia({
 						expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 30 })),
 						roleId: t.Optional(t.String({ minLength: 1 })),
 					}),
+				},
+			)
+			.get(
+				"/invites/:id",
+				async ({ db, params, request }) => {
+					await requirePermissionOrError(request, "invites.read");
+					const invite = await getInviteById(db, params.id);
+					const origin = new URL(request.url).origin;
+					return {
+						...invite,
+						inviteUrl:
+							invite.status === "pending"
+								? buildInviteUrl(origin, invite.token)
+								: null,
+					};
+				},
+				{
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
+			.patch(
+				"/invites/:id",
+				async ({ body, db, params, request }) => {
+					await requireSecurePermissionOrError(request, "invites.update");
+					await updateInvite(db, params.id, {
+						email: body.email,
+						roleId: body.roleId,
+						expiresInDays: body.expiresInDays,
+					});
+					return { ok: true };
+				},
+				{
+					body: t.Object({
+						email: t.Optional(t.String({ format: "email" })),
+						roleId: t.Optional(t.String({ minLength: 1 })),
+						expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 30 })),
+					}),
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
+			.patch(
+				"/invites/:id",
+				async ({ body, db, params, request }) => {
+					await requireSecurePermissionOrError(request, "invites.update");
+					await updateInvite(db, params.id, {
+						email: body.email,
+						roleId: body.roleId,
+						expiresInDays: body.expiresInDays,
+					});
+					return { ok: true };
+				},
+				{
+					body: t.Object({
+						email: t.Optional(t.String({ format: "email" })),
+						roleId: t.Optional(t.String({ minLength: 1 })),
+						expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 30 })),
+					}),
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
 			.get(
@@ -1133,6 +1155,41 @@ export const app = new Elysia({
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			),
+	)
+	.get(
+		"/api/invites/:token",
+		async ({ db, params, request }) => {
+			await requireSignedOutInviteRequest(request);
+			const invite = await getInviteByToken(db, params.token);
+			if (!invite) {
+				throw new Error("errors.inviteMissing");
+			}
+			return {
+				email: invite.email,
+				expiresAt: invite.expiresAt,
+				token: invite.token,
+			};
+		},
+		{
+			params: t.Object({ token: t.String({ minLength: 16 }) }),
+		},
+	)
+	.post(
+		"/api/onboarding/invite",
+		async ({ body, db, request }) => {
+			assertTrustedAdminWrite(request);
+			await requireSignedOutInviteRequest(request);
+			return {
+				context: await createInviteContext(db, body, request),
+			};
+		},
+		{
+			body: t.Object({
+				locale: t.Optional(t.String()),
+				name: t.String({ minLength: 2 }),
+				token: t.String({ minLength: 16 }),
+			}),
+		},
 	)
 	.get("/*", async ({ db, request }) => {
 		const url = new URL(request.url);

@@ -40,7 +40,7 @@ function Invite() {
 			try {
 				const api = getTreaty();
 				const { context } = await unwrap<{ context: string }>(
-					await api.admin.onboarding.invite.post({
+					await api.onboarding.invite.post({
 						...value,
 						token,
 					}),
@@ -77,7 +77,7 @@ function Invite() {
 		}
 
 		const api = getTreaty();
-		void unwrap<{ email: string }>(api.admin.invites({ token }).get()).then(
+		void unwrap<{ email: string }>(api.invites({ token }).get()).then(
 			(invite) => setEmail(invite.email),
 			() => setError("errors.inviteMissing"),
 		);

@@ -30,6 +30,7 @@ import { Route as AdminAccessRolesRouteImport } from './routes/admin.access.role
 import { Route as AdminAccessInvitesRouteImport } from './routes/admin.access.invites'
 import { Route as AdminRolesIdEditRouteImport } from './routes/admin.roles.$id.edit'
 import { Route as AdminLinksIdEditRouteImport } from './routes/admin.links.$id.edit'
+import { Route as AdminInvitesIdEditRouteImport } from './routes/admin.invites.$id.edit'
 import { Route as AdminDomainsIdEditRouteImport } from './routes/admin.domains.$id.edit'
 import { Route as AdminAccessRolesIdRouteImport } from './routes/admin.access.roles.$id'
 
@@ -138,6 +139,11 @@ const AdminLinksIdEditRoute = AdminLinksIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => AdminLinksIdRoute,
 } as any)
+const AdminInvitesIdEditRoute = AdminInvitesIdEditRouteImport.update({
+  id: '/invites/$id/edit',
+  path: '/invites/$id/edit',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDomainsIdEditRoute = AdminDomainsIdEditRouteImport.update({
   id: '/$id/edit',
   path: '/$id/edit',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
+  '/admin/invites/$id/edit': typeof AdminInvitesIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
   '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
 }
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
+  '/admin/invites/$id/edit': typeof AdminInvitesIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
   '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
 }
@@ -222,6 +230,7 @@ export interface FileRoutesById {
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
   '/admin/domains/$id/edit': typeof AdminDomainsIdEditRoute
+  '/admin/invites/$id/edit': typeof AdminInvitesIdEditRoute
   '/admin/links/$id/edit': typeof AdminLinksIdEditRoute
   '/admin/roles/$id/edit': typeof AdminRolesIdEditRoute
 }
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
     | '/admin/domains/$id/edit'
+    | '/admin/invites/$id/edit'
     | '/admin/links/$id/edit'
     | '/admin/roles/$id/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
     | '/admin/domains/$id/edit'
+    | '/admin/invites/$id/edit'
     | '/admin/links/$id/edit'
     | '/admin/roles/$id/edit'
   id:
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
     | '/admin/domains/$id/edit'
+    | '/admin/invites/$id/edit'
     | '/admin/links/$id/edit'
     | '/admin/roles/$id/edit'
   fileRoutesById: FileRoutesById
@@ -457,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLinksIdEditRouteImport
       parentRoute: typeof AdminLinksIdRoute
     }
+    '/admin/invites/$id/edit': {
+      id: '/admin/invites/$id/edit'
+      path: '/invites/$id/edit'
+      fullPath: '/admin/invites/$id/edit'
+      preLoaderRoute: typeof AdminInvitesIdEditRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/domains/$id/edit': {
       id: '/admin/domains/$id/edit'
       path: '/$id/edit'
@@ -566,6 +585,7 @@ interface AdminRouteChildren {
   AdminInviteTokenRoute: typeof AdminInviteTokenRoute
   AdminInvitesNewRoute: typeof AdminInvitesNewRoute
   AdminRolesNewRoute: typeof AdminRolesNewRoute
+  AdminInvitesIdEditRoute: typeof AdminInvitesIdEditRoute
   AdminRolesIdEditRoute: typeof AdminRolesIdEditRoute
 }
 
@@ -578,6 +598,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminInviteTokenRoute: AdminInviteTokenRoute,
   AdminInvitesNewRoute: AdminInvitesNewRoute,
   AdminRolesNewRoute: AdminRolesNewRoute,
+  AdminInvitesIdEditRoute: AdminInvitesIdEditRoute,
   AdminRolesIdEditRoute: AdminRolesIdEditRoute,
 }
 

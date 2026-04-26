@@ -19,7 +19,7 @@ import {
 	SelectValue,
 } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
-import type { AdminInvite, InviteListData } from "@/lib/admin-types";
+import type { InviteListData } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/access/invites")({
@@ -240,10 +240,10 @@ function InvitesTab() {
 					{data?.items.length ? (
 						data.items.map((invite) => (
 							<DataRow key={invite.id}>
-								<div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+								<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 									<div className="min-w-0 flex-1">
 										<p className="font-medium">{invite.email}</p>
-										<p className="mt-1 text-sm text-muted-foreground">
+										<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
 											<span
 												className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
 													invite.status === "pending"
@@ -260,39 +260,43 @@ function InvitesTab() {
 											<span className="inline-flex rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-secondary-foreground">
 												{invite.roleName}
 											</span>
-											{" · "}
-											{invite.status === "pending"
-												? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`
-												: invite.status === "accepted" && invite.acceptedAt
-													? new Date(invite.acceptedAt).toLocaleDateString(
-															locale,
-														)
-													: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
-										</p>
-										{invite.invitedByName ? (
-											<p className="mt-1 text-xs text-muted-foreground">
-												{t("users.invitedBy")} {invite.invitedByName}
-											</p>
-										) : null}
-										{invite.inviteUrl ? (
-											<div className="mt-1 flex items-center gap-2">
-												<a
-													className="break-all text-xs text-accent underline dark:text-accent"
-													href={invite.inviteUrl}
-												>
-													{invite.inviteUrl}
-												</a>
+											<span className="text-muted-foreground/50">
+												{invite.status === "pending"
+													? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`
+													: invite.status === "accepted" && invite.acceptedAt
+														? new Date(invite.acceptedAt).toLocaleDateString(
+																locale,
+															)
+														: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
+											</span>
+											{invite.invitedByName ? (
+												<span>
+													{t("users.invitedBy")} {invite.invitedByName}
+												</span>
+											) : null}
+											{invite.inviteUrl ? (
 												<CopyButton
 													className="shrink-0 !rounded-xl !px-2 !py-2"
 													copiedLabel={t("actions.copied")}
 													label={t("actions.copyLink")}
 													text={invite.inviteUrl}
 												/>
-											</div>
-										) : null}
+											) : null}
+										</div>
 									</div>
-									{hasPermission("invites.delete") ? (
-										<div className="flex shrink-0 items-center gap-2">
+									<div className="flex shrink-0 items-center gap-2">
+										{invite.status === "pending" &&
+										hasPermission("invites.update") ? (
+											<Link
+												params={{ id: invite.id }}
+												to="/admin/invites/$id/edit"
+											>
+												<Button tone="secondary" type="button">
+													{t("forms.update")}
+												</Button>
+											</Link>
+										) : null}
+										{hasPermission("invites.delete") ? (
 											<DeleteConfirmationDialog
 												title={t("forms.confirmDelete")}
 												description={t("forms.confirmDeleteDescription")}
@@ -321,8 +325,8 @@ function InvitesTab() {
 													{t("users.cancelInvite")}
 												</Button>
 											</DeleteConfirmationDialog>
-										</div>
-									) : null}
+										) : null}
+									</div>
 								</div>
 							</DataRow>
 						))

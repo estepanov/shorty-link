@@ -938,6 +938,60 @@ export async function createInvite(
 	return { id, token };
 }
 
+export async function updateInvite(
+	db: AppDb,
+	id: string,
+	input: {
+		email?: string;
+		roleId?: string;
+		expiresInDays?: number;
+	},
+) {
+	const [invite] = await db
+		.select()
+		.from(adminInvites)
+		.where(eq(adminInvites.id, id))
+		.limit(1);
+
+	if (!invite) {
+		throw new Error("errors.inviteMissing");
+	}
+
+	if (invite.acceptedAt) {
+		throw new Error("errors.inviteMissing");
+	}
+
+	const nowMs = Date.now();
+	if (invite.expiresAt < nowMs) {
+		throw new Error("errors.inviteMissing");
+	}
+
+	const updates: Record<string, unknown> = {};
+
+	if (input.email !== undefined) {
+		const email = input.email.trim().toLowerCase();
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			throw new Error("errors.invalidEmail");
+		}
+		updates.email = email;
+	}
+
+	if (input.roleId !== undefined) {
+		updates.roleId = input.roleId;
+	}
+
+	if (input.expiresInDays !== undefined) {
+		const expiresInDays = Math.max(1, Math.min(input.expiresInDays, 30));
+		updates.expiresAt = Date.now() + expiresInDays * 24 * 60 * 60 * 1000;
+	}
+
+	if (Object.keys(updates).length === 0) {
+		return;
+	}
+
+	await db.update(adminInvites).set(updates).where(eq(adminInvites.id, id));
+}
+
 export async function getInviteByToken(db: AppDb, token: string) {
 	const invites = await db
 		.select()
