@@ -1,7 +1,18 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	useParams,
+	useRouter,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, Card, DataRow, Notice } from "@/components/ui";
+import {
+	Button,
+	Card,
+	DataRow,
+	DeleteConfirmationDialog,
+	Notice,
+} from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type {
 	AdminRoleDetail,
@@ -17,6 +28,7 @@ export const Route = createFileRoute("/admin/access/roles/$id")({
 
 function RoleDetailPage() {
 	const { id } = useParams({ from: "/admin/access/roles/$id" });
+	const router = useRouter();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
 	const { isAuthorized } = useRequirePermission("roles.manage");
 	const [role, setRole] = useState<AdminRoleDetail | null>(null);
@@ -36,6 +48,19 @@ function RoleDetailPage() {
 			setRole(roleData);
 			setUsers(usersData.filter((u) => u.roleId === id));
 			setCatalog(catalogData);
+		} catch (nextError) {
+			setError(
+				nextError instanceof Error ? nextError.message : "errors.unknown",
+			);
+		}
+	}
+
+	async function deleteRole() {
+		setError(null);
+		try {
+			const api = getTreaty();
+			await unwrap(await api.admin.roles({ id }).delete());
+			await router.navigate({ to: "/admin/access/roles" });
 		} catch (nextError) {
 			setError(
 				nextError instanceof Error ? nextError.message : "errors.unknown",
@@ -127,13 +152,21 @@ function RoleDetailPage() {
 						) : null}
 					</div>
 					<div className="flex gap-2">
-						<Button
-							disabled={role.isSystem || role.userCount > 0}
-							tone="danger"
-							type="button"
+						<DeleteConfirmationDialog
+							title={t("forms.confirmDelete")}
+							description={t("forms.confirmDeleteDescription")}
+							confirmLabel={t("forms.delete")}
+							cancelLabel={t("forms.cancel")}
+							onConfirm={deleteRole}
 						>
-							{t("roles.delete")}
-						</Button>
+							<Button
+								disabled={role.isSystem || role.userCount > 0}
+								tone="danger"
+								type="button"
+							>
+								{t("roles.delete")}
+							</Button>
+						</DeleteConfirmationDialog>
 					</div>
 				</div>
 			</Card>

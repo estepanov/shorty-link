@@ -22,6 +22,7 @@ function PencilIcon({ className }: { className?: string }) {
 import {
 	Button,
 	Card,
+	DeleteConfirmationDialog,
 	Notice,
 	Select,
 	SelectContent,
@@ -279,9 +280,12 @@ function UserRow({
 					>
 						{u.isActive ? t("users.disable") : t("users.enable")}
 					</Button>
-					<Button
-						className="!rounded-xl !px-3 !py-1.5 !text-xs"
-						onClick={async () => {
+					<DeleteConfirmationDialog
+						title={t("forms.confirmDelete")}
+						description={t("forms.confirmDeleteDescription")}
+						confirmLabel={t("forms.delete")}
+						cancelLabel={t("forms.cancel")}
+						onConfirm={async () => {
 							setError(null);
 							try {
 								const api = getTreaty();
@@ -295,11 +299,15 @@ function UserRow({
 								);
 							}
 						}}
-						tone="danger"
-						type="button"
 					>
-						{t("users.delete")}
-					</Button>
+						<Button
+							className="!rounded-xl !px-3 !py-1.5 !text-xs"
+							tone="danger"
+							type="button"
+						>
+							{t("users.delete")}
+						</Button>
+					</DeleteConfirmationDialog>
 				</div>
 			</div>
 		</div>

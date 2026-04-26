@@ -2,7 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { CopyButton } from "@/components/copy-button";
-import { Button, Card, DataRow, Notice } from "@/components/ui";
+import {
+	Button,
+	Card,
+	DataRow,
+	DeleteConfirmationDialog,
+	Notice,
+} from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminInvite } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -132,8 +138,12 @@ function InvitesTab() {
 										) : null}
 									</div>
 									<div className="flex shrink-0 items-center gap-2">
-										<Button
-											onClick={async () => {
+										<DeleteConfirmationDialog
+											title={t("forms.confirmDelete")}
+											description={t("forms.confirmDeleteDescription")}
+											confirmLabel={t("users.cancelInvite")}
+											cancelLabel={t("forms.cancel")}
+											onConfirm={async () => {
 												setError(null);
 												try {
 													const api = getTreaty();
@@ -151,11 +161,11 @@ function InvitesTab() {
 													);
 												}
 											}}
-											tone="danger"
-											type="button"
 										>
-											{t("users.cancelInvite")}
-										</Button>
+											<Button tone="danger" type="button">
+												{t("users.cancelInvite")}
+											</Button>
+										</DeleteConfirmationDialog>
 									</div>
 								</div>
 							</DataRow>

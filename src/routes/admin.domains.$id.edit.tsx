@@ -2,7 +2,12 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { DomainForm } from "@/components/admin-forms";
-import { Button, Card, Notice } from "@/components/ui";
+import {
+	Button,
+	Card,
+	DeleteConfirmationDialog,
+	Notice,
+} from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminDomain } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -59,8 +64,12 @@ function EditDomain() {
 			<Card>
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<h1 className="text-4xl font-medium">{t("pages.editDomain")}</h1>
-					<Button
-						onClick={async () => {
+					<DeleteConfirmationDialog
+						title={t("forms.confirmDelete")}
+						description={t("forms.confirmDeleteDescription")}
+						confirmLabel={t("forms.delete")}
+						cancelLabel={t("forms.cancel")}
+						onConfirm={async () => {
 							setError(null);
 							try {
 								const api = getTreaty();
@@ -74,11 +83,11 @@ function EditDomain() {
 								);
 							}
 						}}
-						tone="danger"
-						type="button"
 					>
-						{t("forms.delete")}
-					</Button>
+						<Button tone="danger" type="button">
+							{t("forms.delete")}
+						</Button>
+					</DeleteConfirmationDialog>
 				</div>
 				{error ? (
 					<div className="mt-4">

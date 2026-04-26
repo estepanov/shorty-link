@@ -619,7 +619,7 @@ export const app = new Elysia({
 						page: t.Optional(t.Number({ minimum: 1 })),
 						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
 						search: t.Optional(t.String()),
-						statusCode: t.Optional(redirectStatusCodeSchema),
+						statusCode: t.Optional(t.Number({ minimum: 301, maximum: 308 })),
 					}),
 				},
 			)

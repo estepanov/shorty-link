@@ -7,6 +7,7 @@ import {
 	Button,
 	Card,
 	DataRow,
+	DeleteConfirmationDialog,
 	EmptyState,
 	FieldLabel,
 	Input,
@@ -284,8 +285,12 @@ function ApiKeyRow({
 						>
 							{t("keys.edit")}
 						</Button>
-						<Button
-							onClick={async () => {
+						<DeleteConfirmationDialog
+							title={t("forms.confirmDelete")}
+							description={t("forms.confirmDeleteDescription")}
+							confirmLabel={t("forms.delete")}
+							cancelLabel={t("forms.cancel")}
+							onConfirm={async () => {
 								try {
 									setError(null);
 									const api = getTreaty();
@@ -301,12 +306,11 @@ function ApiKeyRow({
 									);
 								}
 							}}
-							size="sm"
-							tone="danger"
-							type="button"
 						>
-							{t("keys.delete")}
-						</Button>
+							<Button size="sm" tone="danger" type="button">
+								{t("keys.delete")}
+							</Button>
+						</DeleteConfirmationDialog>
 					</div>
 				</div>
 			)}

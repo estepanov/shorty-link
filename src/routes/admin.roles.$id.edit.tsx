@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
 	Button,
 	Card,
+	DeleteConfirmationDialog,
 	FieldLabel,
 	Input,
 	MultiCombobox,
@@ -99,8 +100,12 @@ function EditRole() {
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<h1 className="text-4xl font-medium">{t("pages.editRole")}</h1>
 					{role && !role.isSystem ? (
-						<Button
-							onClick={async () => {
+						<DeleteConfirmationDialog
+							title={t("forms.confirmDelete")}
+							description={t("forms.confirmDeleteDescription")}
+							confirmLabel={t("forms.delete")}
+							cancelLabel={t("forms.cancel")}
+							onConfirm={async () => {
 								setError(null);
 								try {
 									const api = getTreaty();
@@ -114,11 +119,11 @@ function EditRole() {
 									);
 								}
 							}}
-							tone="danger"
-							type="button"
 						>
-							{t("forms.delete")}
-						</Button>
+							<Button tone="danger" type="button">
+								{t("forms.delete")}
+							</Button>
+						</DeleteConfirmationDialog>
 					) : null}
 				</div>
 				{error ? (

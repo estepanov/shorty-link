@@ -1,7 +1,13 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, Card, DataRow, Notice } from "@/components/ui";
+import {
+	Button,
+	Card,
+	DataRow,
+	DeleteConfirmationDialog,
+	Notice,
+} from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -129,14 +135,21 @@ function RolesTab() {
 												</Button>
 											</Link>
 										)}
-										<Button
-											disabled={role.isSystem || role.userCount > 0}
-											onClick={() => deleteRole(role.id)}
-											tone="danger"
-											type="button"
+										<DeleteConfirmationDialog
+											title={t("forms.confirmDelete")}
+											description={t("forms.confirmDeleteDescription")}
+											confirmLabel={t("forms.delete")}
+											cancelLabel={t("forms.cancel")}
+											onConfirm={() => deleteRole(role.id)}
 										>
-											{t("roles.delete")}
-										</Button>
+											<Button
+												disabled={role.isSystem || role.userCount > 0}
+												tone="danger"
+												type="button"
+											>
+												{t("roles.delete")}
+											</Button>
+										</DeleteConfirmationDialog>
 									</div>
 								</div>
 							</DataRow>

@@ -3,6 +3,17 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { Alert as ShadcnAlert } from "@/components/ui/alert";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button as ShadcnButton } from "@/components/ui/button";
 import { Card as ShadcnCard } from "@/components/ui/card";
 import { Input as ShadcnInput } from "@/components/ui/input";
@@ -723,6 +734,53 @@ export function Notice({
 		>
 			{children}
 		</div>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  DeleteConfirmationDialog                                                  */
+/* -------------------------------------------------------------------------- */
+
+export function DeleteConfirmationDialog({
+	children,
+	title,
+	description,
+	confirmLabel,
+	cancelLabel,
+	onConfirm,
+	confirmTone = "danger",
+}: {
+	children: React.ReactNode;
+	title: React.ReactNode;
+	description?: React.ReactNode;
+	confirmLabel: React.ReactNode;
+	cancelLabel: React.ReactNode;
+	onConfirm: () => void | Promise<void>;
+	confirmTone?: "danger" | "primary";
+}) {
+	return (
+		<AlertDialog>
+			<AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>{title}</AlertDialogTitle>
+					{description ? (
+						<AlertDialogDescription>{description}</AlertDialogDescription>
+					) : null}
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={() => {
+							void onConfirm();
+						}}
+						variant={confirmTone === "danger" ? "destructive" : "default"}
+					>
+						{confirmLabel}
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }
 

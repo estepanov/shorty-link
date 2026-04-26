@@ -7,6 +7,7 @@ import {
 	Button,
 	Card,
 	DataRow,
+	DeleteConfirmationDialog,
 	Notice,
 	Select,
 	SelectContent,
@@ -194,8 +195,12 @@ function UsersPage() {
 											</div>
 										) : null}
 									</div>
-									<Button
-										onClick={async () => {
+									<DeleteConfirmationDialog
+										title={t("forms.confirmDelete")}
+										description={t("forms.confirmDeleteDescription")}
+										confirmLabel={t("users.cancelInvite")}
+										cancelLabel={t("forms.cancel")}
+										onConfirm={async () => {
 											setError(null);
 											try {
 												const api = getTreaty();
@@ -213,11 +218,11 @@ function UsersPage() {
 												);
 											}
 										}}
-										tone="danger"
-										type="button"
 									>
-										{t("users.cancelInvite")}
-									</Button>
+										<Button tone="danger" type="button">
+											{t("users.cancelInvite")}
+										</Button>
+									</DeleteConfirmationDialog>
 								</div>
 							</DataRow>
 						))
@@ -362,8 +367,12 @@ function UserRow({
 					>
 						{u.isActive ? t("users.disable") : t("users.enable")}
 					</Button>
-					<Button
-						onClick={async () => {
+					<DeleteConfirmationDialog
+						title={t("forms.confirmDelete")}
+						description={t("forms.confirmDeleteDescription")}
+						confirmLabel={t("forms.delete")}
+						cancelLabel={t("forms.cancel")}
+						onConfirm={async () => {
 							setError(null);
 							try {
 								const api = getTreaty();
@@ -377,11 +386,11 @@ function UserRow({
 								);
 							}
 						}}
-						tone="danger"
-						type="button"
 					>
-						{t("users.delete")}
-					</Button>
+						<Button tone="danger" type="button">
+							{t("users.delete")}
+						</Button>
+					</DeleteConfirmationDialog>
 				</div>
 			</div>
 		</DataRow>
