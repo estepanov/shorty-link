@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { type CreatedInvite, InviteForm } from "@/components/admin-forms";
@@ -180,7 +180,18 @@ function UsersPage() {
 										</p>
 										{invite.invitedByName ? (
 											<p className="mt-1 text-xs text-muted-foreground">
-												{t("users.invitedBy")} {invite.invitedByName}
+												{t("users.invitedBy")}{" "}
+												{invite.invitedBy ? (
+													<Link
+														className="rounded underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+														params={{ id: invite.invitedBy }}
+														to="/admin/access/users/$id"
+													>
+														{invite.invitedByName}
+													</Link>
+												) : (
+													invite.invitedByName
+												)}
 											</p>
 										) : null}
 										{invite.inviteUrl ? (
@@ -200,34 +211,48 @@ function UsersPage() {
 											</div>
 										) : null}
 									</div>
-									<DeleteConfirmationDialog
-										title={t("forms.confirmDelete")}
-										description={t("forms.confirmDeleteDescription")}
-										confirmLabel={t("users.cancelInvite")}
-										cancelLabel={t("forms.cancel")}
-										onConfirm={async () => {
-											setError(null);
-											try {
-												const api = getTreaty();
-												await unwrap(
-													await api.admin.invites.delete({
-														id: invite.id,
-													}),
-												);
-												await refresh();
-											} catch (nextError) {
-												setError(
-													nextError instanceof Error
-														? nextError.message
-														: "errors.unknown",
-												);
-											}
-										}}
-									>
-										<Button tone="danger" type="button">
-											{t("users.cancelInvite")}
-										</Button>
-									</DeleteConfirmationDialog>
+									{invite.status === "accepted" &&
+									invite.acceptedUserId &&
+									hasPermission("users.read") ? (
+										<Link
+											params={{ id: invite.acceptedUserId }}
+											to="/admin/access/users/$id"
+										>
+											<Button tone="secondary" type="button">
+												{t("users.viewUser")}
+											</Button>
+										</Link>
+									) : null}
+									{invite.status !== "accepted" ? (
+										<DeleteConfirmationDialog
+											title={t("forms.confirmDelete")}
+											description={t("forms.confirmDeleteDescription")}
+											confirmLabel={t("users.cancelInvite")}
+											cancelLabel={t("forms.cancel")}
+											onConfirm={async () => {
+												setError(null);
+												try {
+													const api = getTreaty();
+													await unwrap(
+														await api.admin.invites.delete({
+															id: invite.id,
+														}),
+													);
+													await refresh();
+												} catch (nextError) {
+													setError(
+														nextError instanceof Error
+															? nextError.message
+															: "errors.unknown",
+													);
+												}
+											}}
+										>
+											<Button tone="danger" type="button">
+												{t("users.cancelInvite")}
+											</Button>
+										</DeleteConfirmationDialog>
+									) : null}
 								</div>
 							</DataRow>
 						))

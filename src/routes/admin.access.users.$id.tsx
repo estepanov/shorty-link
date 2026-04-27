@@ -5,6 +5,7 @@ import {
 	useLocation,
 	useRouter,
 } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import {
@@ -149,7 +150,24 @@ function UserDetail() {
 				{userData.invitedByName ? (
 					<DetailCard
 						label={t("users.invitedBy")}
-						value={`${userData.invitedByName} (${userData.invitedByEmail})`}
+						value={
+							<span className="flex flex-wrap items-center gap-1">
+								{userData.invitedBy ? (
+									<Link
+										className="rounded underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+										params={{ id: userData.invitedBy }}
+										to="/admin/access/users/$id"
+									>
+										{userData.invitedByName}
+									</Link>
+								) : (
+									userData.invitedByName
+								)}
+								<span className="text-muted-foreground">
+									({userData.invitedByEmail})
+								</span>
+							</span>
+						}
 					/>
 				) : null}
 				<DetailCard
@@ -224,7 +242,7 @@ function UserDetail() {
 	);
 }
 
-function DetailCard({ label, value }: { label: string; value: string }) {
+function DetailCard({ label, value }: { label: string; value: ReactNode }) {
 	return (
 		<Card>
 			<p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">

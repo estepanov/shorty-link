@@ -271,7 +271,18 @@ function InvitesTab() {
 											</span>
 											{invite.invitedByName ? (
 												<span>
-													{t("users.invitedBy")} {invite.invitedByName}
+													{t("users.invitedBy")}{" "}
+													{invite.invitedBy ? (
+														<Link
+															className="rounded underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+															params={{ id: invite.invitedBy }}
+															to="/admin/access/users/$id"
+														>
+															{invite.invitedByName}
+														</Link>
+													) : (
+														invite.invitedByName
+													)}
 												</span>
 											) : null}
 											{invite.inviteUrl ? (
@@ -296,7 +307,20 @@ function InvitesTab() {
 												</Button>
 											</Link>
 										) : null}
-										{hasPermission("invites.delete") ? (
+										{invite.status === "accepted" &&
+										invite.acceptedUserId &&
+										hasPermission("users.read") ? (
+											<Link
+												params={{ id: invite.acceptedUserId }}
+												to="/admin/access/users/$id"
+											>
+												<Button tone="secondary" type="button">
+													{t("users.viewUser")}
+												</Button>
+											</Link>
+										) : null}
+										{invite.status !== "accepted" &&
+										hasPermission("invites.delete") ? (
 											<DeleteConfirmationDialog
 												title={t("forms.confirmDelete")}
 												description={t("forms.confirmDeleteDescription")}

@@ -12,10 +12,11 @@ import {
 } from "../src/server/auth/onboarding";
 import {
 	adminInvites,
-	schema,
 	SYSTEM_ROLE_ADMIN,
+	schema,
 	user,
 } from "../src/server/db/schema";
+import { deleteInvite, listAllInvites } from "../src/server/services/users";
 
 async function applyMigrations(database: D1Database) {
 	for (const file of [
@@ -152,5 +153,69 @@ describe("onboarding security", () => {
 		await expect(
 			resolvePasskeyRegistrationUser(db, context, localRequest),
 		).rejects.toThrow("errors.inviteMissing");
+	});
+
+	it("does not cancel an accepted invite", async () => {
+		const timestamp = Date.now();
+		await db.insert(user).values({
+			id: "accepted-user",
+			email: "accepted@example.com",
+			emailVerified: true,
+			image: null,
+			locale: "en",
+			name: "Accepted User",
+			roleId: SYSTEM_ROLE_ADMIN,
+			createdAt: new Date(timestamp),
+			updatedAt: new Date(timestamp),
+		});
+		await db.insert(adminInvites).values({
+			id: "accepted-invite",
+			email: "accepted@example.com",
+			token: "accepted-invite-token",
+			roleId: SYSTEM_ROLE_ADMIN,
+			invitedBy: null,
+			expiresAt: timestamp + 60_000,
+			acceptedAt: timestamp,
+			createdAt: timestamp,
+		});
+
+		await expect(deleteInvite(db, "accepted-invite")).rejects.toThrow(
+			"errors.inviteAccepted",
+		);
+
+		const rows = await db
+			.select({ id: adminInvites.id })
+			.from(adminInvites)
+			.where(eq(adminInvites.id, "accepted-invite"));
+		expect(rows).toHaveLength(1);
+
+		const invites = await listAllInvites(db, { status: "accepted" });
+		expect(invites.items[0]).toMatchObject({
+			id: "accepted-invite",
+			acceptedUserId: "accepted-user",
+			status: "accepted",
+		});
+	});
+
+	it("cancels an unaccepted invite", async () => {
+		const timestamp = Date.now();
+		await db.insert(adminInvites).values({
+			id: "pending-invite",
+			email: "pending@example.com",
+			token: "pending-invite-token",
+			roleId: SYSTEM_ROLE_ADMIN,
+			invitedBy: null,
+			expiresAt: timestamp + 60_000,
+			acceptedAt: null,
+			createdAt: timestamp,
+		});
+
+		await expect(deleteInvite(db, "pending-invite")).resolves.toBeUndefined();
+
+		const rows = await db
+			.select({ id: adminInvites.id })
+			.from(adminInvites)
+			.where(eq(adminInvites.id, "pending-invite"));
+		expect(rows).toHaveLength(0);
 	});
 });

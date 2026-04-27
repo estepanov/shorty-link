@@ -12,7 +12,7 @@ import {
 	sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
-
+import { normalizeLocale } from "../../lib/i18n";
 import type { AppDb } from "../db/client";
 import {
 	adminInvites,
@@ -21,7 +21,6 @@ import {
 	session,
 	user,
 } from "../db/schema";
-import { normalizeLocale } from "../../lib/i18n";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export async function listUsers(
@@ -261,6 +260,7 @@ export async function listAllInvites(
 	} = {},
 ) {
 	const inviter = alias(user, "inviter");
+	const acceptedUser = alias(user, "acceptedUser");
 	const page = Math.max(1, Math.floor(input.page ?? 1));
 	const pageSize = Math.max(1, Math.min(Math.floor(input.pageSize ?? 25), 100));
 	const offset = (page - 1) * pageSize;
@@ -302,6 +302,7 @@ export async function listAllInvites(
 		invitedBy: adminInvites.invitedBy,
 		invitedByName: inviter.name,
 		invitedByEmail: inviter.email,
+		acceptedUserId: acceptedUser.id,
 		expiresAt: adminInvites.expiresAt,
 		acceptedAt: adminInvites.acceptedAt,
 		createdAt: adminInvites.createdAt,
@@ -313,6 +314,7 @@ export async function listAllInvites(
 			.from(adminInvites)
 			.innerJoin(roles, eq(adminInvites.roleId, roles.id))
 			.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
+			.leftJoin(acceptedUser, eq(adminInvites.email, acceptedUser.email))
 			.where(where)
 			.orderBy(desc(adminInvites.createdAt))
 			.limit(pageSize)
@@ -333,7 +335,11 @@ export async function listAllInvites(
 		} else {
 			status = "pending";
 		}
-		return { ...row, status };
+		return {
+			...row,
+			acceptedUserId: status === "accepted" ? row.acceptedUserId : null,
+			status,
+		};
 	});
 
 	return {
@@ -346,6 +352,21 @@ export async function listAllInvites(
 }
 
 export async function deleteInvite(db: AppDb, inviteId: string) {
+	const rows = await db
+		.select({ acceptedAt: adminInvites.acceptedAt })
+		.from(adminInvites)
+		.where(eq(adminInvites.id, inviteId))
+		.limit(1);
+	const invite = rows[0];
+
+	if (!invite) {
+		throw new Error("errors.inviteMissing");
+	}
+
+	if (invite.acceptedAt) {
+		throw new Error("errors.inviteAccepted");
+	}
+
 	await db.delete(adminInvites).where(eq(adminInvites.id, inviteId));
 }
 

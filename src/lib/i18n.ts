@@ -255,6 +255,7 @@ export const messages = {
 		"users.previous": "Previous",
 		"users.next": "Next",
 		"users.of": "of",
+		"users.viewUser": "View user",
 		"users.viewAll": "View all users",
 		"users.created": "Created",
 		"users.updated": "Updated",
@@ -317,6 +318,7 @@ export const messages = {
 		"errors.linkMissing": "Short link not found.",
 		"errors.invalidEmail": "Enter a valid email address.",
 		"errors.bootstrapComplete": "Bootstrap is already complete.",
+		"errors.inviteAccepted": "Accepted invites cannot be canceled.",
 		"errors.inviteMissing": "Invite not found or expired.",
 		"errors.inviteRequiresSignOut": "Sign out before opening an invite link.",
 		"errors.profileEmailTaken": "That email is already in use.",
@@ -606,6 +608,7 @@ export const messages = {
 		"users.previous": "Anterior",
 		"users.next": "Siguiente",
 		"users.of": "de",
+		"users.viewUser": "Ver usuario",
 		"users.viewAll": "Ver todos los usuarios",
 		"users.created": "Creado",
 		"users.updated": "Actualizado",
@@ -668,6 +671,8 @@ export const messages = {
 		"errors.linkMissing": "Link corto no encontrado.",
 		"errors.invalidEmail": "Ingresa un email valido.",
 		"errors.bootstrapComplete": "El bootstrap ya esta completo.",
+		"errors.inviteAccepted":
+			"Las invitaciones aceptadas no se pueden cancelar.",
 		"errors.inviteMissing": "Invitacion no encontrada o expirada.",
 		"errors.inviteRequiresSignOut":
 			"Cierra sesion antes de abrir un link de invitacion.",
