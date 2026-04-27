@@ -139,18 +139,23 @@ const toggleLabelStyles: Record<
 export function ToggleTile({
 	checked,
 	children,
+	disabled = false,
 	onCheckedChange,
 	tone = "default",
 }: {
 	checked: boolean;
 	children: ReactNode;
+	disabled?: boolean;
 	onCheckedChange: (checked: boolean) => void;
 	tone?: ToggleTone;
 }) {
 	return (
 		<label
 			className={cn(
-				"group flex min-h-14 cursor-pointer items-center justify-between gap-4 rounded-lg border bg-background/65 p-3 text-sm font-medium shadow-[inset_0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)] transition-colors hover:border-foreground/25",
+				"group flex min-h-14 items-center justify-between gap-4 rounded-lg border bg-background/65 p-3 text-sm font-medium shadow-[inset_0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)] transition-colors",
+				disabled
+					? "cursor-not-allowed opacity-60"
+					: "cursor-pointer hover:border-foreground/25",
 				checked
 					? toggleLabelStyles[tone].checked
 					: toggleLabelStyles[tone].unchecked,
@@ -160,6 +165,7 @@ export function ToggleTile({
 			<input
 				checked={checked}
 				className="sr-only"
+				disabled={disabled}
 				onChange={(event) => onCheckedChange(event.target.checked)}
 				type="checkbox"
 			/>

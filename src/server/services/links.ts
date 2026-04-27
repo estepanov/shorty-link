@@ -933,6 +933,22 @@ export async function createInvite(
 		throw new Error("errors.invalidEmail");
 	}
 
+	const [existingPending] = await db
+		.select({ id: adminInvites.id })
+		.from(adminInvites)
+		.where(
+			and(
+				eq(adminInvites.email, email),
+				isNull(adminInvites.acceptedAt),
+				gt(adminInvites.expiresAt, now()),
+			),
+		)
+		.limit(1);
+
+	if (existingPending) {
+		throw new Error("errors.invitePendingExists");
+	}
+
 	const expiresInDays = Math.max(1, Math.min(input.expiresInDays ?? 7, 30));
 	const timestamp = now();
 	const token = nanoid(32);
@@ -986,6 +1002,22 @@ export async function updateInvite(
 		const email = input.email.trim().toLowerCase();
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
 			throw new Error("errors.invalidEmail");
+		}
+		if (email !== invite.email) {
+			const [existingPending] = await db
+				.select({ id: adminInvites.id })
+				.from(adminInvites)
+				.where(
+					and(
+						eq(adminInvites.email, email),
+						isNull(adminInvites.acceptedAt),
+						gt(adminInvites.expiresAt, now()),
+					),
+				)
+				.limit(1);
+			if (existingPending) {
+				throw new Error("errors.invitePendingExists");
+			}
 		}
 		updates.email = email;
 	}

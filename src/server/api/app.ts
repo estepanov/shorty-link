@@ -845,6 +845,7 @@ export const app = new Elysia({
 						active: query.active,
 						page: query.page,
 						pageSize: query.pageSize,
+						roleId: query.roleId,
 						search: query.search,
 					});
 				},
@@ -859,6 +860,7 @@ export const app = new Elysia({
 						),
 						page: t.Optional(t.Number({ minimum: 1 })),
 						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+						roleId: t.Optional(t.String({ minLength: 1 })),
 						search: t.Optional(t.String()),
 					}),
 				},
@@ -1040,6 +1042,7 @@ export const app = new Elysia({
 					const result = await listAllInvites(db, {
 						page: query.page,
 						pageSize: query.pageSize,
+						roleId: query.roleId,
 						search: query.search,
 						status: query.status,
 					});
@@ -1048,9 +1051,10 @@ export const app = new Elysia({
 						...result,
 						items: result.items.map((invite) => ({
 							...invite,
-							inviteUrl: invite.acceptedAt
-								? null
-								: buildInviteUrl(origin, invite.token),
+							inviteUrl:
+								invite.status === "pending"
+									? buildInviteUrl(origin, invite.token)
+									: null,
 						})),
 					};
 				},
@@ -1058,6 +1062,7 @@ export const app = new Elysia({
 					query: t.Object({
 						page: t.Optional(t.Number({ minimum: 1 })),
 						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+						roleId: t.Optional(t.String({ minLength: 1 })),
 						search: t.Optional(t.String()),
 						status: t.Optional(
 							t.Union([

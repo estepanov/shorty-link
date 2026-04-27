@@ -262,12 +262,10 @@ function InvitesTab() {
 											</span>
 											<span className="text-muted-foreground/50">
 												{invite.status === "pending"
-													? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`
+													? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleString(locale)}`
 													: invite.status === "accepted" && invite.acceptedAt
-														? new Date(invite.acceptedAt).toLocaleDateString(
-																locale,
-															)
-														: `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleDateString(locale)}`}
+														? new Date(invite.acceptedAt).toLocaleString(locale)
+														: `${t("table.expiredOn")} ${new Date(invite.expiresAt).toLocaleString(locale)}`}
 											</span>
 											{invite.invitedByName ? (
 												<span>
@@ -319,7 +317,7 @@ function InvitesTab() {
 												</Button>
 											</Link>
 										) : null}
-										{invite.status !== "accepted" &&
+										{invite.status === "pending" &&
 										hasPermission("invites.delete") ? (
 											<DeleteConfirmationDialog
 												title={t("forms.confirmDelete")}
@@ -346,7 +344,7 @@ function InvitesTab() {
 												}}
 											>
 												<Button tone="danger" type="button">
-													{t("users.cancelInvite")}
+													{t("forms.delete")}
 												</Button>
 											</DeleteConfirmationDialog>
 										) : null}

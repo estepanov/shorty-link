@@ -37,6 +37,7 @@ export {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+export { Switch } from "@/components/ui/switch";
 
 /* -------------------------------------------------------------------------- */
 /*  Theme                                                                     */
@@ -114,8 +115,6 @@ export function AppShell({
 		!isAuthContextPending &&
 		(hasPermission("users.read") ||
 			hasPermission("invites.read") ||
-			hasPermission("sessions.manage") ||
-			hasPermission("apikeys.manage") ||
 			hasPermission("roles.read"));
 
 	// Close mobile menu on navigation.

@@ -1,5 +1,11 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	Outlet,
+	useLocation,
+	useRouter,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
@@ -36,9 +42,13 @@ const defaultFilters: RoleFilters = {
 };
 
 function RolesTab() {
+	const location = useLocation();
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
 	const { hasPermission } = useAuthContext();
+	const isRolesListRoute =
+		location.pathname === "/admin/access/roles" ||
+		location.pathname === "/admin/access/roles/";
 	const [data, setData] = useState<AdminRoleList | null>(null);
 	const [filters, setFilters] = useState<RoleFilters>(defaultFilters);
 	const [page, setPage] = useState(1);
@@ -73,10 +83,14 @@ function RolesTab() {
 	}
 
 	useEffect(() => {
-		if (session) {
+		if (session && isRolesListRoute) {
 			void refresh();
 		}
-	}, [session?.user.id, filters, page]);
+	}, [session?.user.id, filters, page, isRolesListRoute]);
+
+	if (!isRolesListRoute) {
+		return <Outlet />;
+	}
 
 	if (isPending) {
 		return <Card>{t("loading.app")}</Card>;
@@ -232,7 +246,7 @@ function RolesTab() {
 											<Link
 												className="text-accent underline underline-offset-4 dark:text-accent"
 												params={{ id: role.id }}
-												to="/admin/roles/$id/edit"
+												to="/admin/access/roles/$id"
 											>
 												{role.name}
 											</Link>

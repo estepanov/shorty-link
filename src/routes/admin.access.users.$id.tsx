@@ -96,6 +96,7 @@ function UserDetail() {
 
 	const canEdit = hasPermission("users.write");
 	const canDelete = hasPermission("users.delete");
+	const isSelf = userData.id === session.user.id;
 
 	return (
 		<div className="mx-auto grid w-full max-w-5xl gap-6">
@@ -108,8 +109,13 @@ function UserDetail() {
 						>
 							{t("users.viewAll")}
 						</Link>
-						<h1 className="mt-4 text-4xl font-medium tracking-tight">
+						<h1 className="mt-4 flex flex-wrap items-center gap-2 text-4xl font-medium tracking-tight">
 							{userData.name}
+							{isSelf ? (
+								<span className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+									{t("users.you")}
+								</span>
+							) : null}
 						</h1>
 						<p className="mt-2 text-muted-foreground">{userData.email}</p>
 					</div>
@@ -183,6 +189,7 @@ function UserDetail() {
 			<div className="flex flex-wrap gap-3">
 				{canEdit ? (
 					<Button
+						disabled={isSelf}
 						onClick={async () => {
 							setError(null);
 							try {
@@ -207,7 +214,7 @@ function UserDetail() {
 						{userData.isActive ? t("users.disable") : t("users.enable")}
 					</Button>
 				) : null}
-				{canDelete ? (
+				{canDelete && !isSelf ? (
 					<DeleteConfirmationDialog
 						title={t("forms.confirmDelete")}
 						description={t("forms.confirmDeleteDescription")}

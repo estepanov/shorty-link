@@ -11,17 +11,18 @@ import {
 	Card,
 	DataRow,
 	DeleteConfirmationDialog,
+	EmptyState,
 	Notice,
 } from "@/components/ui";
-import {
-	useAdminAuthGuard,
-	useAuthContext,
-	useRequirePermission,
-} from "@/lib/admin-auth";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type {
+	AdminInvite,
 	AdminRoleDetail,
 	AdminUser,
+	InviteListData,
 	PermissionCatalog,
+	UserListData,
 } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import { PERMISSION_GROUPS, type Permission } from "@/lib/permissions";
@@ -34,10 +35,14 @@ function RoleDetailPage() {
 	const { id } = useParams({ from: "/admin/access/roles/$id" });
 	const router = useRouter();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("roles.read");
-	const { hasPermission } = useAuthContext();
+	const {
+		isAuthorized,
+		isPending: isPermissionPending,
+		hasPermission,
+	} = useRequirePermission("roles.read");
 	const [role, setRole] = useState<AdminRoleDetail | null>(null);
 	const [users, setUsers] = useState<AdminUser[]>([]);
+	const [pendingInvites, setPendingInvites] = useState<AdminInvite[]>([]);
 	const [catalog, setCatalog] = useState<PermissionCatalog | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -45,13 +50,21 @@ function RoleDetailPage() {
 		setError(null);
 		try {
 			const api = getTreaty();
-			const [roleData, usersData, catalogData] = await Promise.all([
-				unwrap<AdminRoleDetail>(await api.admin.roles({ id }).get()),
-				unwrap<AdminUser[]>(await api.admin.users.get()),
-				unwrap<PermissionCatalog>(await api.admin.permissions.get()),
-			]);
+			const [roleData, usersData, invitesData, catalogData] = await Promise.all(
+				[
+					unwrap<AdminRoleDetail>(await api.admin.roles({ id }).get()),
+					hasPermission("users.read")
+						? loadUsersForRole(api, id)
+						: Promise.resolve([]),
+					hasPermission("invites.read")
+						? loadPendingInvitesForRole(api, id)
+						: Promise.resolve([]),
+					unwrap<PermissionCatalog>(await api.admin.permissions.get()),
+				],
+			);
 			setRole(roleData);
-			setUsers(usersData.filter((u) => u.roleId === id));
+			setUsers(usersData);
+			setPendingInvites(invitesData);
 			setCatalog(catalogData);
 		} catch (nextError) {
 			setError(
@@ -75,12 +88,12 @@ function RoleDetailPage() {
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh stable; refetch when session or id changes.
 	useEffect(() => {
-		if (session) {
+		if (session && !isPermissionPending && isAuthorized) {
 			void refresh();
 		}
-	}, [session?.user.id, id]);
+	}, [session?.user.id, id, isPermissionPending, isAuthorized]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return (
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>{t("loading.app")}</Card>
@@ -140,10 +153,16 @@ function RoleDetailPage() {
 	const disabledUsers = users.filter((u) => !u.isActive);
 
 	return (
-		<div className="mx-auto grid w-full max-w-7xl gap-6">
+		<div className="mx-auto grid w-full max-w-6xl gap-6">
 			<Card>
 				<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 					<div>
+						<Link
+							className="text-sm font-medium text-accent underline decoration-accent decoration-2 underline-offset-4 hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
+							to="/admin/access/roles"
+						>
+							{t("roles.viewAll")}
+						</Link>
 						<h1 className="text-4xl font-medium">
 							{role.name}
 							{role.isSystem ? (
@@ -156,8 +175,15 @@ function RoleDetailPage() {
 							<p className="mt-2 text-muted-foreground">{role.description}</p>
 						) : null}
 					</div>
-					{hasPermission("roles.delete") ? (
-						<div className="flex gap-2">
+					<div className="flex gap-2">
+						{!role.isSystem && hasPermission("roles.update") ? (
+							<Link params={{ id: role.id }} to="/admin/roles/$id/edit">
+								<Button tone="secondary" type="button">
+									{t("roles.edit")}
+								</Button>
+							</Link>
+						) : null}
+						{hasPermission("roles.delete") ? (
 							<DeleteConfirmationDialog
 								title={t("forms.confirmDelete")}
 								description={t("forms.confirmDeleteDescription")}
@@ -166,17 +192,35 @@ function RoleDetailPage() {
 								onConfirm={deleteRole}
 							>
 								<Button
-									disabled={role.isSystem || role.userCount > 0}
+									disabled={
+										role.isSystem ||
+										role.userCount > 0 ||
+										role.pendingInviteCount > 0
+									}
 									tone="danger"
 									type="button"
 								>
 									{t("roles.delete")}
 								</Button>
 							</DeleteConfirmationDialog>
-						</div>
-					) : null}
+						) : null}
+					</div>
 				</div>
 			</Card>
+
+			<section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<Stat label={t("roles.users")} value={role.userCount} />
+				<Stat label={t("roles.pending")} value={role.pendingInviteCount} />
+				<Stat label={t("roles.permissions")} value={role.permissions.length} />
+				<Stat
+					label={t("roles.scope")}
+					text={
+						role.domainScopeCount === 0 && role.linkScopeCount === 0
+							? t("roles.unrestricted")
+							: `${role.domainScopeCount + role.linkScopeCount}`
+					}
+				/>
+			</section>
 
 			{catalog && (
 				<Card>
@@ -188,7 +232,7 @@ function RoleDetailPage() {
 						{Object.entries(PERMISSION_GROUPS).map(
 							([groupKey, groupPermissions]) => (
 								<div
-									className="rounded-md border border-foreground/10 bg-white/50 p-3 "
+									className="rounded-md border border-border bg-card/60 p-3"
 									key={groupKey}
 								>
 									<p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -199,17 +243,17 @@ function RoleDetailPage() {
 											const isEnabled = role.permissions.includes(perm);
 											return (
 												<div
-													className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm ${
+													className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
 														isEnabled
-															? "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100"
-															: "bg-muted text-muted-foreground/80 dark:bg-muted dark:text-muted-foreground/80"
+															? "bg-accent text-accent-foreground"
+															: "bg-muted text-muted-foreground/80"
 													}`}
 													key={perm}
 												>
 													<span
-														className={`inline-flex h-2 w-2 shrink-0 rounded-full ${
+														className={`inline-flex size-2 shrink-0 rounded-full ${
 															isEnabled
-																? "bg-blue-500 dark:bg-blue-400"
+																? "bg-accent-foreground"
 																: "bg-muted-foreground/30"
 														}`}
 													/>
@@ -227,59 +271,175 @@ function RoleDetailPage() {
 				</Card>
 			)}
 
-			<Card>
-				<h2 className="text-2xl font-medium">{t("roles.scopeDomains")}</h2>
-				<p className="mt-1 text-sm text-muted-foreground/80">
-					{role.domainScopeCount === 0
-						? t("roles.unrestricted")
-						: `${role.domainScopeCount} domains`}
-				</p>
-			</Card>
+			<section className="grid gap-4 lg:grid-cols-2">
+				<Card>
+					<h2 className="text-2xl font-medium">{t("roles.scopeDomains")}</h2>
+					<p className="mt-1 text-sm text-muted-foreground/80">
+						{role.domainScopeCount === 0
+							? t("roles.unrestricted")
+							: t("roles.domainsCount").replace(
+									"{{count}}",
+									String(role.domainScopeCount),
+								)}
+					</p>
+				</Card>
 
-			<Card>
-				<h2 className="text-2xl font-medium">{t("roles.scopeLinks")}</h2>
-				<p className="mt-1 text-sm text-muted-foreground/80">
-					{role.linkScopeCount === 0
-						? t("roles.unrestricted")
-						: `${role.linkScopeCount} links`}
-				</p>
-			</Card>
+				<Card>
+					<h2 className="text-2xl font-medium">{t("roles.scopeLinks")}</h2>
+					<p className="mt-1 text-sm text-muted-foreground/80">
+						{role.linkScopeCount === 0
+							? t("roles.unrestricted")
+							: t("roles.linksCount").replace(
+									"{{count}}",
+									String(role.linkScopeCount),
+								)}
+					</p>
+				</Card>
+			</section>
 
-			<Card>
-				<h2 className="text-2xl font-medium">
-					{t("users.active")} ({activeUsers.length})
-				</h2>
-				<div className="mt-5 grid gap-3">
-					{activeUsers.length ? (
-						activeUsers.map((u) => (
-							<UserRow key={u.id} locale={locale} t={t} user={u} />
-						))
-					) : (
-						<p className="text-sm text-muted-foreground">
-							{t("users.emptyActive")}
-						</p>
-					)}
-				</div>
-			</Card>
+			<section className="grid gap-4 lg:grid-cols-2">
+				<Card>
+					<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+						<div>
+							<h2 className="text-2xl font-medium">{t("roles.users")}</h2>
+							<p className="mt-1 text-sm text-muted-foreground/80">
+								{t("roles.usersCount").replace(
+									"{{count}}",
+									String(users.length),
+								)}
+							</p>
+						</div>
+					</div>
+					<ScrollArea className="mt-5 h-[360px] rounded-md border border-border">
+						<div className="grid gap-3 p-3">
+							{users.length ? (
+								<>
+									{activeUsers.map((u) => (
+										<UserRow key={u.id} locale={locale} t={t} user={u} />
+									))}
+									{disabledUsers.map((u) => (
+										<UserRow key={u.id} locale={locale} t={t} user={u} />
+									))}
+								</>
+							) : (
+								<EmptyState
+									compact
+									description={
+										hasPermission("users.read")
+											? t("roles.noUsers")
+											: t("errors.permissionDenied")
+									}
+								/>
+							)}
+						</div>
+					</ScrollArea>
+				</Card>
 
-			<Card>
-				<h2 className="text-2xl font-medium">
-					{t("users.disabled")} ({disabledUsers.length})
-				</h2>
-				<div className="mt-5 grid gap-3">
-					{disabledUsers.length ? (
-						disabledUsers.map((u) => (
-							<UserRow key={u.id} locale={locale} t={t} user={u} />
-						))
-					) : (
-						<p className="text-sm text-muted-foreground">
-							{t("users.emptyDisabled")}
-						</p>
-					)}
-				</div>
-			</Card>
+				<Card>
+					<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+						<div>
+							<h2 className="text-2xl font-medium">
+								{t("roles.pendingInvitesTitle")}
+							</h2>
+							<p className="mt-1 text-sm text-muted-foreground/80">
+								{t("roles.pendingInvites").replace(
+									"{{count}}",
+									String(pendingInvites.length),
+								)}
+							</p>
+						</div>
+					</div>
+					<ScrollArea className="mt-5 h-[360px] rounded-md border border-border">
+						<div className="grid gap-3 p-3">
+							{pendingInvites.length ? (
+								pendingInvites.map((invite) => (
+									<InviteRow
+										invite={invite}
+										key={invite.id}
+										locale={locale}
+										t={t}
+										canUpdate={hasPermission("invites.update")}
+									/>
+								))
+							) : (
+								<EmptyState
+									compact
+									description={
+										hasPermission("invites.read")
+											? t("roles.noPendingInvites")
+											: t("errors.permissionDenied")
+									}
+								/>
+							)}
+						</div>
+					</ScrollArea>
+				</Card>
+			</section>
 		</div>
 	);
+}
+
+function Stat({
+	label,
+	value,
+	text,
+}: {
+	label: string;
+	value?: number;
+	text?: string;
+}) {
+	return (
+		<Card>
+			<p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+				{label}
+			</p>
+			<p className="mt-2 text-4xl font-medium text-foreground">
+				{text ?? value ?? 0}
+			</p>
+		</Card>
+	);
+}
+
+async function loadUsersForRole(
+	api: ReturnType<typeof getTreaty>,
+	roleId: string,
+) {
+	const firstPage = await unwrap<UserListData>(
+		await api.admin.users.get({
+			query: { active: "all", page: 1, pageSize: 100, roleId },
+		}),
+	);
+	const items = [...firstPage.items];
+	for (let page = 2; page <= firstPage.totalPages; page += 1) {
+		const nextPage = await unwrap<UserListData>(
+			await api.admin.users.get({
+				query: { active: "all", page, pageSize: 100, roleId },
+			}),
+		);
+		items.push(...nextPage.items);
+	}
+	return items;
+}
+
+async function loadPendingInvitesForRole(
+	api: ReturnType<typeof getTreaty>,
+	roleId: string,
+) {
+	const firstPage = await unwrap<InviteListData>(
+		await api.admin.invites.get({
+			query: { page: 1, pageSize: 100, roleId, status: "pending" },
+		}),
+	);
+	const items = [...firstPage.items];
+	for (let page = 2; page <= firstPage.totalPages; page += 1) {
+		const nextPage = await unwrap<InviteListData>(
+			await api.admin.invites.get({
+				query: { page, pageSize: 100, roleId, status: "pending" },
+			}),
+		);
+		items.push(...nextPage.items);
+	}
+	return items;
 }
 
 function UserRow({
@@ -296,23 +456,76 @@ function UserRow({
 			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
 				<div className="flex-1">
 					<p className="font-medium">
-						{u.name}{" "}
+						<Link
+							className="text-accent underline underline-offset-4 dark:text-accent"
+							params={{ id: u.id }}
+							to="/admin/access/users/$id"
+						>
+							{u.name}
+						</Link>{" "}
 						<span className="text-sm font-normal text-muted-foreground">
 							({u.email})
 						</span>
 					</p>
 					<p className="mt-1 text-sm text-muted-foreground">
+						{u.isActive ? t("users.active") : t("users.disabled")} -{" "}
 						{new Date(u.createdAt).toLocaleDateString(locale)}
 					</p>
 				</div>
-				<div>
-					<Link
-						className="text-sm font-bold text-accent underline underline-offset-4 dark:text-accent"
-						to="/admin/access/users"
-					>
-						{t("users.title")}
-					</Link>
+			</div>
+		</DataRow>
+	);
+}
+
+function InviteRow({
+	canUpdate,
+	invite,
+	locale,
+	t,
+}: {
+	canUpdate: boolean;
+	invite: AdminInvite;
+	locale: string;
+	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
+}) {
+	return (
+		<DataRow>
+			<div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+				<div className="min-w-0 flex-1">
+					<p className="truncate font-medium">{invite.email}</p>
+					<p className="mt-1 text-sm text-muted-foreground">
+						{t("forms.expires")}{" "}
+						{new Date(invite.expiresAt).toLocaleDateString(locale)}
+						{invite.invitedByName || invite.invitedByEmail ? (
+							<>
+								{" "}
+								- {t("users.invitedBy")}:{" "}
+								{invite.invitedBy ? (
+									<Link
+										className="text-accent underline underline-offset-4 dark:text-accent"
+										params={{ id: invite.invitedBy }}
+										to="/admin/access/users/$id"
+									>
+										{invite.invitedByName ?? invite.invitedByEmail}
+									</Link>
+								) : (
+									<span>{invite.invitedByName ?? invite.invitedByEmail}</span>
+								)}
+							</>
+						) : null}
+					</p>
 				</div>
+				{canUpdate ? (
+					<div>
+						<Link
+							className="text-sm font-bold text-accent underline underline-offset-4 dark:text-accent"
+							params={{ id: invite.id }}
+							to="/admin/invites/$id/edit"
+						>
+							{t("pages.editInvite")}
+						</Link>
+					</div>
+				) : null}
 			</div>
 		</DataRow>
 	);

@@ -39,14 +39,20 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
+	Switch,
 } from "@/components/ui";
-import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
+import {
+	useAdminAuthGuard,
+	useAuthContext,
+	useRequirePermission,
+} from "@/lib/admin-auth";
 import type {
 	AdminUser,
 	AssignableRole,
 	UserListData,
 } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/access/users")({
 	component: UsersTab,
@@ -68,6 +74,9 @@ function UsersTab() {
 	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
 	const { isAuthorized } = useRequirePermission("users.read");
+	const { hasPermission } = useAuthContext();
+	const canWriteUsers = hasPermission("users.write");
+	const canDeleteUsers = hasPermission("users.delete");
 	const isUsersListRoute =
 		location.pathname === "/admin/access/users" ||
 		location.pathname === "/admin/access/users/";
@@ -262,6 +271,9 @@ function UsersTab() {
 					{data?.items.map((u: AdminUser) => (
 						<UserRow
 							key={u.id}
+							canDeleteUsers={canDeleteUsers}
+							canWriteUsers={canWriteUsers}
+							currentUserId={session.user.id}
 							locale={locale}
 							onRefresh={refresh}
 							roles={roles}
@@ -280,6 +292,9 @@ function UsersTab() {
 }
 
 function UserRow({
+	canDeleteUsers,
+	canWriteUsers,
+	currentUserId,
 	locale,
 	onRefresh,
 	roles,
@@ -287,6 +302,9 @@ function UserRow({
 	t,
 	user: u,
 }: {
+	canDeleteUsers: boolean;
+	canWriteUsers: boolean;
+	currentUserId: string;
 	locale: string;
 	onRefresh: () => Promise<void>;
 	roles: AssignableRole[];
@@ -296,6 +314,7 @@ function UserRow({
 }) {
 	const [editing, setEditing] = useState(false);
 	const [pendingRoleId, setPendingRoleId] = useState(u.roleId);
+	const isSelf = u.id === currentUserId;
 
 	return (
 		<DataRow>
@@ -309,6 +328,11 @@ function UserRow({
 						{u.name}
 					</Link>{" "}
 					<span className="text-sm text-muted-foreground">({u.email})</span>
+					{isSelf ? (
+						<span className="ml-1.5 inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-accent align-middle">
+							{t("users.you")}
+						</span>
+					) : null}
 					<p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
 						{editing && roles.length > 0 ? (
 							<>
@@ -373,7 +397,7 @@ function UserRow({
 						) : (
 							<>
 								<span className="font-bold">{u.roleName}</span>
-								{roles.length > 0 ? (
+								{roles.length > 0 && canWriteUsers ? (
 									<Button
 										className="!rounded-md !border-transparent !bg-transparent !p-1 !h-auto !text-muted-foreground hover:!text-foreground hover:!bg-muted"
 										onClick={() => {
@@ -394,60 +418,71 @@ function UserRow({
 						<span>{new Date(u.createdAt).toLocaleDateString(locale)}</span>
 					</p>
 				</div>
-				<div className="flex gap-2">
-					<Button
-						className="!rounded-xl !px-3 !py-1.5 !text-xs"
-						onClick={async () => {
-							setError(null);
-							try {
-								const api = getTreaty();
-								await unwrap(
-									await api.admin.users({ id: u.id }).patch({
-										isActive: !u.isActive,
-									}),
-								);
-								await onRefresh();
-							} catch (nextError) {
-								setError(
-									nextError instanceof Error
-										? nextError.message
-										: "errors.unknown",
-								);
-							}
-						}}
-						tone="secondary"
-						type="button"
-					>
-						{u.isActive ? t("users.disable") : t("users.enable")}
-					</Button>
-					<DeleteConfirmationDialog
-						title={t("forms.confirmDelete")}
-						description={t("forms.confirmDeleteDescription")}
-						confirmLabel={t("forms.delete")}
-						cancelLabel={t("forms.cancel")}
-						onConfirm={async () => {
-							setError(null);
-							try {
-								const api = getTreaty();
-								await unwrap(await api.admin.users({ id: u.id }).delete());
-								await onRefresh();
-							} catch (nextError) {
-								setError(
-									nextError instanceof Error
-										? nextError.message
-										: "errors.unknown",
-								);
-							}
-						}}
-					>
-						<Button
-							className="!rounded-xl !px-3 !py-1.5 !text-xs"
-							tone="danger"
-							type="button"
+				<div className="flex items-center gap-3">
+					<label className="flex items-center gap-2">
+						<Switch
+							aria-label={u.isActive ? t("users.disable") : t("users.enable")}
+							checked={u.isActive}
+							disabled={isSelf || !canWriteUsers}
+							onCheckedChange={async (checked) => {
+								setError(null);
+								try {
+									const api = getTreaty();
+									await unwrap(
+										await api.admin.users({ id: u.id }).patch({
+											isActive: checked,
+										}),
+									);
+									await onRefresh();
+								} catch (nextError) {
+									setError(
+										nextError instanceof Error
+											? nextError.message
+											: "errors.unknown",
+									);
+								}
+							}}
+						/>
+						<span
+							className={cn(
+								"text-xs font-medium tracking-tight",
+								u.isActive ? "text-success" : "text-muted-foreground",
+							)}
 						>
-							{t("users.delete")}
-						</Button>
-					</DeleteConfirmationDialog>
+							{u.isActive ? t("users.statusActive") : t("users.statusInactive")}
+						</span>
+					</label>
+					{canDeleteUsers ? (
+						<DeleteConfirmationDialog
+							title={t("forms.confirmDelete")}
+							description={t("forms.confirmDeleteDescription")}
+							confirmLabel={t("forms.delete")}
+							cancelLabel={t("forms.cancel")}
+							onConfirm={async () => {
+								setError(null);
+								try {
+									const api = getTreaty();
+									await unwrap(await api.admin.users({ id: u.id }).delete());
+									await onRefresh();
+								} catch (nextError) {
+									setError(
+										nextError instanceof Error
+											? nextError.message
+											: "errors.unknown",
+									);
+								}
+							}}
+						>
+							<Button
+								className="!rounded-xl !px-3 !py-1.5 !text-xs"
+								disabled={isSelf}
+								tone="danger"
+								type="button"
+							>
+								{t("users.delete")}
+							</Button>
+						</DeleteConfirmationDialog>
+					) : null}
 				</div>
 			</div>
 		</DataRow>

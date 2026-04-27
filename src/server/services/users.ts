@@ -29,6 +29,7 @@ export async function listUsers(
 		active?: "all" | "active" | "inactive";
 		page?: number;
 		pageSize?: number;
+		roleId?: string;
 		search?: string;
 	} = {},
 ) {
@@ -50,6 +51,10 @@ export async function listUsers(
 		filters.push(eq(user.isActive, true));
 	} else if (input.active === "inactive") {
 		filters.push(eq(user.isActive, false));
+	}
+
+	if (input.roleId) {
+		filters.push(eq(user.roleId, input.roleId));
 	}
 
 	const where = filters.length ? and(...filters) : undefined;
@@ -255,6 +260,7 @@ export async function listAllInvites(
 	input: {
 		page?: number;
 		pageSize?: number;
+		roleId?: string;
 		search?: string;
 		status?: "all" | "pending" | "expired" | "accepted";
 	} = {},
@@ -289,6 +295,10 @@ export async function listAllInvites(
 		);
 	} else if (input.status === "accepted") {
 		filters.push(isNotNull(adminInvites.acceptedAt));
+	}
+
+	if (input.roleId) {
+		filters.push(eq(adminInvites.roleId, input.roleId));
 	}
 
 	const where = filters.length ? and(...filters) : undefined;
@@ -353,7 +363,10 @@ export async function listAllInvites(
 
 export async function deleteInvite(db: AppDb, inviteId: string) {
 	const rows = await db
-		.select({ acceptedAt: adminInvites.acceptedAt })
+		.select({
+			acceptedAt: adminInvites.acceptedAt,
+			expiresAt: adminInvites.expiresAt,
+		})
 		.from(adminInvites)
 		.where(eq(adminInvites.id, inviteId))
 		.limit(1);
@@ -365,6 +378,10 @@ export async function deleteInvite(db: AppDb, inviteId: string) {
 
 	if (invite.acceptedAt) {
 		throw new Error("errors.inviteAccepted");
+	}
+
+	if (invite.expiresAt <= Date.now()) {
+		throw new Error("errors.inviteExpired");
 	}
 
 	await db.delete(adminInvites).where(eq(adminInvites.id, inviteId));
