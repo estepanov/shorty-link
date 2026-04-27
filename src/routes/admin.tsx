@@ -78,6 +78,7 @@ type DashboardData = {
 		id: string;
 		email: string;
 		inviteUrl: string;
+		invitedBy: string | null;
 		invitedByName: string | null;
 		invitedByEmail: string | null;
 		createdAt: number;
@@ -549,22 +550,27 @@ function DashboardView({
 																{link.slug}
 															</Link>
 														</ItemTitle>
-														<ItemActions className="shrink-0">
-															<span className="text-sm tabular-nums text-muted-foreground">
-																{link.hitCount} {t("table.hits")}
-															</span>
-															{showLinksWrite ? (
-																<ActionLink to={`/admin/links/${link.id}/edit`}>
-																	{t("forms.update")}
-																</ActionLink>
-															) : null}
-														</ItemActions>
 													</ItemHeader>
 													<ItemDescription className="break-all">
 														{formatHostname(link.hostname, t)} ·{" "}
 														{link.targetUrl}
 													</ItemDescription>
 												</ItemContent>
+												<ItemActions className="shrink-0">
+													<span className="flex flex-col items-center text-center tabular-nums text-muted-foreground">
+														<span className="text-sm font-semibold text-foreground">
+															{link.hitCount}
+														</span>
+														<span className="text-xs leading-none">
+															{t("table.hits")}
+														</span>
+													</span>
+													{showLinksWrite ? (
+														<ActionLink to={`/admin/links/${link.id}/edit`}>
+															{t("forms.update")}
+														</ActionLink>
+													) : null}
+												</ItemActions>
 											</Item>
 										))
 									) : (
@@ -594,15 +600,6 @@ function DashboardView({
 													<ItemContent className="min-w-0">
 														<ItemHeader>
 															<ItemTitle>{domain.hostname}</ItemTitle>
-															{showDomainsWrite ? (
-																<ItemActions className="shrink-0">
-																	<ActionLink
-																		to={`/admin/domains/${domain.id}/edit`}
-																	>
-																		{t("forms.update")}
-																	</ActionLink>
-																</ItemActions>
-															) : null}
 														</ItemHeader>
 														<ItemDescription>
 															{domain.label ?? t("domains.noLabel")} ·{" "}
@@ -615,6 +612,15 @@ function DashboardView({
 																: t("domains.inactive")}
 														</ItemDescription>
 													</ItemContent>
+													{showDomainsWrite ? (
+														<ItemActions className="shrink-0">
+															<ActionLink
+																to={`/admin/domains/${domain.id}/edit`}
+															>
+																{t("forms.update")}
+															</ActionLink>
+														</ItemActions>
+													) : null}
 												</Item>
 											))
 										) : (
@@ -648,13 +654,6 @@ function DashboardView({
 															<ItemTitle className="break-all">
 																{invite.email}
 															</ItemTitle>
-															<ItemActions className="shrink-0">
-																<CopyButton
-																	label={t("actions.copyLink")}
-																	copiedLabel={t("actions.copied")}
-																	text={invite.inviteUrl}
-																/>
-															</ItemActions>
 														</ItemHeader>
 														<ItemDescription>
 															{t("table.expires")}{" "}
@@ -665,14 +664,35 @@ function DashboardView({
 																<>
 																	{" "}
 																	· {t("users.invitedBy")}{" "}
-																	{invite.invitedByName}
-																	{invite.invitedByEmail
-																		? ` (${invite.invitedByEmail})`
-																		: ""}
+																	{invite.invitedBy ? (
+																		<Link
+																			className="rounded underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+																			params={{ id: invite.invitedBy }}
+																			to="/admin/access/users/$id"
+																		>
+																			{invite.invitedByName}
+																		</Link>
+																	) : (
+																		invite.invitedByName
+																	)}
 																</>
 															) : null}
 														</ItemDescription>
 													</ItemContent>
+													<ItemActions className="shrink-0">
+														<CopyButton
+															label={t("actions.copyLink")}
+															copiedLabel={t("actions.copied")}
+															text={invite.inviteUrl}
+														/>
+														{showInvitesCreate ? (
+															<ActionLink
+																to={`/admin/invites/${invite.id}/edit`}
+															>
+																{t("forms.update")}
+															</ActionLink>
+														) : null}
+													</ItemActions>
 												</Item>
 											))
 										) : (

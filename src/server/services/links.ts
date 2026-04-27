@@ -324,13 +324,13 @@ export async function getDashboardData(
 			.from(managedDomains)
 			.where(domainCond)
 			.orderBy(desc(managedDomains.createdAt))
-			.limit(10),
+			.limit(5),
 		db
 			.select()
 			.from(shortLinks)
 			.where(linkCond)
 			.orderBy(desc(shortLinks.createdAt))
-			.limit(10),
+			.limit(12),
 		db
 			.select({
 				id: adminInvites.id,
@@ -350,7 +350,7 @@ export async function getDashboardData(
 				and(isNull(adminInvites.acceptedAt), gt(adminInvites.expiresAt, now())),
 			)
 			.orderBy(desc(adminInvites.createdAt))
-			.limit(10),
+			.limit(5),
 		db
 			.select()
 			.from(redirectEvents)
