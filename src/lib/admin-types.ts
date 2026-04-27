@@ -19,6 +19,7 @@ export type LinkListItem = LinkListData["items"][number];
 export type LinkStatsResponse = ApiData<LinkByIdApi["stats"]["get"]>;
 export type LinkStats = NonNullable<LinkStatsResponse["stats"]>;
 export type UtmDimension = keyof LinkStats["breakdowns"] & string;
+export type UserAgentDimension = keyof LinkStats["userAgents"] & string;
 
 export type UserListData = ApiData<AdminApi["users"]["get"]>;
 export type AdminUser = UserListData["items"][number];

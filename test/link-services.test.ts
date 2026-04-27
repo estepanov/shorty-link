@@ -8,8 +8,8 @@ import { getPlatformProxy } from "wrangler";
 
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
 import {
-	getManagedDomainByHostname,
 	getLinkStats,
+	getManagedDomainByHostname,
 	listShortLinks,
 	recordRedirectEvent,
 	resolveExactRedirect,
@@ -31,6 +31,7 @@ async function applyMigrations(database: D1Database) {
 		"0001_redirect_event_utm.sql",
 		"0002_short_link_last_click.sql",
 		"0005_managed_domain_fallbacks.sql",
+		"0008_redirect_event_user_agent_dimensions.sql",
 	]) {
 		const statements = readFileSync(
 			join(process.cwd(), "migrations", file),
@@ -255,6 +256,10 @@ describe("link services", () => {
 				statusCode: 302,
 				utmSource: null,
 				utmMedium: "email",
+				userAgentBrowser: "Chrome",
+				userAgentOs: "Windows",
+				userAgentDeviceType: "desktop",
+				userAgentIsBot: false,
 				createdAt: windowStart + 1_000,
 			},
 			{
@@ -266,6 +271,10 @@ describe("link services", () => {
 				statusCode: 302,
 				utmSource: "newsletter",
 				utmMedium: "email",
+				userAgentBrowser: "Safari",
+				userAgentOs: "iOS",
+				userAgentDeviceType: "mobile",
+				userAgentIsBot: false,
 				createdAt: windowStart + dayMs + 1_000,
 			},
 			{
@@ -277,6 +286,10 @@ describe("link services", () => {
 				statusCode: 302,
 				utmSource: "old",
 				utmMedium: "social",
+				userAgentBrowser: "Firefox",
+				userAgentOs: "Linux",
+				userAgentDeviceType: "desktop",
+				userAgentIsBot: false,
 				createdAt: windowStart - dayMs,
 			},
 		]);
@@ -292,6 +305,18 @@ describe("link services", () => {
 			{ value: "newsletter", total: 1 },
 		]);
 		expect(stats.breakdowns.utmMedium).toEqual([{ value: "email", total: 2 }]);
+		expect(stats.userAgents.browser).toEqual([
+			{ value: "Chrome", total: 1 },
+			{ value: "Safari", total: 1 },
+		]);
+		expect(stats.userAgents.os).toEqual([
+			{ value: "Windows", total: 1 },
+			{ value: "iOS", total: 1 },
+		]);
+		expect(stats.userAgents.deviceType).toEqual([
+			{ value: "desktop", total: 1 },
+			{ value: "mobile", total: 1 },
+		]);
 	});
 
 	it("persists UTM columns when recording redirect events", async () => {
@@ -306,6 +331,8 @@ describe("link services", () => {
 			slug: "utm",
 			targetUrl: "https://example.com/utm",
 			statusCode: 302,
+			userAgent:
+				"Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
 			utmCampaign: "spring",
 			utmContent: "hero",
 			utmMedium: "email",
@@ -328,6 +355,10 @@ describe("link services", () => {
 			utmMedium: "email",
 			utmSource: "newsletter",
 			utmTerm: "pricing",
+			userAgentBrowser: "Safari",
+			userAgentDeviceType: "mobile",
+			userAgentIsBot: false,
+			userAgentOs: "iOS",
 		});
 		expect(link?.hitCount).toBe(1);
 		expect(link?.lastClickAt).toBe(event?.createdAt);

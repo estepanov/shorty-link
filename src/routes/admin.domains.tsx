@@ -6,7 +6,7 @@ import {
 	useLocation,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-
+import { DataPagination } from "@/components/data-pagination";
 import {
 	Button,
 	Card,
@@ -237,26 +237,13 @@ function DomainList() {
 						{t("domains.showing")} {firstItem}-{lastItem} {t("links.of")}{" "}
 						{total}
 					</p>
-					<div className="flex gap-2">
-						<Button
-							disabled={safePage <= 1}
-							onClick={() => setPage((value) => Math.max(1, value - 1))}
-							tone="secondary"
-							type="button"
-						>
-							{t("links.previous")}
-						</Button>
-						<Button
-							disabled={safePage >= totalPages}
-							onClick={() =>
-								setPage((value) => Math.min(totalPages, value + 1))
-							}
-							tone="secondary"
-							type="button"
-						>
-							{t("links.next")}
-						</Button>
-					</div>
+					<DataPagination
+						page={safePage}
+						totalPages={totalPages}
+						onPageChange={setPage}
+						previousLabel={t("links.previous")}
+						nextLabel={t("links.next")}
+					/>
 				</div>
 				<div className="mt-5 grid gap-3">
 					{paginated.map((domain) => (

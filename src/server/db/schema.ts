@@ -270,6 +270,10 @@ export const redirectEvents = sqliteTable(
 		colo: text("colo"),
 		referer: text("referer"),
 		userAgent: text("user_agent"),
+		userAgentBrowser: text("user_agent_browser"),
+		userAgentOs: text("user_agent_os"),
+		userAgentDeviceType: text("user_agent_device_type"),
+		userAgentIsBot: integer("user_agent_is_bot", { mode: "boolean" }),
 		ipHash: text("ip_hash"),
 		utmSource: text("utm_source"),
 		utmMedium: text("utm_medium"),
@@ -281,6 +285,18 @@ export const redirectEvents = sqliteTable(
 	(table) => [
 		index("redirect_event_link_id_idx").on(table.linkId),
 		index("redirect_event_created_at_idx").on(table.createdAt),
+		index("redirect_event_user_agent_browser_idx").on(
+			table.linkId,
+			table.userAgentBrowser,
+		),
+		index("redirect_event_user_agent_os_idx").on(
+			table.linkId,
+			table.userAgentOs,
+		),
+		index("redirect_event_user_agent_device_type_idx").on(
+			table.linkId,
+			table.userAgentDeviceType,
+		),
 		index("redirect_event_utm_source_idx").on(table.linkId, table.utmSource),
 		index("redirect_event_utm_medium_idx").on(table.linkId, table.utmMedium),
 		index("redirect_event_utm_campaign_idx").on(

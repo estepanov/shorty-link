@@ -25,6 +25,7 @@ function PencilIcon({ className }: { className?: string }) {
 	);
 }
 
+import { DataPagination } from "@/components/data-pagination";
 import {
 	Button,
 	Card,
@@ -244,28 +245,14 @@ function UsersTab() {
 						{t("users.showing")} {firstItem}-{lastItem} {t("users.of")}{" "}
 						{data?.total ?? 0}
 					</p>
-					<div className="flex gap-2">
-						<Button
-							disabled={!data || data.page <= 1}
-							onClick={() => setPage((value) => Math.max(1, value - 1))}
-							tone="secondary"
-							type="button"
-						>
-							{t("users.previous")}
-						</Button>
-						<Button
-							disabled={!data || data.page >= data.totalPages}
-							onClick={() =>
-								setPage((value) =>
-									Math.min(data?.totalPages ?? value, value + 1),
-								)
-							}
-							tone="secondary"
-							type="button"
-						>
-							{t("users.next")}
-						</Button>
-					</div>
+					<DataPagination
+						page={data?.page ?? page}
+						totalPages={data?.totalPages ?? 1}
+						onPageChange={setPage}
+						disabled={!data}
+						previousLabel={t("users.previous")}
+						nextLabel={t("users.next")}
+					/>
 				</div>
 				<div className="mt-5 grid gap-3">
 					{data?.items.map((u: AdminUser) => (

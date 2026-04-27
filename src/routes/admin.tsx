@@ -40,6 +40,14 @@ import {
 	ItemTitle,
 } from "@/components/ui/item";
 import {
+	Popover,
+	PopoverContent,
+	PopoverDescription,
+	PopoverHeader,
+	PopoverTitle,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -73,6 +81,11 @@ type DashboardData = {
 		slug: string;
 		country: string | null;
 		referer: string | null;
+		userAgent: string | null;
+		userAgentBrowser: string | null;
+		userAgentOs: string | null;
+		userAgentDeviceType: string | null;
+		userAgentIsBot: boolean | null;
 	}>;
 	invites: Array<{
 		id: string;
@@ -754,6 +767,32 @@ function RecentRedirectsTable({
 				cell: ({ row }) => row.original.country ?? t("table.direct"),
 			},
 			{
+				accessorKey: "userAgentDeviceType",
+				header: t("stats.device"),
+				cell: ({ row }) =>
+					formatUserAgentValue(row.original.userAgentDeviceType, t),
+			},
+			{
+				accessorKey: "userAgentBrowser",
+				header: t("stats.browser"),
+				cell: ({ row }) =>
+					row.original.userAgentIsBot
+						? t("stats.bot")
+						: formatUserAgentValue(row.original.userAgentBrowser, t),
+			},
+			{
+				accessorKey: "userAgentOs",
+				header: t("stats.os"),
+				cell: ({ row }) => formatUserAgentValue(row.original.userAgentOs, t),
+			},
+			{
+				accessorKey: "userAgent",
+				header: t("stats.userAgent"),
+				cell: ({ row }) => (
+					<UserAgentPopover userAgent={row.original.userAgent} t={t} />
+				),
+			},
+			{
 				accessorKey: "referer",
 				header: t("table.referer"),
 				cell: ({ row }) => (
@@ -815,6 +854,67 @@ function RecentRedirectsTable({
 			</Table>
 		</div>
 	);
+}
+
+function UserAgentPopover({
+	userAgent,
+	t,
+}: {
+	userAgent: string | null;
+	t: ReturnType<typeof createTranslator>;
+}) {
+	if (!userAgent) {
+		return <span className="text-muted-foreground">{t("stats.unknown")}</span>;
+	}
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button
+					className="h-auto px-0 text-primary underline-offset-4 hover:underline"
+					size="sm"
+					tone="ghost"
+					type="button"
+				>
+					{t("stats.viewUserAgent")}
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
+				<PopoverHeader>
+					<PopoverTitle>{t("stats.rawUserAgent")}</PopoverTitle>
+					<PopoverDescription>
+						{t("stats.rawUserAgentDescription")}
+					</PopoverDescription>
+				</PopoverHeader>
+				<p className="max-h-48 overflow-auto break-all rounded-md bg-muted p-2 font-mono text-xs">
+					{userAgent}
+				</p>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function formatUserAgentValue(
+	value: string | null | undefined,
+	t: ReturnType<typeof createTranslator>,
+) {
+	switch (value) {
+		case "bot":
+			return t("stats.bot");
+		case "desktop":
+			return t("stats.device.desktop");
+		case "mobile":
+			return t("stats.device.mobile");
+		case "tablet":
+			return t("stats.device.tablet");
+		case "unknown":
+		case "Unknown":
+		case null:
+		case undefined:
+			return t("stats.unknown");
+		default:
+			return value;
+	}
 }
 
 function ActionLink({

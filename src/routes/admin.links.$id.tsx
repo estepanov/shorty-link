@@ -16,7 +16,11 @@ import {
 	ChartTooltipContent,
 } from "@/components/ui/chart";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
-import type { LinkStatsResponse, UtmDimension } from "@/lib/admin-types";
+import type {
+	LinkStatsResponse,
+	UserAgentDimension,
+	UtmDimension,
+} from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator, MessageKey } from "@/lib/i18n";
 
@@ -30,6 +34,15 @@ const UTM_LABELS: Array<{ dimension: UtmDimension; key: MessageKey }> = [
 	{ dimension: "utmCampaign", key: "stats.utmCampaign" },
 	{ dimension: "utmTerm", key: "stats.utmTerm" },
 	{ dimension: "utmContent", key: "stats.utmContent" },
+];
+
+const USER_AGENT_LABELS: Array<{
+	dimension: UserAgentDimension;
+	key: MessageKey;
+}> = [
+	{ dimension: "browser", key: "stats.browser" },
+	{ dimension: "os", key: "stats.os" },
+	{ dimension: "deviceType", key: "stats.deviceType" },
 ];
 
 function LinkDetails() {
@@ -190,6 +203,19 @@ function LinkDetails() {
 						))}
 					</section>
 
+					<section className="grid gap-4 lg:grid-cols-3">
+						{USER_AGENT_LABELS.map(({ dimension, key }) => (
+							<UserAgentBreakdown
+								dimension={dimension}
+								key={dimension}
+								rows={stats.userAgents[dimension]}
+								title={t(key)}
+								total={stats.totals.window}
+								t={t}
+							/>
+						))}
+					</section>
+
 					<Card>
 						<h2 className="text-2xl font-medium">{t("stats.recentTitle")}</h2>
 						<div className="mt-4 overflow-x-auto">
@@ -201,6 +227,8 @@ function LinkDetails() {
 										<th className="py-3">{t("stats.utmSource")}</th>
 										<th className="py-3">{t("stats.utmMedium")}</th>
 										<th className="py-3">{t("stats.utmCampaign")}</th>
+										<th className="py-3">{t("stats.device")}</th>
+										<th className="py-3">{t("stats.browser")}</th>
 										<th className="py-3">{t("table.referer")}</th>
 									</tr>
 								</thead>
@@ -217,6 +245,14 @@ function LinkDetails() {
 												<td className="py-3">{event.utmSource ?? "—"}</td>
 												<td className="py-3">{event.utmMedium ?? "—"}</td>
 												<td className="py-3">{event.utmCampaign ?? "—"}</td>
+												<td className="py-3">
+													{formatUserAgentValue(event.userAgentDeviceType, t)}
+												</td>
+												<td className="py-3">
+													{event.userAgentIsBot
+														? t("stats.bot")
+														: formatUserAgentValue(event.userAgentBrowser, t)}
+												</td>
 												<td className="max-w-xs truncate py-3">
 													{event.referer ?? t("table.direct")}
 												</td>
@@ -226,7 +262,7 @@ function LinkDetails() {
 										<tr>
 											<td
 												className="py-5 text-sm text-muted-foreground"
-												colSpan={6}
+												colSpan={8}
 											>
 												{t("stats.noEvents")}
 											</td>
@@ -407,6 +443,66 @@ function UtmBreakdown({
 			</div>
 		</Card>
 	);
+}
+
+function UserAgentBreakdown({
+	dimension,
+	rows,
+	title,
+	total,
+	t,
+}: {
+	dimension: UserAgentDimension;
+	rows: Array<{ value: string; total: number }>;
+	title: string;
+	total: number;
+	t: ReturnType<typeof createTranslator>;
+}) {
+	return (
+		<Card>
+			<h3 className="text-lg font-medium">{title}</h3>
+			<div className="mt-4 grid gap-2">
+				{rows.length ? (
+					rows.map((row) => {
+						const pct = total > 0 ? Math.round((row.total / total) * 100) : 0;
+						return (
+							<BreakdownRow
+								key={`${dimension}-${row.value}`}
+								label={formatUserAgentValue(row.value, t)}
+								pct={pct}
+								total={row.total}
+							/>
+						);
+					})
+				) : (
+					<p className="text-sm text-muted-foreground">{t("stats.noEvents")}</p>
+				)}
+			</div>
+		</Card>
+	);
+}
+
+function formatUserAgentValue(
+	value: string | null | undefined,
+	t: ReturnType<typeof createTranslator>,
+) {
+	switch (value) {
+		case "bot":
+			return t("stats.bot");
+		case "desktop":
+			return t("stats.device.desktop");
+		case "mobile":
+			return t("stats.device.mobile");
+		case "tablet":
+			return t("stats.device.tablet");
+		case "unknown":
+		case "Unknown":
+		case null:
+		case undefined:
+			return t("stats.unknown");
+		default:
+			return value;
+	}
 }
 
 function BreakdownRow({

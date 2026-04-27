@@ -25,7 +25,7 @@ import type {
 	UserListData,
 } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
-import { PERMISSION_GROUPS, type Permission } from "@/lib/permissions";
+import { PERMISSION_GROUPS } from "@/lib/permissions";
 
 export const Route = createFileRoute("/admin/access/roles/$id")({
 	component: RoleDetailPage,

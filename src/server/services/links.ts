@@ -1,5 +1,6 @@
 import {
 	and,
+	asc,
 	count,
 	desc,
 	eq,
@@ -36,6 +37,7 @@ import {
 	shortLinks,
 	user,
 } from "../db/schema";
+import { parseRedirectUserAgent } from "./user-agent";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export type ScopeFilter = {
@@ -787,6 +789,10 @@ const UTM_DIMENSIONS = [
 
 export type UtmDimension = (typeof UTM_DIMENSIONS)[number];
 
+const USER_AGENT_DIMENSIONS = ["browser", "os", "deviceType"] as const;
+
+export type UserAgentDimension = (typeof USER_AGENT_DIMENSIONS)[number];
+
 function startOfUtcDay(timestamp: number) {
 	const date = new Date(timestamp);
 	date.setUTCHours(0, 0, 0, 0);
@@ -841,6 +847,12 @@ export async function getLinkStats(
 		utmContent: redirectEvents.utmContent,
 	} as const;
 
+	const userAgentColumnByDimension = {
+		browser: redirectEvents.userAgentBrowser,
+		os: redirectEvents.userAgentOs,
+		deviceType: redirectEvents.userAgentDeviceType,
+	} as const;
+
 	const breakdownsQuery = Promise.all(
 		UTM_DIMENSIONS.map(async (dimension) => {
 			const column = columnByDimension[dimension];
@@ -861,6 +873,26 @@ export async function getLinkStats(
 		}),
 	);
 
+	const userAgentBreakdownsQuery = Promise.all(
+		USER_AGENT_DIMENSIONS.map(async (dimension) => {
+			const column = userAgentColumnByDimension[dimension];
+			const rows = await db
+				.select({ value: column, total: count() })
+				.from(redirectEvents)
+				.where(windowFilter)
+				.groupBy(column)
+				.orderBy(desc(count()), asc(column))
+				.limit(breakdownLimit);
+
+			const items = rows.map((row) => ({
+				value: row.value ?? "Unknown",
+				total: Number(row.total ?? 0),
+			}));
+
+			return [dimension, items] as const;
+		}),
+	);
+
 	const recentEventsQuery = db
 		.select({
 			id: redirectEvents.id,
@@ -872,6 +904,10 @@ export async function getLinkStats(
 			utmCampaign: redirectEvents.utmCampaign,
 			utmTerm: redirectEvents.utmTerm,
 			utmContent: redirectEvents.utmContent,
+			userAgentBrowser: redirectEvents.userAgentBrowser,
+			userAgentOs: redirectEvents.userAgentOs,
+			userAgentDeviceType: redirectEvents.userAgentDeviceType,
+			userAgentIsBot: redirectEvents.userAgentIsBot,
 		})
 		.from(redirectEvents)
 		.where(linkColumn)
@@ -883,12 +919,14 @@ export async function getLinkStats(
 		[windowRow],
 		histogramRows,
 		breakdownEntries,
+		userAgentBreakdownEntries,
 		recentEvents,
 	] = await Promise.all([
 		totalsQuery,
 		windowTotalsQuery,
 		histogramQuery,
 		breakdownsQuery,
+		userAgentBreakdownsQuery,
 		recentEventsQuery,
 	]);
 
@@ -905,6 +943,10 @@ export async function getLinkStats(
 		UtmDimension,
 		Array<{ value: string | null; total: number }>
 	>;
+	const userAgents = Object.fromEntries(userAgentBreakdownEntries) as Record<
+		UserAgentDimension,
+		Array<{ value: string; total: number }>
+	>;
 
 	return {
 		totals: {
@@ -915,6 +957,7 @@ export async function getLinkStats(
 		windowStart,
 		histogram,
 		breakdowns,
+		userAgents,
 		recentEvents,
 	};
 }
@@ -1187,6 +1230,8 @@ export async function recordRedirectEvent(
 	},
 ) {
 	const timestamp = now();
+	const userAgent = truncateStoredText(input.userAgent, 512);
+	const parsedUserAgent = parseRedirectUserAgent(userAgent);
 
 	await db.insert(redirectEvents).values({
 		id: nanoid(),
@@ -1199,7 +1244,11 @@ export async function recordRedirectEvent(
 		city: truncateStoredText(input.city, 128),
 		colo: truncateStoredText(input.colo, 32),
 		referer: truncateStoredText(input.referer, 2048),
-		userAgent: truncateStoredText(input.userAgent, 512),
+		userAgent,
+		userAgentBrowser: parsedUserAgent.browser,
+		userAgentOs: parsedUserAgent.os,
+		userAgentDeviceType: parsedUserAgent.deviceType,
+		userAgentIsBot: parsedUserAgent.isBot,
 		ipHash: input.ipHash ?? null,
 		utmSource: truncateStoredText(input.utmSource, 256),
 		utmMedium: truncateStoredText(input.utmMedium, 256),
