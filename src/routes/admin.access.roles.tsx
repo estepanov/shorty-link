@@ -28,17 +28,29 @@ import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminRoleList } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
-function validatePageSearch(search: Record<string, unknown>): {
+type RoleSearch = {
 	page?: number;
-} {
-	const raw = Number(search.page);
-	if (!Number.isFinite(raw) || raw < 1) return {};
-	return { page: Math.floor(raw) };
+	pageSize?: number;
+	search?: string;
+};
+
+function validateRolesSearch(search: Record<string, unknown>): RoleSearch {
+	const out: RoleSearch = {};
+	const pageRaw = Number(search.page);
+	if (Number.isFinite(pageRaw) && pageRaw > 1) out.page = Math.floor(pageRaw);
+	const sizeRaw = Number(search.pageSize);
+	if (Number.isFinite(sizeRaw) && sizeRaw > 0 && sizeRaw !== 25) {
+		out.pageSize = Math.floor(sizeRaw);
+	}
+	if (search.search != null && search.search !== "") {
+		out.search = String(search.search);
+	}
+	return out;
 }
 
 export const Route = createFileRoute("/admin/access/roles")({
 	component: RolesTab,
-	validateSearch: validatePageSearch,
+	validateSearch: validateRolesSearch,
 });
 
 type RoleFilters = {
@@ -60,19 +72,38 @@ function RolesTab() {
 		location.pathname === "/admin/access/roles" ||
 		location.pathname === "/admin/access/roles/";
 	const [data, setData] = useState<AdminRoleList | null>(null);
-	const [filters, setFilters] = useState<RoleFilters>(defaultFilters);
-	const { page = 1 } = Route.useSearch();
+	const search = Route.useSearch();
+	const page = search.page ?? 1;
+	const filters: RoleFilters = {
+		pageSize: search.pageSize ?? defaultFilters.pageSize,
+		search: search.search ?? defaultFilters.search,
+	};
 	const navigate = useNavigate({ from: Route.fullPath });
 	const setPage = (next: number) =>
-		void navigate({ search: (prev) => ({ ...prev, page: next }) });
+		void navigate({
+			search: (prev) => ({ ...prev, page: next > 1 ? next : undefined }),
+		});
+	const applyFilters = (values: RoleFilters) =>
+		void navigate({
+			search: () => ({
+				pageSize:
+					values.pageSize !== defaultFilters.pageSize
+						? values.pageSize
+						: undefined,
+				search: values.search || undefined,
+			}),
+		});
+	const resetFilters = () => void navigate({ search: () => ({}) });
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
 		defaultValues: filters,
-		onSubmit: ({ value }) => {
-			setFilters(value);
-			setPage(1);
-		},
+		onSubmit: ({ value }) => applyFilters(value),
 	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sync form draft when URL filters change (back/forward).
+	useEffect(() => {
+		form.reset(filters);
+	}, [filters.pageSize, filters.search]);
 
 	async function refresh() {
 		setError(null);
@@ -95,11 +126,18 @@ function RolesTab() {
 		}
 	}
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: refetch when URL search or session changes.
 	useEffect(() => {
 		if (session && isRolesListRoute) {
 			void refresh();
 		}
-	}, [session?.user.id, filters, page, isRolesListRoute]);
+	}, [
+		session?.user.id,
+		filters.pageSize,
+		filters.search,
+		page,
+		isRolesListRoute,
+	]);
 
 	if (!isRolesListRoute) {
 		return <Outlet />;
@@ -202,8 +240,7 @@ function RolesTab() {
 						<Button
 							onClick={() => {
 								form.reset(defaultFilters);
-								setFilters(defaultFilters);
-								setPage(1);
+								resetFilters();
 							}}
 							tone="secondary"
 							type="button"
@@ -222,7 +259,7 @@ function RolesTab() {
 
 			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-					<p className="text-sm font-bold text-muted-foreground">
+					<p className="shrink-0 text-sm font-bold text-muted-foreground">
 						{t("roles.showing")} {firstItem}-{lastItem} {t("roles.of")}{" "}
 						{data?.total ?? 0}
 					</p>

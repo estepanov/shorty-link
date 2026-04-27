@@ -56,21 +56,45 @@ import type {
 import { getTreaty, unwrap } from "@/lib/eden";
 import { cn } from "@/lib/utils";
 
-function validatePageSearch(search: Record<string, unknown>): {
+type UserActive = "all" | "active" | "inactive";
+
+type UserSearch = {
 	page?: number;
-} {
-	const raw = Number(search.page);
-	if (!Number.isFinite(raw) || raw < 1) return {};
-	return { page: Math.floor(raw) };
+	pageSize?: number;
+	search?: string;
+	active?: Exclude<UserActive, "all">;
+};
+
+const userActiveValues: UserActive[] = ["all", "active", "inactive"];
+
+function validateUsersSearch(search: Record<string, unknown>): UserSearch {
+	const out: UserSearch = {};
+	const pageRaw = Number(search.page);
+	if (Number.isFinite(pageRaw) && pageRaw > 1) out.page = Math.floor(pageRaw);
+	const sizeRaw = Number(search.pageSize);
+	if (Number.isFinite(sizeRaw) && sizeRaw > 0 && sizeRaw !== 25) {
+		out.pageSize = Math.floor(sizeRaw);
+	}
+	if (search.search != null && search.search !== "") {
+		out.search = String(search.search);
+	}
+	if (
+		typeof search.active === "string" &&
+		(userActiveValues as string[]).includes(search.active) &&
+		search.active !== "all"
+	) {
+		out.active = search.active as Exclude<UserActive, "all">;
+	}
+	return out;
 }
 
 export const Route = createFileRoute("/admin/access/users")({
 	component: UsersTab,
-	validateSearch: validatePageSearch,
+	validateSearch: validateUsersSearch,
 });
 
 type UserFilters = {
-	active: "all" | "active" | "inactive";
+	active: UserActive;
 	pageSize: number;
 	search: string;
 };
@@ -93,19 +117,40 @@ function UsersTab() {
 		location.pathname === "/admin/access/users/";
 	const [roles, setRoles] = useState<AssignableRole[]>([]);
 	const [data, setData] = useState<UserListData | null>(null);
-	const [filters, setFilters] = useState<UserFilters>(defaultFilters);
-	const { page = 1 } = Route.useSearch();
+	const search = Route.useSearch();
+	const page = search.page ?? 1;
+	const filters: UserFilters = {
+		active: search.active ?? defaultFilters.active,
+		pageSize: search.pageSize ?? defaultFilters.pageSize,
+		search: search.search ?? defaultFilters.search,
+	};
 	const navigate = useNavigate({ from: Route.fullPath });
 	const setPage = (next: number) =>
-		void navigate({ search: (prev) => ({ ...prev, page: next }) });
+		void navigate({
+			search: (prev) => ({ ...prev, page: next > 1 ? next : undefined }),
+		});
+	const applyFilters = (values: UserFilters) =>
+		void navigate({
+			search: () => ({
+				active: values.active !== "all" ? values.active : undefined,
+				pageSize:
+					values.pageSize !== defaultFilters.pageSize
+						? values.pageSize
+						: undefined,
+				search: values.search || undefined,
+			}),
+		});
+	const resetFilters = () => void navigate({ search: () => ({}) });
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
 		defaultValues: filters,
-		onSubmit: ({ value }) => {
-			setFilters(value);
-			setPage(1);
-		},
+		onSubmit: ({ value }) => applyFilters(value),
 	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sync form draft when URL filters change (back/forward).
+	useEffect(() => {
+		form.reset(filters);
+	}, [filters.active, filters.pageSize, filters.search]);
 
 	async function refresh() {
 		setError(null);
@@ -138,7 +183,14 @@ function UsersTab() {
 		if (session && isUsersListRoute) {
 			void refresh();
 		}
-	}, [session?.user.id, filters, page, isUsersListRoute]);
+	}, [
+		session?.user.id,
+		filters.active,
+		filters.pageSize,
+		filters.search,
+		page,
+		isUsersListRoute,
+	]);
 
 	if (!isUsersListRoute) {
 		return <Outlet />;
@@ -235,8 +287,7 @@ function UsersTab() {
 						<Button
 							onClick={() => {
 								form.reset(defaultFilters);
-								setFilters(defaultFilters);
-								setPage(1);
+								resetFilters();
 							}}
 							tone="secondary"
 							type="button"
@@ -254,7 +305,7 @@ function UsersTab() {
 
 			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-					<p className="text-sm font-bold text-muted-foreground">
+					<p className="shrink-0 text-sm font-bold text-muted-foreground">
 						{t("users.showing")} {firstItem}-{lastItem} {t("users.of")}{" "}
 						{data?.total ?? 0}
 					</p>

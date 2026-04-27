@@ -27,26 +27,66 @@ import type { AdminDomain, LinkListData } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
 import {
+	isRedirectStatusCode,
 	parseRedirectStatusCodeFilter,
 	type RedirectStatusCodeFilter,
 	redirectStatusOptions,
 } from "@/lib/redirect-status";
 
-function validatePageSearch(search: Record<string, unknown>): {
+type LinkActive = "all" | "active" | "inactive";
+
+type LinkSearch = {
 	page?: number;
-} {
-	const raw = Number(search.page);
-	if (!Number.isFinite(raw) || raw < 1) return {};
-	return { page: Math.floor(raw) };
+	pageSize?: number;
+	search?: string;
+	active?: Exclude<LinkActive, "all">;
+	hostname?: string;
+	statusCode?: Exclude<RedirectStatusCodeFilter, "all">;
+};
+
+const linkActiveValues: LinkActive[] = ["all", "active", "inactive"];
+
+function validateLinksSearch(search: Record<string, unknown>): LinkSearch {
+	const out: LinkSearch = {};
+	const pageRaw = Number(search.page);
+	if (Number.isFinite(pageRaw) && pageRaw > 1) out.page = Math.floor(pageRaw);
+	const sizeRaw = Number(search.pageSize);
+	if (Number.isFinite(sizeRaw) && sizeRaw > 0 && sizeRaw !== 25) {
+		out.pageSize = Math.floor(sizeRaw);
+	}
+	if (search.search != null && search.search !== "") {
+		out.search = String(search.search);
+	}
+	if (
+		typeof search.active === "string" &&
+		(linkActiveValues as string[]).includes(search.active) &&
+		search.active !== "all"
+	) {
+		out.active = search.active as Exclude<LinkActive, "all">;
+	}
+	if (
+		search.hostname != null &&
+		search.hostname !== "" &&
+		search.hostname !== "all"
+	) {
+		out.hostname = String(search.hostname);
+	}
+	if (search.statusCode != null && search.statusCode !== "all") {
+		const code = Number(search.statusCode);
+		if (Number.isInteger(code) && isRedirectStatusCode(code)) {
+			out.statusCode = `${code}` as Exclude<RedirectStatusCodeFilter, "all">;
+		}
+	}
+	return out;
 }
 
 export const Route = createFileRoute("/admin/links")({
 	component: LinksList,
-	validateSearch: validatePageSearch,
+	validateSearch: validateLinksSearch,
 });
 
 type LinkFilters = {
-	active: "all" | "active" | "inactive";
+	active: LinkActive;
 	hostname: string;
 	pageSize: number;
 	search: string;
@@ -71,11 +111,40 @@ function LinksList() {
 	} = useRequirePermission("links.read");
 	const [domains, setDomains] = useState<AdminDomain[]>([]);
 	const [data, setData] = useState<LinkListData | null>(null);
-	const [filters, setFilters] = useState<LinkFilters>(defaultFilters);
-	const { page = 1 } = Route.useSearch();
+	const search = Route.useSearch();
+	const page = search.page ?? 1;
+	const filters: LinkFilters = {
+		active: search.active ?? defaultFilters.active,
+		hostname: search.hostname ?? defaultFilters.hostname,
+		pageSize: search.pageSize ?? defaultFilters.pageSize,
+		search: search.search ?? defaultFilters.search,
+		statusCode: search.statusCode ?? defaultFilters.statusCode,
+	};
 	const navigate = useNavigate({ from: Route.fullPath });
 	const setPage = (next: number) =>
-		void navigate({ search: (prev) => ({ ...prev, page: next }) });
+		void navigate({
+			search: (prev) => ({ ...prev, page: next > 1 ? next : undefined }),
+		});
+	const applyFilters = (values: LinkFilters) =>
+		void navigate({
+			search: () => ({
+				active: values.active !== "all" ? values.active : undefined,
+				hostname:
+					values.hostname && values.hostname !== "all"
+						? values.hostname
+						: undefined,
+				pageSize:
+					values.pageSize !== defaultFilters.pageSize
+						? values.pageSize
+						: undefined,
+				search: values.search || undefined,
+				statusCode:
+					values.statusCode !== "all"
+						? (values.statusCode as Exclude<RedirectStatusCodeFilter, "all">)
+						: undefined,
+			}),
+		});
+	const resetFilters = () => void navigate({ search: () => ({}) });
 	const [error, setError] = useState<string | null>(null);
 	const isLinksListRoute =
 		location.pathname === "/admin/links" ||
@@ -84,11 +153,19 @@ function LinksList() {
 	const canWriteLinks = hasPermission("links.write");
 	const form = useForm({
 		defaultValues: filters,
-		onSubmit: ({ value }) => {
-			setFilters(value);
-			setPage(1);
-		},
+		onSubmit: ({ value }) => applyFilters(value),
 	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sync form draft when URL filters change (back/forward).
+	useEffect(() => {
+		form.reset(filters);
+	}, [
+		filters.active,
+		filters.hostname,
+		filters.pageSize,
+		filters.search,
+		filters.statusCode,
+	]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: re-fetch only when filters, page, route, or the authenticated user identity change.
 	useEffect(() => {
@@ -127,7 +204,11 @@ function LinksList() {
 		void refresh();
 	}, [
 		canViewDomains,
-		filters,
+		filters.active,
+		filters.hostname,
+		filters.pageSize,
+		filters.search,
+		filters.statusCode,
 		isAuthorized,
 		isLinksListRoute,
 		isPermissionPending,
@@ -297,8 +378,7 @@ function LinksList() {
 						<Button
 							onClick={() => {
 								form.reset(defaultFilters);
-								setFilters(defaultFilters);
-								setPage(1);
+								resetFilters();
 							}}
 							tone="secondary"
 							type="button"
@@ -316,7 +396,7 @@ function LinksList() {
 
 			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-					<p className="text-sm font-bold text-muted-foreground">
+					<p className="shrink-0 text-sm font-bold text-muted-foreground">
 						{t("links.showing")} {firstItem}-{lastItem} {t("links.of")}{" "}
 						{data?.total ?? 0}
 					</p>

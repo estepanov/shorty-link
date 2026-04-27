@@ -27,21 +27,45 @@ import type { AdminDomain } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
 
-function validatePageSearch(search: Record<string, unknown>): {
+type DomainActive = "all" | "active" | "inactive";
+
+type DomainSearch = {
 	page?: number;
-} {
-	const raw = Number(search.page);
-	if (!Number.isFinite(raw) || raw < 1) return {};
-	return { page: Math.floor(raw) };
+	pageSize?: number;
+	search?: string;
+	active?: Exclude<DomainActive, "all">;
+};
+
+const domainActiveValues: DomainActive[] = ["all", "active", "inactive"];
+
+function validateDomainsSearch(search: Record<string, unknown>): DomainSearch {
+	const out: DomainSearch = {};
+	const pageRaw = Number(search.page);
+	if (Number.isFinite(pageRaw) && pageRaw > 1) out.page = Math.floor(pageRaw);
+	const sizeRaw = Number(search.pageSize);
+	if (Number.isFinite(sizeRaw) && sizeRaw > 0 && sizeRaw !== 25) {
+		out.pageSize = Math.floor(sizeRaw);
+	}
+	if (search.search != null && search.search !== "") {
+		out.search = String(search.search);
+	}
+	if (
+		typeof search.active === "string" &&
+		(domainActiveValues as string[]).includes(search.active) &&
+		search.active !== "all"
+	) {
+		out.active = search.active as Exclude<DomainActive, "all">;
+	}
+	return out;
 }
 
 export const Route = createFileRoute("/admin/domains")({
 	component: DomainList,
-	validateSearch: validatePageSearch,
+	validateSearch: validateDomainsSearch,
 });
 
 type DomainFilters = {
-	active: "all" | "active" | "inactive";
+	active: DomainActive;
 	pageSize: number;
 	search: string;
 };
@@ -56,11 +80,30 @@ function DomainList() {
 	const location = useLocation();
 	const { session, isPending, t } = useAdminAuthGuard();
 	const [allDomains, setAllDomains] = useState<AdminDomain[]>([]);
-	const [filters, setFilters] = useState<DomainFilters>(defaultFilters);
-	const { page = 1 } = Route.useSearch();
+	const search = Route.useSearch();
+	const page = search.page ?? 1;
+	const filters: DomainFilters = {
+		active: search.active ?? defaultFilters.active,
+		pageSize: search.pageSize ?? defaultFilters.pageSize,
+		search: search.search ?? defaultFilters.search,
+	};
 	const navigate = useNavigate({ from: Route.fullPath });
 	const setPage = (next: number) =>
-		void navigate({ search: (prev) => ({ ...prev, page: next }) });
+		void navigate({
+			search: (prev) => ({ ...prev, page: next > 1 ? next : undefined }),
+		});
+	const applyFilters = (values: DomainFilters) =>
+		void navigate({
+			search: () => ({
+				active: values.active !== "all" ? values.active : undefined,
+				pageSize:
+					values.pageSize !== defaultFilters.pageSize
+						? values.pageSize
+						: undefined,
+				search: values.search || undefined,
+			}),
+		});
+	const resetFilters = () => void navigate({ search: () => ({}) });
 	const [error, setError] = useState<string | null>(null);
 	const isDomainListRoute =
 		location.pathname === "/admin/domains" ||
@@ -69,11 +112,13 @@ function DomainList() {
 	const canWriteDomains = hasPermission("domains.write");
 	const form = useForm({
 		defaultValues: filters,
-		onSubmit: ({ value }) => {
-			setFilters(value);
-			setPage(1);
-		},
+		onSubmit: ({ value }) => applyFilters(value),
 	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sync form draft when URL filters change (back/forward).
+	useEffect(() => {
+		form.reset(filters);
+	}, [filters.active, filters.pageSize, filters.search]);
 
 	useEffect(() => {
 		if (!session || !isDomainListRoute) {
@@ -227,8 +272,7 @@ function DomainList() {
 						<Button
 							onClick={() => {
 								form.reset(defaultFilters);
-								setFilters(defaultFilters);
-								setPage(1);
+								resetFilters();
 							}}
 							tone="secondary"
 							type="button"
@@ -246,7 +290,7 @@ function DomainList() {
 
 			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-					<p className="text-sm font-bold text-muted-foreground">
+					<p className="shrink-0 text-sm font-bold text-muted-foreground">
 						{t("domains.showing")} {firstItem}-{lastItem} {t("links.of")}{" "}
 						{total}
 					</p>

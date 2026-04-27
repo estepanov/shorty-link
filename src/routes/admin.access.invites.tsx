@@ -23,23 +23,52 @@ import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { InviteListData } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
-function validatePageSearch(search: Record<string, unknown>): {
+type InviteStatus = "all" | "pending" | "expired" | "accepted";
+
+type InviteSearch = {
 	page?: number;
-} {
-	const raw = Number(search.page);
-	if (!Number.isFinite(raw) || raw < 1) return {};
-	return { page: Math.floor(raw) };
+	pageSize?: number;
+	search?: string;
+	status?: Exclude<InviteStatus, "all">;
+};
+
+const inviteStatusValues: InviteStatus[] = [
+	"all",
+	"pending",
+	"expired",
+	"accepted",
+];
+
+function validateInvitesSearch(search: Record<string, unknown>): InviteSearch {
+	const out: InviteSearch = {};
+	const pageRaw = Number(search.page);
+	if (Number.isFinite(pageRaw) && pageRaw > 1) out.page = Math.floor(pageRaw);
+	const sizeRaw = Number(search.pageSize);
+	if (Number.isFinite(sizeRaw) && sizeRaw > 0 && sizeRaw !== 25) {
+		out.pageSize = Math.floor(sizeRaw);
+	}
+	if (search.search != null && search.search !== "") {
+		out.search = String(search.search);
+	}
+	if (
+		typeof search.status === "string" &&
+		(inviteStatusValues as string[]).includes(search.status) &&
+		search.status !== "all"
+	) {
+		out.status = search.status as Exclude<InviteStatus, "all">;
+	}
+	return out;
 }
 
 export const Route = createFileRoute("/admin/access/invites")({
 	component: InvitesTab,
-	validateSearch: validatePageSearch,
+	validateSearch: validateInvitesSearch,
 });
 
 type InviteFilters = {
 	pageSize: number;
 	search: string;
-	status: "all" | "pending" | "expired" | "accepted";
+	status: InviteStatus;
 };
 
 const defaultFilters: InviteFilters = {
@@ -52,19 +81,40 @@ function InvitesTab() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
 	const { hasPermission } = useAuthContext();
 	const [data, setData] = useState<InviteListData | null>(null);
-	const [filters, setFilters] = useState<InviteFilters>(defaultFilters);
-	const { page = 1 } = Route.useSearch();
+	const search = Route.useSearch();
+	const page = search.page ?? 1;
+	const filters: InviteFilters = {
+		pageSize: search.pageSize ?? defaultFilters.pageSize,
+		search: search.search ?? defaultFilters.search,
+		status: search.status ?? defaultFilters.status,
+	};
 	const navigate = useNavigate({ from: Route.fullPath });
 	const setPage = (next: number) =>
-		void navigate({ search: (prev) => ({ ...prev, page: next }) });
+		void navigate({
+			search: (prev) => ({ ...prev, page: next > 1 ? next : undefined }),
+		});
+	const applyFilters = (values: InviteFilters) =>
+		void navigate({
+			search: () => ({
+				pageSize:
+					values.pageSize !== defaultFilters.pageSize
+						? values.pageSize
+						: undefined,
+				search: values.search || undefined,
+				status: values.status !== "all" ? values.status : undefined,
+			}),
+		});
+	const resetFilters = () => void navigate({ search: () => ({}) });
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
 		defaultValues: filters,
-		onSubmit: ({ value }) => {
-			setFilters(value);
-			setPage(1);
-		},
+		onSubmit: ({ value }) => applyFilters(value),
 	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sync form draft when URL filters change (back/forward).
+	useEffect(() => {
+		form.reset(filters);
+	}, [filters.pageSize, filters.search, filters.status]);
 
 	async function refresh() {
 		setError(null);
@@ -93,7 +143,13 @@ function InvitesTab() {
 		if (session) {
 			void refresh();
 		}
-	}, [session?.user.id, filters, page]);
+	}, [
+		session?.user.id,
+		filters.pageSize,
+		filters.search,
+		filters.status,
+		page,
+	]);
 
 	if (isPending) {
 		return <Card>{t("loading.app")}</Card>;
@@ -201,8 +257,7 @@ function InvitesTab() {
 						<Button
 							onClick={() => {
 								form.reset(defaultFilters);
-								setFilters(defaultFilters);
-								setPage(1);
+								resetFilters();
 							}}
 							tone="secondary"
 							type="button"
@@ -221,7 +276,7 @@ function InvitesTab() {
 
 			<Card>
 				<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-					<p className="text-sm font-bold text-muted-foreground">
+					<p className="shrink-0 text-sm font-bold text-muted-foreground">
 						{t("users.showing")} {firstItem}-{lastItem} {t("users.of")}{" "}
 						{data?.total ?? 0}
 					</p>
@@ -256,9 +311,13 @@ function InvitesTab() {
 													`users.status${invite.status.charAt(0).toUpperCase() + invite.status.slice(1)}`,
 												)}
 											</span>
-											<span className="inline-flex rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-secondary-foreground">
+											<Link
+												className="inline-flex rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+												params={{ id: invite.roleId }}
+												to="/admin/access/roles/$id"
+											>
 												{invite.roleName}
-											</span>
+											</Link>
 											<span className="text-muted-foreground/50">
 												{invite.status === "pending"
 													? `${t("table.expires")} ${new Date(invite.expiresAt).toLocaleString(locale)}`

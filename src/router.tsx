@@ -1,12 +1,31 @@
-import { createRouter, Link } from "@tanstack/react-router";
+import {
+	createRouter,
+	Link,
+	parseSearchWith,
+	stringifySearchWith,
+} from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
+
+const parseSearch = parseSearchWith((value) => {
+	try {
+		return JSON.parse(value);
+	} catch {
+		return value;
+	}
+});
+
+const stringifySearch = stringifySearchWith((value) =>
+	typeof value === "string" ? value : JSON.stringify(value),
+);
 
 export function getRouter() {
 	return createRouter({
 		defaultNotFoundComponent: DefaultNotFound,
+		parseSearch,
 		routeTree,
 		scrollRestoration: true,
+		stringifySearch,
 	});
 }
 
