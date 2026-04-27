@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { AccountTabs } from "@/components/account-tabs";
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/admin/user/profile")({
 
 function Profile() {
 	const { session, isPending, locale, refetch, t } = useAdminAuthGuard();
-	const { authContext } = useAuthContext();
+	const { authContext, hasPermission } = useAuthContext();
 	const [notice, setNotice] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
@@ -172,9 +172,19 @@ function Profile() {
 					<Card>
 						<p className="eyebrow">{t("profile.role")}</p>
 						<div className="mt-2 flex flex-wrap items-center gap-2">
-							<h2 className="font-display text-2xl tracking-tight">
-								{authContext.role.name}
-							</h2>
+							{hasPermission("roles.read") ? (
+								<Link
+									className="font-display text-2xl tracking-tight underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background rounded-sm"
+									params={{ id: authContext.role.id }}
+									to="/admin/access/roles/$id"
+								>
+									{authContext.role.name}
+								</Link>
+							) : (
+								<h2 className="font-display text-2xl tracking-tight">
+									{authContext.role.name}
+								</h2>
+							)}
 							{authContext.role.isSystem ? (
 								<span className="inline-block rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
 									{t("roles.systemBadge")}

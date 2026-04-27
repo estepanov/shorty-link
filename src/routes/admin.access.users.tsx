@@ -368,7 +368,7 @@ function UserRow({
 	const isSelf = u.id === currentUserId;
 
 	return (
-		<DataRow>
+		<DataRow className={isSelf ? "!border-accent/20 !bg-accent/5" : undefined}>
 			<div className="flex flex-col justify-between gap-2 md:flex-row md:items-start">
 				<div className="flex-1">
 					<Link
