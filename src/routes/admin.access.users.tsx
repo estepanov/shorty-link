@@ -4,6 +4,7 @@ import {
 	Link,
 	Outlet,
 	useLocation,
+	useNavigate,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -55,8 +56,17 @@ import type {
 import { getTreaty, unwrap } from "@/lib/eden";
 import { cn } from "@/lib/utils";
 
+function validatePageSearch(search: Record<string, unknown>): {
+	page?: number;
+} {
+	const raw = Number(search.page);
+	if (!Number.isFinite(raw) || raw < 1) return {};
+	return { page: Math.floor(raw) };
+}
+
 export const Route = createFileRoute("/admin/access/users")({
 	component: UsersTab,
+	validateSearch: validatePageSearch,
 });
 
 type UserFilters = {
@@ -84,7 +94,10 @@ function UsersTab() {
 	const [roles, setRoles] = useState<AssignableRole[]>([]);
 	const [data, setData] = useState<UserListData | null>(null);
 	const [filters, setFilters] = useState<UserFilters>(defaultFilters);
-	const [page, setPage] = useState(1);
+	const { page = 1 } = Route.useSearch();
+	const navigate = useNavigate({ from: Route.fullPath });
+	const setPage = (next: number) =>
+		void navigate({ search: (prev) => ({ ...prev, page: next }) });
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
 		defaultValues: filters,

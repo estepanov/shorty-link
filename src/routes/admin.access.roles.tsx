@@ -4,6 +4,7 @@ import {
 	Link,
 	Outlet,
 	useLocation,
+	useNavigate,
 	useRouter,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -27,8 +28,17 @@ import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { AdminRoleList } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
+function validatePageSearch(search: Record<string, unknown>): {
+	page?: number;
+} {
+	const raw = Number(search.page);
+	if (!Number.isFinite(raw) || raw < 1) return {};
+	return { page: Math.floor(raw) };
+}
+
 export const Route = createFileRoute("/admin/access/roles")({
 	component: RolesTab,
+	validateSearch: validatePageSearch,
 });
 
 type RoleFilters = {
@@ -51,7 +61,10 @@ function RolesTab() {
 		location.pathname === "/admin/access/roles/";
 	const [data, setData] = useState<AdminRoleList | null>(null);
 	const [filters, setFilters] = useState<RoleFilters>(defaultFilters);
-	const [page, setPage] = useState(1);
+	const { page = 1 } = Route.useSearch();
+	const navigate = useNavigate({ from: Route.fullPath });
+	const setPage = (next: number) =>
+		void navigate({ search: (prev) => ({ ...prev, page: next }) });
 	const [error, setError] = useState<string | null>(null);
 	const form = useForm({
 		defaultValues: filters,

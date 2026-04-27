@@ -4,6 +4,7 @@ import {
 	Link,
 	Outlet,
 	useLocation,
+	useNavigate,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { DataPagination } from "@/components/data-pagination";
@@ -26,8 +27,17 @@ import type { AdminDomain } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
 
+function validatePageSearch(search: Record<string, unknown>): {
+	page?: number;
+} {
+	const raw = Number(search.page);
+	if (!Number.isFinite(raw) || raw < 1) return {};
+	return { page: Math.floor(raw) };
+}
+
 export const Route = createFileRoute("/admin/domains")({
 	component: DomainList,
+	validateSearch: validatePageSearch,
 });
 
 type DomainFilters = {
@@ -47,7 +57,10 @@ function DomainList() {
 	const { session, isPending, t } = useAdminAuthGuard();
 	const [allDomains, setAllDomains] = useState<AdminDomain[]>([]);
 	const [filters, setFilters] = useState<DomainFilters>(defaultFilters);
-	const [page, setPage] = useState(1);
+	const { page = 1 } = Route.useSearch();
+	const navigate = useNavigate({ from: Route.fullPath });
+	const setPage = (next: number) =>
+		void navigate({ search: (prev) => ({ ...prev, page: next }) });
 	const [error, setError] = useState<string | null>(null);
 	const isDomainListRoute =
 		location.pathname === "/admin/domains" ||

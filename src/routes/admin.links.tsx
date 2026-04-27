@@ -4,6 +4,7 @@ import {
 	Link,
 	Outlet,
 	useLocation,
+	useNavigate,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { DataPagination } from "@/components/data-pagination";
@@ -31,8 +32,17 @@ import {
 	redirectStatusOptions,
 } from "@/lib/redirect-status";
 
+function validatePageSearch(search: Record<string, unknown>): {
+	page?: number;
+} {
+	const raw = Number(search.page);
+	if (!Number.isFinite(raw) || raw < 1) return {};
+	return { page: Math.floor(raw) };
+}
+
 export const Route = createFileRoute("/admin/links")({
 	component: LinksList,
+	validateSearch: validatePageSearch,
 });
 
 type LinkFilters = {
@@ -62,7 +72,10 @@ function LinksList() {
 	const [domains, setDomains] = useState<AdminDomain[]>([]);
 	const [data, setData] = useState<LinkListData | null>(null);
 	const [filters, setFilters] = useState<LinkFilters>(defaultFilters);
-	const [page, setPage] = useState(1);
+	const { page = 1 } = Route.useSearch();
+	const navigate = useNavigate({ from: Route.fullPath });
+	const setPage = (next: number) =>
+		void navigate({ search: (prev) => ({ ...prev, page: next }) });
 	const [error, setError] = useState<string | null>(null);
 	const isLinksListRoute =
 		location.pathname === "/admin/links" ||
