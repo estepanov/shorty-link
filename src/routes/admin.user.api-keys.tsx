@@ -15,12 +15,12 @@ import {
 	PageHeader,
 } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
-import { formatApiKeyPreview } from "@/lib/api-keys";
 import type {
 	AdminApiKey,
 	AdminApiKeyList,
 	AdminCreatedApiKey,
 } from "@/lib/admin-types";
+import { formatApiKeyPreview } from "@/lib/api-keys";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { createTranslator } from "@/lib/i18n";
 

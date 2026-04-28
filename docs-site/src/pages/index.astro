@@ -1,0 +1,17 @@
+---
+import { getCollection, render } from "astro:content";
+import DocsLayout from "../layouts/DocsLayout.astro";
+import { extractTitle } from "../lib/nav";
+
+const entries = await getCollection("docs");
+const landing = entries.find((e) => e.id === "overview") ?? entries[0];
+if (!landing) {
+	throw new Error("No docs entries found in ../docs");
+}
+const { Content, headings } = await render(landing);
+const title = extractTitle(landing);
+---
+
+<DocsLayout title={title} slug={landing.id} headings={headings}>
+	<Content />
+</DocsLayout>

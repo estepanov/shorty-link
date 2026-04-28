@@ -336,42 +336,43 @@ function UserRow({
 					</p>
 					{roles.length > 0 ? (
 						<div className="mt-3 flex items-center gap-2">
+							{/** biome-ignore lint/a11y/noLabelWithoutControl: Wrapping <Select /> */}
 							<label className="text-xs font-bold text-muted-foreground">
 								{t("users.role")}
+								<Select
+									onValueChange={async (nextRoleId) => {
+										if (nextRoleId === u.roleId) return;
+										setError(null);
+										try {
+											const api = getTreaty();
+											await unwrap(
+												await api.admin
+													.users({ id: u.id })
+													.role.patch({ roleId: nextRoleId }),
+											);
+											await onRefresh();
+										} catch (nextError) {
+											setError(
+												nextError instanceof Error
+													? nextError.message
+													: "errors.unknown",
+											);
+										}
+									}}
+									value={u.roleId}
+								>
+									<SelectTrigger className="w-auto">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{roles.map((role) => (
+											<SelectItem key={role.id} value={role.id}>
+												{role.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</label>
-							<Select
-								onValueChange={async (nextRoleId) => {
-									if (nextRoleId === u.roleId) return;
-									setError(null);
-									try {
-										const api = getTreaty();
-										await unwrap(
-											await api.admin
-												.users({ id: u.id })
-												.role.patch({ roleId: nextRoleId }),
-										);
-										await onRefresh();
-									} catch (nextError) {
-										setError(
-											nextError instanceof Error
-												? nextError.message
-												: "errors.unknown",
-										);
-									}
-								}}
-								value={u.roleId}
-							>
-								<SelectTrigger className="w-auto">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{roles.map((role) => (
-										<SelectItem key={role.id} value={role.id}>
-											{role.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
 						</div>
 					) : null}
 				</div>

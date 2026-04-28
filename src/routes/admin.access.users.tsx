@@ -488,6 +488,7 @@ function UserRow({
 					</p>
 				</div>
 				<div className="flex items-center gap-3">
+					{/** biome-ignore lint/a11y/noLabelWithoutControl: Using <Switch /> */}
 					<label className="flex items-center gap-2">
 						<Switch
 							aria-label={u.isActive ? t("users.disable") : t("users.enable")}

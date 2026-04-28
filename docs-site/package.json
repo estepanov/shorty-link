@@ -1,0 +1,25 @@
+{
+	"name": "shorty-link-docs",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"sync": "astro sync",
+		"predev": "astro sync",
+		"dev": "astro dev",
+		"prebuild": "astro sync",
+		"build": "astro build",
+		"preview": "astro preview",
+		"precheck": "astro sync",
+		"check": "astro check"
+	},
+	"dependencies": {
+		"@tailwindcss/vite": "^4.2.2",
+		"astro": "^5.0.0",
+		"tailwindcss": "^4.2.2"
+	},
+	"devDependencies": {
+		"@astrojs/check": "^0.9.0",
+		"typescript": "^5.9.3"
+	}
+}

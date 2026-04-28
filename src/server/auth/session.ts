@@ -1,8 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 
 import { type Permission, parsePermissions } from "@/lib/permissions";
-
-import { getLogger } from "../logging";
 import { createDb } from "../db/client";
 import {
 	managedDomains,
@@ -11,6 +9,7 @@ import {
 	roles,
 	user,
 } from "../db/schema";
+import { getLogger } from "../logging";
 import { createAuth } from "./auth";
 import { assertTrustedAdminWrite } from "./security";
 

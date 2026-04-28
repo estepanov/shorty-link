@@ -1,0 +1,171 @@
+---
+import { findActivePath, getNav } from "../lib/nav";
+import "../styles/global.css";
+
+type Heading = { depth: number; slug: string; text: string };
+
+interface Props {
+	title: string;
+	slug: string;
+	headings?: Heading[];
+}
+
+const { title, slug, headings = [] } = Astro.props;
+const nav = await getNav();
+const tocHeadings = headings.filter((h) => h.depth === 2);
+const activePath = new Set(findActivePath(nav, slug));
+const isActive = (itemSlug: string) => itemSlug === slug;
+const isAncestor = (itemSlug: string) =>
+	activePath.has(itemSlug) && itemSlug !== slug;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>{title} · Shorty Link</title>
+		<meta name="description" content={`${title} — Shorty Link documentation`} />
+		<link rel="icon" href="data:," />
+		<script is:inline>
+			(() => {
+				const stored = localStorage.getItem("docs-theme");
+				const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+				const dark = stored ? stored === "dark" : prefersDark;
+				if (dark) document.documentElement.classList.add("dark");
+			})();
+		</script>
+	</head>
+	<body>
+		<div class="mx-auto grid max-w-6xl gap-10 px-6 py-10 lg:grid-cols-[15rem_1fr_13rem] lg:gap-12">
+			<aside class="lg:sticky lg:top-10 lg:h-[calc(100dvh-5rem)]">
+				<div class="flex items-center justify-between">
+					<a href="/" class="font-display text-lg font-medium tracking-tight">
+						Shorty Link
+					</a>
+					<button
+						type="button"
+						id="theme-toggle"
+						aria-label="Toggle theme"
+						class="rounded-md border border-[color:var(--border)] px-2 py-1 text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+					>
+						<span class="hidden dark:inline">Light</span>
+						<span class="inline dark:hidden">Dark</span>
+					</button>
+				</div>
+				<p class="eyebrow mt-1">Docs</p>
+				<div
+					class="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--muted)] px-3 py-2 text-xs text-[color:var(--muted-foreground)]"
+					role="note"
+				>
+					<p class="font-medium text-[color:var(--foreground)]">Pre-1.0 — not yet stable</p>
+					<p class="mt-1 leading-relaxed">
+						Minor releases may contain breaking changes. Pin to a tagged release and read the notes before upgrading.
+					</p>
+				</div>
+				<nav class="mt-6">
+					<ul class="space-y-1 text-sm">
+						{nav.map((item) => {
+							const active = isActive(item.slug);
+							const expanded = active || isAncestor(item.slug);
+							return (
+								<li>
+									<a
+										href={item.href}
+										class:list={[
+											"block rounded-md px-2.5 py-1.5 transition-colors",
+											active
+												? "bg-[color:var(--muted)] font-medium text-[color:var(--foreground)]"
+												: "text-[color:var(--muted-foreground)] hover:bg-[color:var(--muted)] hover:text-[color:var(--foreground)]",
+										]}
+										aria-current={active ? "page" : undefined}
+									>
+										{item.title}
+									</a>
+									{item.children && item.children.length > 0 && (
+										<ul
+											class:list={[
+												"ml-3 mt-1 space-y-1 border-l border-[color:var(--border)] pl-2",
+												expanded ? "" : "hidden",
+											]}
+										>
+											{item.children.map((child) => {
+												const childActive = isActive(child.slug);
+												return (
+													<li>
+														<a
+															href={child.href}
+															class:list={[
+																"block rounded-md px-2.5 py-1 text-[0.85rem] transition-colors",
+																childActive
+																	? "bg-[color:var(--muted)] font-medium text-[color:var(--foreground)]"
+																	: "text-[color:var(--muted-foreground)] hover:bg-[color:var(--muted)] hover:text-[color:var(--foreground)]",
+															]}
+															aria-current={childActive ? "page" : undefined}
+														>
+															{child.title}
+														</a>
+													</li>
+												);
+											})}
+										</ul>
+									)}
+								</li>
+							);
+						})}
+					</ul>
+				</nav>
+			</aside>
+
+			<main>
+				<article class="prose">
+					<slot />
+				</article>
+				<footer class="mt-16 flex flex-col gap-2 border-t border-[color:var(--border)] pt-6 text-xs text-[color:var(--muted-foreground)] sm:flex-row sm:items-center sm:justify-between">
+					<a
+						href={`https://github.com/estepanov/shorty-link/edit/main/docs/${slug}.md`}
+						class="hover:text-[color:var(--foreground)]"
+					>
+						Edit this page on GitHub
+					</a>
+					<p>
+						Artisanally crafted by{" "}
+						<a
+							href="https://evansstepanov.com?utm_source=shorty-link-docs&utm_medium=footer&utm_campaign=crafted_by"
+							class="hover:text-[color:var(--foreground)]"
+							target="_blank"
+							rel="noreferrer"
+						>
+							Evans
+						</a>
+					</p>
+				</footer>
+			</main>
+
+			{tocHeadings.length > 0 && (
+				<aside class="hidden lg:sticky lg:top-10 lg:block lg:h-fit">
+					<p class="eyebrow">On this page</p>
+					<ul class="mt-3 space-y-2 text-sm">
+						{tocHeadings.map((h) => (
+							<li>
+								<a
+									href={`#${h.slug}`}
+									class="block text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+								>
+									{h.text}
+								</a>
+							</li>
+						))}
+					</ul>
+				</aside>
+			)}
+		</div>
+
+		<script is:inline>
+			document.getElementById("theme-toggle")?.addEventListener("click", () => {
+				const next = document.documentElement.classList.toggle("dark");
+				localStorage.setItem("docs-theme", next ? "dark" : "light");
+			});
+		</script>
+	</body>
+</html>

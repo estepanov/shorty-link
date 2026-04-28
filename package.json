@@ -28,7 +28,9 @@
 		"db:migrate:local": "wrangler d1 migrations apply shorty-link --local",
 		"db:migrate:remote": "wrangler d1 migrations apply shorty-link --remote",
 		"secret:auth": "wrangler secret put BETTER_AUTH_SECRET",
-		"setup:local": "pnpm install && pnpm cf-typegen && pnpm db:migrate:local"
+		"setup:local": "pnpm install && pnpm cf-typegen && pnpm db:migrate:local",
+		"docs:dev": "cd docs-site && pnpm install --ignore-workspace && pnpm dev --ignore-workspace",
+		"build:docs": "cd docs-site && pnpm install --ignore-workspace && pnpm build --ignore-workspace"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.6.5",

@@ -9,6 +9,7 @@
 	"files": {
 		"includes": [
 			"**",
+			"!**/.agents",
 			"!**/node_modules",
 			"!**/.wrangler",
 			"!**/.tanstack",
@@ -85,6 +86,32 @@
 			}
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["**/*.astro"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedImports": "off",
+						"noUnusedVariables": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["docs-site/src/styles/**/*.css"],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noImportantStyles": "off"
+					},
+					"style": {
+						"noDescendingSpecificity": "off"
+					}
+				}
+			}
+		}
+	],
 	"assist": {
 		"enabled": true,
 		"actions": {

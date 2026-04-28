@@ -19,21 +19,21 @@ import {
 	TextArea,
 } from "@/components/ui";
 import type { AdminDomain, AdminLink, AssignableRole } from "@/lib/admin-types";
-import { getTreaty, unwrap } from "@/lib/eden";
-import type { createTranslator } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import {
 	type ManagedDomainRootBehavior,
-	managedDomainRootBehaviorOptions,
 	type ManagedDomainUnknownSlugBehavior,
+	managedDomainRootBehaviorOptions,
 	managedDomainUnknownSlugBehaviorOptions,
 	normalizeManagedDomainRootBehavior,
 	normalizeManagedDomainUnknownSlugBehavior,
 } from "@/lib/domain-routing";
+import { getTreaty, unwrap } from "@/lib/eden";
+import type { createTranslator } from "@/lib/i18n";
 import {
 	normalizeRedirectStatusCode,
 	redirectStatusOptions,
 } from "@/lib/redirect-status";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_HOSTNAME_SELECT_VALUE = "__default__";
 

@@ -10,9 +10,14 @@ Shorty Link is a single-deploy URL shortener for Cloudflare Workers. It combines
 - Drizzle ORM on Cloudflare D1
 - Tailwind CSS v4
 
-Password login and password account creation are intentionally disabled.
+Password login and password account creation are intentionally disabled. 
+
+First account signs up becomes owner role. Every one joining after the first owner role account must be invited by someone with the permission to invite users. Users need to join via unique invite link.
 
 Supported redirect status codes are `301`, `302`, `303`, `307`, and `308`. New links default to `302` unless you choose another supported code.
+
+> [!WARNING]  
+> Project is changing rapidly. At this point I would say it may not be stable for you, unless you really pay attention or accept the potential risks.
 
 ## Project Status
 

@@ -15,6 +15,7 @@ import {
 	isRedirectStatusCode,
 	type RedirectStatusCode,
 } from "@/lib/redirect-status";
+import { createAgentLoginResponse } from "../auth/agent-login";
 import { createAuth } from "../auth/auth";
 import {
 	createBootstrapContext,
@@ -88,6 +89,8 @@ type AiBinding = {
 };
 
 const runtimeEnv = env as typeof env & {
+	AGENT_BROWSER_AUTH_ENABLED?: string;
+	AGENT_BROWSER_AUTH_SECRET?: string;
 	AI?: AiBinding;
 	BETTER_AUTH_SECRET?: string;
 };
@@ -464,6 +467,20 @@ export const app = new Elysia({
 		ok: true,
 		service: "shorty-link",
 	}))
+	.get(
+		"/api/dev/agent-login",
+		({ db, request }) =>
+			createAgentLoginResponse({ db, env: runtimeEnv, request }),
+		{
+			query: t.Object({
+				email: t.Optional(t.String({ format: "email" })),
+				locale: t.Optional(t.String()),
+				name: t.Optional(t.String()),
+				redirect: t.Optional(t.String()),
+				secret: t.Optional(t.String()),
+			}),
+		},
+	)
 	.group("/api/admin", (admin) =>
 		admin
 			.get("/bootstrap", ({ db }) => getBootstrapState(db))

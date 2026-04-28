@@ -10,10 +10,10 @@ import {
 	roleDomainScopes,
 	roleLinkScopes,
 	roles,
-	schema,
-	shortLinks,
 	SYSTEM_ROLE_ADMIN,
 	SYSTEM_ROLE_OWNER,
+	schema,
+	shortLinks,
 	user,
 } from "../src/server/db/schema";
 import {

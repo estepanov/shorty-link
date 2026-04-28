@@ -2,7 +2,9 @@ node_modules
 .wrangler
 .output
 dist
+dist-docs
 build
+docs-site/.astro
 .DS_Store
 .env
 .env.local

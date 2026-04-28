@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { getTreaty } from "@/lib/eden";
 import { createTranslator, defaultLocale } from "@/lib/i18n";
 import type { Permission } from "@/lib/permissions";
-import { getTreaty } from "@/lib/eden";
 
 export function useAdminAuthGuard() {
 	const sessionQuery = authClient.useSession();

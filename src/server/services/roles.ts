@@ -25,8 +25,8 @@ import {
 	roleDomainScopes,
 	roleLinkScopes,
 	roles,
-	shortLinks,
 	SYSTEM_ROLE_OWNER,
+	shortLinks,
 	user,
 } from "../db/schema";
 import { escapeLikePattern, likeEscaped } from "./utils";
