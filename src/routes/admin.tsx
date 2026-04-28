@@ -55,6 +55,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAuthContext } from "@/lib/admin-auth";
 import { authClient } from "@/lib/auth-client";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -186,33 +192,37 @@ function Admin() {
 	if (!bootstrap) {
 		return (
 			<AppShell locale={locale}>
-				<main className="mx-auto max-w-7xl px-5 py-10">
-					<Card>{t("loading.app")}</Card>
-				</main>
+				<TooltipProvider>
+					<main className="mx-auto max-w-7xl px-5 py-10">
+						<Card>{t("loading.app")}</Card>
+					</main>
+				</TooltipProvider>
 			</AppShell>
 		);
 	}
 
 	return (
 		<AppShell locale={locale}>
-			<main className="mx-auto grid w-full max-w-7xl gap-6 px-5 py-8">
-				{error ? <Notice tone="error">{t(error)}</Notice> : null}
-				{!session ? (
-					bootstrap.canBootstrap ? (
-						<BootstrapForm locale={locale} />
+			<TooltipProvider>
+				<main className="mx-auto grid w-full max-w-7xl gap-6 px-5 py-8">
+					{error ? <Notice tone="error">{t(error)}</Notice> : null}
+					{!session ? (
+						bootstrap.canBootstrap ? (
+							<BootstrapForm locale={locale} />
+						) : (
+							<PasskeyLogin />
+						)
+					) : !isDashboardRoute ? (
+						<Outlet />
+					) : isDashboardRoute && isAuthContextPending ? (
+						<Card>{t("loading.dashboard")}</Card>
+					) : dashboard ? (
+						<DashboardView data={dashboard} hasPermission={hasPermission} />
 					) : (
-						<PasskeyLogin />
-					)
-				) : !isDashboardRoute ? (
-					<Outlet />
-				) : isDashboardRoute && isAuthContextPending ? (
-					<Card>{t("loading.dashboard")}</Card>
-				) : dashboard ? (
-					<DashboardView data={dashboard} hasPermission={hasPermission} />
-				) : (
-					<Card>{t("loading.dashboard")}</Card>
-				)}
-			</main>
+						<Card>{t("loading.dashboard")}</Card>
+					)}
+				</main>
+			</TooltipProvider>
 		</AppShell>
 	);
 }
@@ -449,6 +459,7 @@ function DashboardView({
 }) {
 	const locale = data.session.user.locale ?? defaultLocale;
 	const t = createTranslator(locale);
+	const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
 	const showLinks = hasPermission("links.read");
 	const showLinksWrite = hasPermission("links.write");
@@ -693,11 +704,33 @@ function DashboardView({
 														</ItemDescription>
 													</ItemContent>
 													<ItemActions className="shrink-0">
-														<CopyButton
-															label={t("actions.copyLink")}
-															copiedLabel={t("actions.copied")}
-															text={invite.inviteUrl}
-														/>
+														<Tooltip
+															open={
+																copiedInviteId === invite.id ? true : undefined
+															}
+														>
+															<TooltipTrigger>
+																<CopyButton
+																	label={t("actions.copyLink")}
+																	copiedLabel={t("actions.copied")}
+																	onCopied={() => {
+																		setCopiedInviteId(invite.id);
+																		setTimeout(
+																			() => setCopiedInviteId(null),
+																			2000,
+																		);
+																	}}
+																	text={invite.inviteUrl}
+																/>
+															</TooltipTrigger>
+															<TooltipContent>
+																<p>
+																	{copiedInviteId === invite.id
+																		? t("actions.copyInviteSuccess")
+																		: t("actions.copyInviteLink")}
+																</p>
+															</TooltipContent>
+														</Tooltip>
 														{showInvitesCreate ? (
 															<ActionLink
 																to={`/admin/invites/${invite.id}/edit`}

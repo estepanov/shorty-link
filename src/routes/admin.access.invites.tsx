@@ -19,6 +19,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import type { InviteListData } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
@@ -81,6 +86,7 @@ function InvitesTab() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
 	const { hasPermission } = useAuthContext();
 	const [data, setData] = useState<InviteListData | null>(null);
+	const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 	const search = Route.useSearch();
 	const page = search.page ?? 1;
 	const filters: InviteFilters = {
@@ -341,17 +347,33 @@ function InvitesTab() {
 													)}
 												</span>
 											) : null}
-											{invite.inviteUrl ? (
-												<CopyButton
-													className="shrink-0 !rounded-xl !px-2 !py-2"
-													copiedLabel={t("actions.copied")}
-													label={t("actions.copyLink")}
-													text={invite.inviteUrl}
-												/>
-											) : null}
 										</div>
 									</div>
 									<div className="flex shrink-0 items-center gap-2">
+										{invite.inviteUrl ? (
+											<Tooltip
+												open={copiedInviteId === invite.id ? true : undefined}
+											>
+												<TooltipTrigger>
+													<CopyButton
+														copiedLabel={t("actions.copied")}
+														label={t("actions.copyLink")}
+														onCopied={() => {
+															setCopiedInviteId(invite.id);
+															setTimeout(() => setCopiedInviteId(null), 2000);
+														}}
+														text={invite.inviteUrl}
+													/>
+												</TooltipTrigger>
+												<TooltipContent>
+													<p>
+														{copiedInviteId === invite.id
+															? t("actions.copyInviteSuccess")
+															: t("actions.copyInviteLink")}
+													</p>
+												</TooltipContent>
+											</Tooltip>
+										) : null}
 										{invite.status === "pending" &&
 										hasPermission("invites.update") ? (
 											<Link

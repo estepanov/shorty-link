@@ -89,7 +89,7 @@ function UsersPage() {
 	return (
 		<div className="mx-auto grid w-full max-w-7xl gap-6">
 			<Card>
-				<h1 className="text-4xl font-medium">{t("users.title")}</h1>
+				<h1 className="text-4xl font-medium">{t("access.title")}</h1>
 				{error ? (
 					<div className="mt-4">
 						<Notice tone="error">{t(error)}</Notice>
