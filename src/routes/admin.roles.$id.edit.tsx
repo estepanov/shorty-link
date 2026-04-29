@@ -1,16 +1,28 @@
+import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { AdminFormRoot, FormFooter } from "@/components/admin-forms";
 import {
 	Button,
 	Card,
 	DeleteConfirmationDialog,
-	FieldLabel,
 	Input,
 	MultiCombobox,
 	Notice,
 	TextArea,
 } from "@/components/ui";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Field,
+	FieldDescription,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+	FieldLegend,
+	FieldSet,
+	FieldTitle,
+} from "@/components/ui/field";
 import {
 	useAdminAuthGuard,
 	useAuthContext,
@@ -173,183 +185,222 @@ function RoleEditor({
 	role: AdminRoleDetail;
 	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
 }) {
-	const [name, setName] = useState(role.name);
-	const [description, setDescription] = useState(role.description ?? "");
-	const [permissions, setPermissions] = useState<Set<Permission>>(
-		new Set(role.permissions as Permission[]),
-	);
-	const [domainScope, setDomainScope] = useState<Set<string>>(
-		new Set(role.domainScopeIds),
-	);
-	const [linkScope, setLinkScope] = useState<Set<string>>(
-		new Set(role.linkScopeIds),
-	);
 	const [error, setError] = useState<string | null>(null);
-	const [submitting, setSubmitting] = useState(false);
-
-	function togglePermission(value: Permission) {
-		setPermissions((prev) => {
-			const next = new Set(prev);
-			if (next.has(value)) {
-				next.delete(value);
-			} else {
-				next.add(value);
+	const form = useForm({
+		defaultValues: {
+			description: role.description ?? "",
+			domainScopeIds: role.domainScopeIds,
+			linkScopeIds: role.linkScopeIds,
+			name: role.name,
+			permissions: role.permissions as Permission[],
+		},
+		onSubmit: async ({ value }) => {
+			setError(null);
+			try {
+				const api = getTreaty();
+				await unwrap(
+					await api.admin.roles({ id: role.id }).patch({
+						description: value.description.trim() || undefined,
+						domainScopeIds: value.domainScopeIds,
+						linkScopeIds: value.linkScopeIds,
+						name: value.name,
+						permissions: value.permissions as string[],
+					}),
+				);
+				await onSaved();
+			} catch (nextError) {
+				setError(
+					nextError instanceof Error ? nextError.message : "errors.unknown",
+				);
 			}
-			return next;
+		},
+	});
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: form.reset is stable; re-seed defaults only when the edited role changes.
+	useEffect(() => {
+		form.reset({
+			description: role.description ?? "",
+			domainScopeIds: role.domainScopeIds,
+			linkScopeIds: role.linkScopeIds,
+			name: role.name,
+			permissions: role.permissions as Permission[],
 		});
-	}
-
-	function toggleSetItem(set: Set<string>, value: string) {
-		const next = new Set(set);
-		if (next.has(value)) {
-			next.delete(value);
-		} else {
-			next.add(value);
-		}
-		return next;
-	}
-
-	async function handleSubmit(event: React.FormEvent) {
-		event.preventDefault();
-		event.stopPropagation();
-		setError(null);
-		setSubmitting(true);
-		try {
-			const body = {
-				name,
-				description: description.trim() || undefined,
-				permissions: [...permissions] as string[],
-				domainScopeIds: [...domainScope],
-				linkScopeIds: [...linkScope],
-			};
-			const api = getTreaty();
-			await unwrap(await api.admin.roles({ id: role.id }).patch(body));
-			await onSaved();
-		} catch (nextError) {
-			setError(
-				nextError instanceof Error ? nextError.message : "errors.unknown",
-			);
-		} finally {
-			setSubmitting(false);
-		}
-	}
+	}, [role.id]);
 
 	const groupOrder = Object.keys(catalog.groups);
 
 	return (
-		<form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
-			<FieldLabel>
-				{t("forms.name")}
-				<Input
-					maxLength={64}
-					onChange={(event) => setName(event.target.value)}
-					placeholder={t("roles.namePlaceholder")}
-					required
-					value={name}
-				/>
-			</FieldLabel>
-			<FieldLabel>
-				{t("forms.notes")}
-				<TextArea
-					onChange={(event) => setDescription(event.target.value)}
-					placeholder={t("roles.descriptionPlaceholder")}
-					value={description}
-				/>
-			</FieldLabel>
+		<AdminFormRoot
+			onSubmit={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				void form.handleSubmit();
+			}}
+		>
+			<FieldGroup>
+				<FieldSet className="rounded-lg border border-border/70 bg-muted/25 p-4">
+					<FieldLegend>{t("roles.details")}</FieldLegend>
+					<FieldDescription>{t("roles.detailsHelp")}</FieldDescription>
+					<form.Field name="name">
+						{(field) => (
+							<Field data-invalid={!field.state.meta.isValid}>
+								<FieldLabel htmlFor={field.name}>{t("forms.name")}</FieldLabel>
+								<Input
+									aria-invalid={!field.state.meta.isValid}
+									id={field.name}
+									maxLength={64}
+									name={field.name}
+									onBlur={field.handleBlur}
+									onChange={(event) => field.handleChange(event.target.value)}
+									placeholder={t("roles.namePlaceholder")}
+									required
+									value={field.state.value}
+								/>
+								<FieldError
+									errors={field.state.meta.errors.map((message) => ({
+										message: String(message),
+									}))}
+								/>
+							</Field>
+						)}
+					</form.Field>
+					<form.Field name="description">
+						{(field) => (
+							<Field data-invalid={!field.state.meta.isValid}>
+								<FieldLabel htmlFor={field.name}>{t("forms.notes")}</FieldLabel>
+								<TextArea
+									aria-invalid={!field.state.meta.isValid}
+									id={field.name}
+									name={field.name}
+									onBlur={field.handleBlur}
+									onChange={(event) => field.handleChange(event.target.value)}
+									placeholder={t("roles.descriptionPlaceholder")}
+									value={field.state.value}
+								/>
+								<FieldError
+									errors={field.state.meta.errors.map((message) => ({
+										message: String(message),
+									}))}
+								/>
+							</Field>
+						)}
+					</form.Field>
+				</FieldSet>
 
-			<div>
-				<p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-					{t("roles.permissions")}
-				</p>
-				<p className="mt-1 text-xs text-muted-foreground/80">
-					{t("roles.permissionsHelp")}
-				</p>
-				<div className="mt-3 grid gap-4 md:grid-cols-2">
-					{groupOrder.map((groupKey) => (
-						<div
-							className="rounded-md border border-border bg-muted/40 p-3"
-							key={groupKey}
-						>
-							<p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-								{t(`roles.permissionGroup.${groupKey}`)}
-							</p>
-							<div className="grid gap-1">
-								{catalog.groups[groupKey].map((perm) => (
-									<label className="flex items-center gap-2 text-sm" key={perm}>
-										<input
-											checked={permissions.has(perm as Permission)}
-											className="accent-primary"
-											onChange={() => togglePermission(perm as Permission)}
-											type="checkbox"
-										/>
-										{t(`permissions.${perm}`)}
-									</label>
+				<form.Field name="permissions">
+					{(field) => (
+						<FieldSet className="rounded-lg border border-border/70 bg-muted/25 p-4">
+							<FieldLegend>{t("roles.permissions")}</FieldLegend>
+							<FieldDescription>{t("roles.permissionsHelp")}</FieldDescription>
+							<div className="grid gap-4 md:grid-cols-2">
+								{groupOrder.map((groupKey) => (
+									<div
+										className="rounded-md border border-border bg-background/70 p-3"
+										key={groupKey}
+									>
+										<FieldTitle className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">
+											{t(`roles.permissionGroup.${groupKey}`)}
+										</FieldTitle>
+										<FieldGroup data-slot="checkbox-group" className="gap-2">
+											{catalog.groups[groupKey].map((perm) => {
+												const value = perm as Permission;
+												const id = `role-permission-${perm.replace(/\./g, "-")}`;
+												const checked = field.state.value.includes(value);
+
+												return (
+													<Field key={perm} orientation="horizontal">
+														<Checkbox
+															checked={checked}
+															id={id}
+															onCheckedChange={(nextChecked) => {
+																field.handleChange(
+																	nextChecked === true
+																		? [...field.state.value, value]
+																		: field.state.value.filter(
+																				(item) => item !== value,
+																			),
+																);
+															}}
+														/>
+														<FieldLabel
+															className="font-normal text-sm"
+															htmlFor={id}
+														>
+															{t(`permissions.${perm}`)}
+														</FieldLabel>
+													</Field>
+												);
+											})}
+										</FieldGroup>
+									</div>
 								))}
 							</div>
-						</div>
-					))}
-				</div>
-			</div>
+						</FieldSet>
+					)}
+				</form.Field>
 
-			<div>
-				<p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-					{t("roles.scopeDomains")}
-				</p>
-				<p className="mt-1 text-xs text-muted-foreground/80">
-					{t("roles.scopeDomainsHelp")}
-				</p>
-				<div className="mt-3">
-					<MultiCombobox
-						options={domains.map((domain) => ({
-							value: domain.id,
-							label: domain.label
-								? `${domain.hostname} (${domain.label})`
-								: domain.hostname,
-						}))}
-						selected={[...domainScope]}
-						onChange={(vals) => setDomainScope(new Set(vals))}
-						placeholder={t("roles.scopeDomains")}
-						searchPlaceholder="Search domains..."
-						emptyMessage="No domains found."
-					/>
-				</div>
-			</div>
+				<form.Field name="domainScopeIds">
+					{(field) => (
+						<FieldSet className="rounded-lg border border-border/70 bg-muted/25 p-4">
+							<FieldLegend>{t("roles.scopeDomains")}</FieldLegend>
+							<FieldDescription>{t("roles.scopeDomainsHelp")}</FieldDescription>
+							<MultiCombobox
+								emptyMessage="No domains found."
+								onChange={field.handleChange}
+								options={domains.map((domain) => ({
+									label: domain.label
+										? `${domain.hostname} (${domain.label})`
+										: domain.hostname,
+									value: domain.id,
+								}))}
+								placeholder={t("roles.scopeDomains")}
+								searchPlaceholder="Search domains..."
+								selected={field.state.value}
+							/>
+						</FieldSet>
+					)}
+				</form.Field>
 
-			<div>
-				<p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-					{t("roles.scopeLinks")}
-				</p>
-				<p className="mt-1 text-xs text-muted-foreground/80">
-					{t("roles.scopeLinksHelp")}
-				</p>
-				<div className="mt-3">
-					<MultiCombobox
-						options={links.map((link) => ({
-							value: link.id,
-							label: link.title
-								? `${link.hostname === "__default__" ? "" : `${link.hostname}/`}${link.slug} — ${link.title}`
-								: `${link.hostname === "__default__" ? "" : `${link.hostname}/`}${link.slug}`,
-						}))}
-						selected={[...linkScope]}
-						onChange={(vals) => setLinkScope(new Set(vals))}
-						placeholder={t("roles.scopeLinks")}
-						searchPlaceholder="Search links..."
-						emptyMessage="No links found."
-					/>
-				</div>
-			</div>
+				<form.Field name="linkScopeIds">
+					{(field) => (
+						<FieldSet className="rounded-lg border border-border/70 bg-muted/25 p-4">
+							<FieldLegend>{t("roles.scopeLinks")}</FieldLegend>
+							<FieldDescription>{t("roles.scopeLinksHelp")}</FieldDescription>
+							<MultiCombobox
+								emptyMessage="No links found."
+								onChange={field.handleChange}
+								options={links.map((link) => ({
+									label: link.title
+										? `${link.hostname === "__default__" ? "" : `${link.hostname}/`}${link.slug} - ${link.title}`
+										: `${link.hostname === "__default__" ? "" : `${link.hostname}/`}${link.slug}`,
+									value: link.id,
+								}))}
+								placeholder={t("roles.scopeLinks")}
+								searchPlaceholder="Search links..."
+								selected={field.state.value}
+							/>
+						</FieldSet>
+					)}
+				</form.Field>
+			</FieldGroup>
 
 			{error ? <Notice tone="error">{t(error)}</Notice> : null}
-			<div className="flex gap-2">
-				<Button disabled={submitting} type="submit">
-					{t("forms.update")}
-				</Button>
+			<FormFooter>
+				<form.Subscribe
+					selector={(state) => [state.canSubmit, state.isSubmitting]}
+				>
+					{([canSubmit, isSubmitting]) => (
+						<Button disabled={!canSubmit || isSubmitting} type="submit">
+							{t("forms.update")}
+						</Button>
+					)}
+				</form.Subscribe>
 				<Link to="/admin/access/roles">
 					<Button tone="secondary" type="button">
 						{t("forms.cancel")}
 					</Button>
 				</Link>
-			</div>
-		</form>
+			</FormFooter>
+		</AdminFormRoot>
 	);
 }

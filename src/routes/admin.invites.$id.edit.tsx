@@ -1,10 +1,16 @@
+import { useForm } from "@tanstack/react-form";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
+	AdminFormRoot,
+	FormFooter,
+	FormGrid,
+	FormSection,
+} from "@/components/admin-forms";
+import {
 	Button,
 	Card,
-	FieldLabel,
 	Input,
 	Notice,
 	Select,
@@ -14,10 +20,12 @@ import {
 	SelectValue,
 } from "@/components/ui";
 import {
-	useAdminAuthGuard,
-	useAuthContext,
-	useRequirePermission,
-} from "@/lib/admin-auth";
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@/components/ui/field";
+import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import type { AdminInvite, AssignableRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
@@ -28,10 +36,9 @@ export const Route = createFileRoute("/admin/invites/$id/edit")({
 function EditInvite() {
 	const { id } = Route.useParams();
 	const router = useRouter();
-	const { session, isPending, locale, t } = useAdminAuthGuard();
+	const { session, isPending, t } = useAdminAuthGuard();
 	const { isAuthorized, isPending: isAuthPending } =
 		useRequirePermission("invites.update");
-	const { hasPermission } = useAuthContext();
 	const [invite, setInvite] = useState<AdminInvite | null>(null);
 	const [roles, setRoles] = useState<AssignableRole[]>([]);
 	const [error, setError] = useState<string | null>(null);
@@ -88,7 +95,6 @@ function EditInvite() {
 				{invite ? (
 					<InviteEditor
 						invite={invite}
-						locale={locale}
 						onSaved={async () => {
 							await router.navigate({ to: "/admin/access/invites" });
 						}}
@@ -105,102 +111,178 @@ function EditInvite() {
 
 function InviteEditor({
 	invite,
-	locale,
 	onSaved,
 	roles,
 	t,
 }: {
 	invite: AdminInvite;
-	locale: string;
 	onSaved: () => Promise<void>;
 	roles: AssignableRole[];
 	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;
 }) {
-	const [email, setEmail] = useState(invite.email);
-	const [roleId, setRoleId] = useState(invite.roleId);
-	const [expiresInDays, setExpiresInDays] = useState(() => {
+	const getInitialExpiresInDays = () => {
 		const remaining = Math.max(
 			1,
 			Math.ceil((invite.expiresAt - Date.now()) / (24 * 60 * 60 * 1000)),
 		);
 		return Math.min(remaining, 30);
-	});
+	};
 	const [error, setError] = useState<string | null>(null);
-	const [submitting, setSubmitting] = useState(false);
+	const form = useForm({
+		defaultValues: {
+			email: invite.email,
+			expiresInDays: getInitialExpiresInDays(),
+			roleId: invite.roleId,
+		},
+		onSubmit: async ({ value }) => {
+			setError(null);
+			try {
+				const api = getTreaty();
+				await unwrap(
+					await api.admin.invites({ id: invite.id }).patch({
+						email: value.email,
+						expiresInDays: value.expiresInDays,
+						roleId: value.roleId,
+					}),
+				);
+				await onSaved();
+			} catch (nextError) {
+				setError(
+					nextError instanceof Error ? nextError.message : "errors.unknown",
+				);
+			}
+		},
+	});
 
-	async function handleSubmit(event: React.FormEvent) {
-		event.preventDefault();
-		event.stopPropagation();
-		setError(null);
-		setSubmitting(true);
-		try {
-			const api = getTreaty();
-			await unwrap(
-				await api.admin.invites({ id: invite.id }).patch({
-					email,
-					roleId,
-					expiresInDays,
-				}),
-			);
-			await onSaved();
-		} catch (nextError) {
-			setError(
-				nextError instanceof Error ? nextError.message : "errors.unknown",
-			);
-		} finally {
-			setSubmitting(false);
-		}
-	}
+	// biome-ignore lint/correctness/useExhaustiveDependencies: form.reset is stable; re-seed defaults only when the edited invite changes.
+	useEffect(() => {
+		form.reset({
+			email: invite.email,
+			expiresInDays: getInitialExpiresInDays(),
+			roleId: invite.roleId,
+		});
+	}, [invite.id]);
 
 	return (
-		<form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
-			<FieldLabel>
-				{t("forms.email")}
-				<Input
-					onChange={(event) => setEmail(event.target.value)}
-					required
-					type="email"
-					value={email}
-				/>
-			</FieldLabel>
-			<div className="grid gap-4 md:grid-cols-2">
-				<FieldLabel>
-					{t("users.role")}
-					<Select onValueChange={setRoleId} value={roleId}>
-						<SelectTrigger>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{roles.map((role) => (
-								<SelectItem key={role.id} value={role.id}>
-									{role.name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</FieldLabel>
-				<FieldLabel>
-					{t("forms.expiresInDays")}
-					<Input
-						max={30}
-						min={1}
-						onChange={(event) => setExpiresInDays(Number(event.target.value))}
-						type="number"
-						value={expiresInDays}
-					/>
-				</FieldLabel>
-			</div>
+		<AdminFormRoot
+			onSubmit={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				void form.handleSubmit();
+			}}
+		>
+			<FieldGroup>
+				<FormSection
+					description={t("invites.recipientDescription")}
+					title={t("invites.recipient")}
+				>
+					<form.Field name="email">
+						{(field) => (
+							<Field data-invalid={!field.state.meta.isValid}>
+								<FieldLabel htmlFor={field.name}>{t("forms.email")}</FieldLabel>
+								<Input
+									aria-invalid={!field.state.meta.isValid}
+									id={field.name}
+									name={field.name}
+									onBlur={field.handleBlur}
+									onChange={(event) => field.handleChange(event.target.value)}
+									required
+									type="email"
+									value={field.state.value}
+								/>
+								<FieldError
+									errors={field.state.meta.errors.map((message) => ({
+										message: String(message),
+									}))}
+								/>
+							</Field>
+						)}
+					</form.Field>
+				</FormSection>
+				<FormSection
+					description={t("invites.accessDescription")}
+					title={t("invites.access")}
+				>
+					<FormGrid>
+						<form.Field name="roleId">
+							{(field) => (
+								<Field data-invalid={!field.state.meta.isValid}>
+									<FieldLabel htmlFor={field.name}>
+										{t("users.role")}
+									</FieldLabel>
+									<Select
+										onValueChange={field.handleChange}
+										value={field.state.value}
+									>
+										<SelectTrigger
+											aria-invalid={!field.state.meta.isValid}
+											id={field.name}
+										>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{roles.map((role) => (
+												<SelectItem key={role.id} value={role.id}>
+													{role.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message: String(message),
+										}))}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="expiresInDays">
+							{(field) => (
+								<Field data-invalid={!field.state.meta.isValid}>
+									<FieldLabel htmlFor={field.name}>
+										{t("forms.expiresInDays")}
+									</FieldLabel>
+									<Input
+										aria-invalid={!field.state.meta.isValid}
+										id={field.name}
+										max={30}
+										min={1}
+										name={field.name}
+										onBlur={field.handleBlur}
+										onChange={(event) =>
+											field.handleChange(Number(event.target.value))
+										}
+										type="number"
+										value={field.state.value}
+									/>
+									<FieldError
+										errors={field.state.meta.errors.map((message) => ({
+											message: String(message),
+										}))}
+									/>
+								</Field>
+							)}
+						</form.Field>
+					</FormGrid>
+				</FormSection>
+			</FieldGroup>
 			{error ? <Notice tone="error">{t(error)}</Notice> : null}
-			<div className="flex gap-2">
-				<Button disabled={submitting} type="submit">
-					{t("forms.update")}
-				</Button>
+			<FormFooter>
+				<form.Subscribe
+					selector={(state) => [state.canSubmit, state.isSubmitting]}
+				>
+					{([canSubmit, isSubmitting]) => (
+						<Button disabled={!canSubmit || isSubmitting} type="submit">
+							{t("forms.update")}
+						</Button>
+					)}
+				</form.Subscribe>
 				<Link to="/admin/access/invites">
 					<Button tone="secondary" type="button">
 						{t("forms.cancel")}
 					</Button>
 				</Link>
-			</div>
-		</form>
+			</FormFooter>
+		</AdminFormRoot>
 	);
 }

@@ -3,6 +3,7 @@ import {
 	type FormHTMLAttributes,
 	type ReactNode,
 	useEffect,
+	useId,
 	useState,
 } from "react";
 
@@ -16,8 +17,14 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
+	Switch,
 	TextArea,
 } from "@/components/ui";
+import {
+	FieldDescription as FormFieldDescription,
+	FieldLegend as FormFieldLegend,
+	FieldSet as FormFieldSet,
+} from "@/components/ui/field";
 import type { AdminDomain, AdminLink, AssignableRole } from "@/lib/admin-types";
 import {
 	type ManagedDomainRootBehavior,
@@ -64,7 +71,7 @@ export function FormGrid({
 	);
 }
 
-function FormSection({
+export function FormSection({
 	children,
 	description,
 	title,
@@ -74,45 +81,23 @@ function FormSection({
 	title: ReactNode;
 }) {
 	return (
-		<section className="rounded-lg border border-border/70 bg-muted/25 p-4">
-			<div className="mb-4 flex flex-col gap-1.5">
-				<h2 className="font-display text-xl leading-tight tracking-tight">
+		<FormFieldSet className="rounded-lg border border-border/70 bg-muted/25 p-4">
+			<div className="flex flex-col gap-1.5">
+				<FormFieldLegend className="font-display text-xl leading-tight tracking-tight">
 					{title}
-				</h2>
+				</FormFieldLegend>
 				{description ? (
-					<p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+					<FormFieldDescription className="max-w-2xl leading-relaxed">
 						{description}
-					</p>
+					</FormFieldDescription>
 				) : null}
 			</div>
 			<div className="grid gap-4">{children}</div>
-		</section>
+		</FormFieldSet>
 	);
 }
 
 type ToggleTone = "default" | "green" | "amber" | "blue";
-
-const toggleTrackStyles: Record<
-	ToggleTone,
-	{ checked: string; unchecked: string }
-> = {
-	default: {
-		checked: "border-accent bg-accent text-accent-foreground",
-		unchecked: "border-border bg-muted text-muted-foreground/70",
-	},
-	green: {
-		checked: "border-emerald-500 bg-emerald-500 text-white",
-		unchecked: "border-border bg-muted text-muted-foreground/70",
-	},
-	amber: {
-		checked: "border-amber-500 bg-amber-500 text-white",
-		unchecked: "border-border bg-muted text-muted-foreground/70",
-	},
-	blue: {
-		checked: "border-sky-500 bg-sky-500 text-white",
-		unchecked: "border-border bg-muted text-muted-foreground/70",
-	},
-} as const;
 
 const toggleLabelStyles: Record<
 	ToggleTone,
@@ -123,18 +108,25 @@ const toggleLabelStyles: Record<
 		unchecked: "border-border/80 text-muted-foreground",
 	},
 	green: {
-		checked: "border-emerald-500/60 text-foreground",
+		checked: "border-success/60 text-foreground",
 		unchecked: "border-border/80 text-muted-foreground",
 	},
 	amber: {
-		checked: "border-amber-500/60 text-foreground",
+		checked: "border-accent/60 text-foreground",
 		unchecked: "border-border/80 text-muted-foreground",
 	},
 	blue: {
-		checked: "border-sky-500/60 text-foreground",
+		checked: "border-info/60 text-foreground",
 		unchecked: "border-border/80 text-muted-foreground",
 	},
 } as const;
+
+const toggleSwitchStyles: Record<ToggleTone, string> = {
+	default: "data-[state=checked]:bg-accent",
+	green: "data-[state=checked]:bg-success",
+	amber: "data-[state=checked]:bg-accent",
+	blue: "data-[state=checked]:bg-info",
+};
 
 export function ToggleTile({
 	checked,
@@ -149,8 +141,10 @@ export function ToggleTile({
 	onCheckedChange: (checked: boolean) => void;
 	tone?: ToggleTone;
 }) {
+	const id = useId();
+
 	return (
-		<label
+		<div
 			className={cn(
 				"group flex min-h-14 items-center justify-between gap-4 rounded-lg border bg-background/65 p-3 text-sm font-medium shadow-[inset_0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)] transition-colors",
 				disabled
@@ -160,25 +154,20 @@ export function ToggleTile({
 					? toggleLabelStyles[tone].checked
 					: toggleLabelStyles[tone].unchecked,
 			)}
+			data-checked={checked}
+			data-disabled={disabled}
 		>
-			<span>{children}</span>
-			<input
+			<label className="cursor-inherit" htmlFor={id}>
+				{children}
+			</label>
+			<Switch
 				checked={checked}
-				className="sr-only"
+				className={toggleSwitchStyles[tone]}
 				disabled={disabled}
-				onChange={(event) => onCheckedChange(event.target.checked)}
-				type="checkbox"
+				id={id}
+				onCheckedChange={onCheckedChange}
 			/>
-			<span
-				aria-hidden="true"
-				className={cn(
-					"relative h-6 w-11 shrink-0 rounded-full border transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-4.5 after:rounded-full after:bg-current after:transition-transform",
-					checked
-						? toggleTrackStyles[tone].checked + " after:translate-x-5"
-						: toggleTrackStyles[tone].unchecked,
-				)}
-			/>
-		</label>
+		</div>
 	);
 }
 
@@ -271,93 +260,101 @@ export function LinkForm({
 				void form.handleSubmit();
 			}}
 		>
-			<FormGrid>
-				<form.Field name="hostname">
+			<FormSection
+				description={t("links.redirectTargetDescription")}
+				title={t("links.redirectTarget")}
+			>
+				<form.Field name="targetUrl">
 					{(field) => (
 						<FieldLabel>
-							{t("forms.hostname")}
-							<Select
-								onValueChange={(value) =>
-									field.handleChange(
-										value === DEFAULT_HOSTNAME_SELECT_VALUE ? "" : value,
-									)
-								}
-								value={field.state.value || DEFAULT_HOSTNAME_SELECT_VALUE}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={DEFAULT_HOSTNAME_SELECT_VALUE}>
-										{t("domains.default")}
-									</SelectItem>
-									{selectedHostname && !hasSelectedManagedHostname ? (
-										<SelectItem value={selectedHostname}>
-											{selectedHostname} ({t("domains.current")})
-										</SelectItem>
-									) : null}
-									{domains.map((domain) => (
-										<SelectItem key={domain.id} value={domain.hostname}>
-											{domain.hostname}
-											{domain.label ? ` - ${domain.label}` : ""}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							{t("forms.destination")}
+							<Input
+								onChange={(event) => field.handleChange(event.target.value)}
+								placeholder={t("forms.placeholderDestination")}
+								required
+								value={field.state.value}
+							/>
 						</FieldLabel>
 					)}
 				</form.Field>
-				<form.Field name="statusCode">
+				<FormGrid>
+					<form.Field name="hostname">
+						{(field) => (
+							<FieldLabel>
+								{t("forms.hostname")}
+								<Select
+									onValueChange={(value) =>
+										field.handleChange(
+											value === DEFAULT_HOSTNAME_SELECT_VALUE ? "" : value,
+										)
+									}
+									value={field.state.value || DEFAULT_HOSTNAME_SELECT_VALUE}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={DEFAULT_HOSTNAME_SELECT_VALUE}>
+											{t("domains.default")}
+										</SelectItem>
+										{selectedHostname && !hasSelectedManagedHostname ? (
+											<SelectItem value={selectedHostname}>
+												{selectedHostname} ({t("domains.current")})
+											</SelectItem>
+										) : null}
+										{domains.map((domain) => (
+											<SelectItem key={domain.id} value={domain.hostname}>
+												{domain.hostname}
+												{domain.label ? ` - ${domain.label}` : ""}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</FieldLabel>
+						)}
+					</form.Field>
+					<form.Field name="statusCode">
+						{(field) => (
+							<FieldLabel>
+								{t("forms.statusCode")}
+								<Select
+									onValueChange={(val: string) =>
+										field.handleChange(normalizeRedirectStatusCode(Number(val)))
+									}
+									value={String(field.state.value)}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{redirectStatusOptions.map((option) => (
+											<SelectItem key={option.code} value={String(option.code)}>
+												{t(option.labelKey)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</FieldLabel>
+						)}
+					</form.Field>
+				</FormGrid>
+				<form.Field name="slug">
 					{(field) => (
 						<FieldLabel>
-							{t("forms.statusCode")}
-							<Select
-								onValueChange={(val: string) =>
-									field.handleChange(normalizeRedirectStatusCode(Number(val)))
-								}
-								value={String(field.state.value)}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{redirectStatusOptions.map((option) => (
-										<SelectItem key={option.code} value={String(option.code)}>
-											{t(option.labelKey)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							{t("forms.slug")}
+							<Input
+								onChange={(event) => field.handleChange(event.target.value)}
+								placeholder={t("forms.placeholderSlug")}
+								value={field.state.value}
+							/>
 						</FieldLabel>
 					)}
 				</form.Field>
-			</FormGrid>
-			<form.Field name="targetUrl">
-				{(field) => (
-					<FieldLabel>
-						{t("forms.destination")}
-						<Input
-							onChange={(event) => field.handleChange(event.target.value)}
-							placeholder={t("forms.placeholderDestination")}
-							required
-							value={field.state.value}
-						/>
-					</FieldLabel>
-				)}
-			</form.Field>
-			<form.Field name="slug">
-				{(field) => (
-					<FieldLabel>
-						{t("forms.slug")}
-						<Input
-							onChange={(event) => field.handleChange(event.target.value)}
-							placeholder={t("forms.placeholderSlug")}
-							value={field.state.value}
-						/>
-					</FieldLabel>
-				)}
-			</form.Field>
-			<FormGrid>
+			</FormSection>
+			<FormSection
+				description={t("links.metadataDescription")}
+				title={t("links.metadata")}
+			>
 				<form.Field name="title">
 					{(field) => (
 						<FieldLabel>
@@ -380,31 +377,36 @@ export function LinkForm({
 						</FieldLabel>
 					)}
 				</form.Field>
-			</FormGrid>
-			<FormGrid className="sm:grid-cols-2">
-				<form.Field name="preserveQueryParams">
-					{(field) => (
-						<ToggleTile
-							checked={field.state.value}
-							onCheckedChange={field.handleChange}
-							tone="blue"
-						>
-							{t("forms.preserveQuery")}
-						</ToggleTile>
-					)}
-				</form.Field>
-				<form.Field name="isActive">
-					{(field) => (
-						<ToggleTile
-							checked={field.state.value}
-							onCheckedChange={field.handleChange}
-							tone="green"
-						>
-							{t("forms.active")}
-						</ToggleTile>
-					)}
-				</form.Field>
-			</FormGrid>
+			</FormSection>
+			<FormSection
+				description={t("links.behaviorDescription")}
+				title={t("links.behavior")}
+			>
+				<FormGrid className="sm:grid-cols-2">
+					<form.Field name="preserveQueryParams">
+						{(field) => (
+							<ToggleTile
+								checked={field.state.value}
+								onCheckedChange={field.handleChange}
+								tone="blue"
+							>
+								{t("forms.preserveQuery")}
+							</ToggleTile>
+						)}
+					</form.Field>
+					<form.Field name="isActive">
+						{(field) => (
+							<ToggleTile
+								checked={field.state.value}
+								onCheckedChange={field.handleChange}
+								tone="green"
+							>
+								{t("forms.active")}
+							</ToggleTile>
+						)}
+					</form.Field>
+				</FormGrid>
+			</FormSection>
 			{error ? <Notice tone="error">{t(error)}</Notice> : null}
 			<FormFooter>
 				<Button className="sm:min-w-32" type="submit">
@@ -757,59 +759,69 @@ export function InviteForm({
 				void form.handleSubmit();
 			}}
 		>
-			<form.Field name="email">
-				{(field) => (
-					<FieldLabel>
-						{t("forms.email")}
-						<Input
-							onChange={(event) => field.handleChange(event.target.value)}
-							required
-							type="email"
-							value={field.state.value}
-						/>
-					</FieldLabel>
-				)}
-			</form.Field>
-			<FormGrid>
-				<form.Field name="roleId">
+			<FormSection
+				description={t("invites.recipientDescription")}
+				title={t("invites.recipient")}
+			>
+				<form.Field name="email">
 					{(field) => (
 						<FieldLabel>
-							{t("users.role")}
-							<Select
-								onValueChange={field.handleChange}
-								value={field.state.value}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{roles.map((role) => (
-										<SelectItem key={role.id} value={role.id}>
-											{role.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</FieldLabel>
-					)}
-				</form.Field>
-				<form.Field name="expiresInDays">
-					{(field) => (
-						<FieldLabel>
-							{t("forms.expiresInDays")}
+							{t("forms.email")}
 							<Input
-								max={30}
-								min={1}
-								onChange={(event) =>
-									field.handleChange(Number(event.target.value))
-								}
-								type="number"
+								onChange={(event) => field.handleChange(event.target.value)}
+								required
+								type="email"
 								value={field.state.value}
 							/>
 						</FieldLabel>
 					)}
 				</form.Field>
-			</FormGrid>
+			</FormSection>
+			<FormSection
+				description={t("invites.accessDescription")}
+				title={t("invites.access")}
+			>
+				<FormGrid>
+					<form.Field name="roleId">
+						{(field) => (
+							<FieldLabel>
+								{t("users.role")}
+								<Select
+									onValueChange={field.handleChange}
+									value={field.state.value}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{roles.map((role) => (
+											<SelectItem key={role.id} value={role.id}>
+												{role.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</FieldLabel>
+						)}
+					</form.Field>
+					<form.Field name="expiresInDays">
+						{(field) => (
+							<FieldLabel>
+								{t("forms.expiresInDays")}
+								<Input
+									max={30}
+									min={1}
+									onChange={(event) =>
+										field.handleChange(Number(event.target.value))
+									}
+									type="number"
+									value={field.state.value}
+								/>
+							</FieldLabel>
+						)}
+					</form.Field>
+				</FormGrid>
+			</FormSection>
 			{error ? <Notice tone="error">{t(error)}</Notice> : null}
 			<FormFooter>
 				<Button className="sm:min-w-32" type="submit">

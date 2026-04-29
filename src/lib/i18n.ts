@@ -130,6 +130,12 @@ export const messages = {
 		"invites.created": "Invite created.",
 		"invites.link": "Invite link",
 		"invites.updated": "Invite updated.",
+		"invites.recipient": "Recipient",
+		"invites.recipientDescription":
+			"Send the invite to the email address that should receive admin access.",
+		"invites.access": "Access",
+		"invites.accessDescription":
+			"Choose the role and how long this invite should remain usable.",
 		"links.activeOnly": "Active only",
 		"links.allHosts": "All hosts",
 		"links.allStates": "All states",
@@ -147,6 +153,15 @@ export const messages = {
 		"links.title": "All short links",
 		"links.updated": "Updated",
 		"links.viewAll": "View all",
+		"links.redirectTarget": "Redirect target",
+		"links.redirectTargetDescription":
+			"Choose where this short link sends visitors and how the redirect should be issued.",
+		"links.metadata": "Display details",
+		"links.metadataDescription":
+			"Add operator-facing context so this link is easier to recognize later.",
+		"links.behavior": "Behavior",
+		"links.behaviorDescription":
+			"Control whether the link is live and how incoming query parameters are handled.",
 		"profile.saved": "Saved.",
 		"profile.title": "Profile",
 		"profile.description":
@@ -183,6 +198,9 @@ export const messages = {
 		"roles.create": "Create role",
 		"roles.edit": "Edit role",
 		"roles.delete": "Delete role",
+		"roles.details": "Role details",
+		"roles.detailsHelp":
+			"Name the role and describe when admins should assign it.",
 		"roles.viewAll": "View all roles",
 		"roles.systemBadge": "System",
 		"roles.users": "Users",
@@ -518,6 +536,12 @@ export const messages = {
 		"invites.created": "Invitacion creada.",
 		"invites.link": "Link de invitacion",
 		"invites.updated": "Invitacion actualizada.",
+		"invites.recipient": "Destinatario",
+		"invites.recipientDescription":
+			"Envia la invitacion al email que debe recibir acceso admin.",
+		"invites.access": "Acceso",
+		"invites.accessDescription":
+			"Elige el rol y cuanto tiempo debe seguir usable esta invitacion.",
 		"links.activeOnly": "Solo activos",
 		"links.allHosts": "Todos los hosts",
 		"links.allStates": "Todos los estados",
@@ -535,6 +559,15 @@ export const messages = {
 		"links.title": "Todos los links cortos",
 		"links.updated": "Actualizado",
 		"links.viewAll": "Ver todos",
+		"links.redirectTarget": "Destino de redireccion",
+		"links.redirectTargetDescription":
+			"Elige a donde envia visitantes este link corto y como se emite la redireccion.",
+		"links.metadata": "Detalles visibles",
+		"links.metadataDescription":
+			"Agrega contexto para que el equipo pueda reconocer este link despues.",
+		"links.behavior": "Comportamiento",
+		"links.behaviorDescription":
+			"Controla si el link esta activo y como se manejan los parametros query entrantes.",
 		"profile.saved": "Guardado.",
 		"profile.title": "Perfil",
 		"profile.description":
@@ -571,6 +604,9 @@ export const messages = {
 		"roles.create": "Crear rol",
 		"roles.edit": "Editar rol",
 		"roles.delete": "Eliminar rol",
+		"roles.details": "Detalles del rol",
+		"roles.detailsHelp":
+			"Nombra el rol y describe cuando los admins deberian asignarlo.",
 		"roles.viewAll": "Ver todos los roles",
 		"roles.systemBadge": "Sistema",
 		"roles.users": "Usuarios",
