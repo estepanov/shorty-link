@@ -1,9 +1,9 @@
 import { env, waitUntil } from "cloudflare:workers";
 import { serverTiming } from "@elysiajs/server-timing";
+import { swagger } from "@elysiajs/swagger";
 import { and, eq, ne } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
-
 import { createTranslator, interpolate, normalizeLocale } from "@/lib/i18n";
 import {
 	isPermission,
@@ -15,6 +15,7 @@ import {
 	isRedirectStatusCode,
 	type RedirectStatusCode,
 } from "@/lib/redirect-status";
+import pkg from "../../../package.json";
 import { createAgentLoginResponse } from "../auth/agent-login";
 import { createAuth } from "../auth/auth";
 import {
@@ -463,15 +464,40 @@ export const app = new Elysia({
 		}),
 	)
 	.onError(({ error, request }) => jsonError(error, request))
-	.get("/api/health", () => ({
-		ok: true,
-		service: "shorty-link",
-	}))
+	.use(
+		process.env.NODE_ENV !== "production"
+			? swagger({
+					path: "/api/docs",
+					documentation: {
+						info: {
+							title: "Shorty Link API",
+							version: pkg.version,
+						},
+					},
+				})
+			: new Elysia(),
+	)
+	.get(
+		"/api/health",
+		() => ({
+			ok: true,
+			service: "shorty-link",
+		}),
+		{
+			detail: { tags: ["Health"], summary: "Health check" },
+		},
+	)
 	.get(
 		"/api/dev/agent-login",
 		({ db, request }) =>
 			createAgentLoginResponse({ db, env: runtimeEnv, request }),
 		{
+			detail: {
+				tags: ["Dev"],
+				summary: "Agent browser login",
+				description:
+					"Dev-only endpoint returning HTML for agent browser authentication.",
+			},
 			query: t.Object({
 				email: t.Optional(t.String({ format: "email" })),
 				locale: t.Optional(t.String()),
@@ -483,7 +509,9 @@ export const app = new Elysia({
 	)
 	.group("/api/admin", (admin) =>
 		admin
-			.get("/bootstrap", ({ db }) => getBootstrapState(db))
+			.get("/bootstrap", ({ db }) => getBootstrapState(db), {
+				detail: { tags: ["Onboarding"], summary: "Check bootstrap state" },
+			})
 			.post(
 				"/onboarding/bootstrap",
 				async ({ body, db, request }) => {
@@ -493,6 +521,10 @@ export const app = new Elysia({
 					};
 				},
 				{
+					detail: {
+						tags: ["Onboarding"],
+						summary: "Complete onboarding bootstrap",
+					},
 					body: t.Object({
 						email: t.String({ format: "email" }),
 						locale: t.Optional(t.String()),
@@ -500,29 +532,41 @@ export const app = new Elysia({
 					}),
 				},
 			)
-			.get("/dashboard", async ({ db, request }) => {
-				const ctx = await requireAuthOrError(request);
-				const linkScope = await buildLinkScopeForCtx(ctx);
-				const domainScope = buildDomainScopeForCtx(ctx);
-				const dashboard = await getDashboardData(db, {
-					linkScope,
-					domainScope,
-				});
-				const origin = new URL(request.url).origin;
+			.get(
+				"/dashboard",
+				async ({ db, request }) => {
+					const ctx = await requireAuthOrError(request);
+					const linkScope = await buildLinkScopeForCtx(ctx);
+					const domainScope = buildDomainScopeForCtx(ctx);
+					const dashboard = await getDashboardData(db, {
+						linkScope,
+						domainScope,
+					});
+					const origin = new URL(request.url).origin;
 
-				return {
-					...dashboard,
-					invites: dashboard.invites.map((invite) => ({
-						...invite,
-						inviteUrl: buildInviteUrl(origin, invite.token),
-					})),
-					session: authSessionShape(ctx),
-				};
-			})
-			.get("/profile", async ({ request }) => {
-				const ctx = await requireAuthOrError(request);
-				return authSessionShape(ctx).user;
-			})
+					return {
+						...dashboard,
+						invites: dashboard.invites.map((invite) => ({
+							...invite,
+							inviteUrl: buildInviteUrl(origin, invite.token),
+						})),
+						session: authSessionShape(ctx),
+					};
+				},
+				{
+					detail: { tags: ["Dashboard"], summary: "Get dashboard data" },
+				},
+			)
+			.get(
+				"/profile",
+				async ({ request }) => {
+					const ctx = await requireAuthOrError(request);
+					return authSessionShape(ctx).user;
+				},
+				{
+					detail: { tags: ["Profile"], summary: "Get current user profile" },
+				},
+			)
 			.patch(
 				"/profile",
 				async ({ body, db, request }) => {
@@ -552,6 +596,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Profile"], summary: "Update current user profile" },
 					body: t.Object({
 						email: t.String({ format: "email" }),
 						locale: t.Optional(t.String()),
@@ -559,13 +604,19 @@ export const app = new Elysia({
 					}),
 				},
 			)
-			.get("/auth-context", async ({ request }) => {
-				const ctx = await requireAuthOrError(request);
-				return {
-					role: ctx.role,
-					permissions: [...ctx.permissions],
-				};
-			})
+			.get(
+				"/auth-context",
+				async ({ request }) => {
+					const ctx = await requireAuthOrError(request);
+					return {
+						role: ctx.role,
+						permissions: [...ctx.permissions],
+					};
+				},
+				{
+					detail: { tags: ["Auth"], summary: "Get current auth context" },
+				},
+			)
 			.get(
 				"/links",
 				async ({ db, query, request }) => {
@@ -589,6 +640,7 @@ export const app = new Elysia({
 					);
 				},
 				{
+					detail: { tags: ["Links"], summary: "List links" },
 					query: t.Object({
 						active: t.Optional(
 							t.Union([
@@ -628,7 +680,10 @@ export const app = new Elysia({
 					await appendLinkToRoleScopeIfScoped(db, ctx.role.id, id);
 					return { id };
 				},
-				{ body: linkBody },
+				{
+					detail: { tags: ["Links"], summary: "Create link" },
+					body: linkBody,
+				},
 			)
 			.get(
 				"/links/:id",
@@ -637,6 +692,7 @@ export const app = new Elysia({
 					return fetchLinkInScope(db, ctx, params.id);
 				},
 				{
+					detail: { tags: ["Links"], summary: "Get link by ID" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -654,6 +710,7 @@ export const app = new Elysia({
 					return { link, stats };
 				},
 				{
+					detail: { tags: ["Links"], summary: "Get link statistics" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 					query: t.Object({
 						days: t.Optional(t.Number({ minimum: 1, maximum: 180 })),
@@ -681,6 +738,7 @@ export const app = new Elysia({
 					};
 				},
 				{
+					detail: { tags: ["Links"], summary: "Update link" },
 					body: linkBody,
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
@@ -697,13 +755,20 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Links"], summary: "Delete link" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
-			.get("/domains", async ({ db, request }) => {
-				const ctx = await requirePermissionOrError(request, "domains.read");
-				return listDomains(db, buildDomainScopeForCtx(ctx));
-			})
+			.get(
+				"/domains",
+				async ({ db, request }) => {
+					const ctx = await requirePermissionOrError(request, "domains.read");
+					return listDomains(db, buildDomainScopeForCtx(ctx));
+				},
+				{
+					detail: { tags: ["Domains"], summary: "List domains" },
+				},
+			)
 			.post(
 				"/domains",
 				async ({ body, db, request }) => {
@@ -718,7 +783,10 @@ export const app = new Elysia({
 					await appendDomainToRoleScopeIfScoped(db, ctx.role.id, id);
 					return { id };
 				},
-				{ body: domainBody },
+				{
+					detail: { tags: ["Domains"], summary: "Create domain" },
+					body: domainBody,
+				},
 			)
 			.get(
 				"/domains/:id",
@@ -727,6 +795,7 @@ export const app = new Elysia({
 					return fetchDomainInScope(db, ctx, params.id);
 				},
 				{
+					detail: { tags: ["Domains"], summary: "Get domain by ID" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -747,6 +816,7 @@ export const app = new Elysia({
 					};
 				},
 				{
+					detail: { tags: ["Domains"], summary: "Update domain" },
 					body: domainBody,
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
@@ -763,6 +833,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Domains"], summary: "Delete domain" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -789,6 +860,7 @@ export const app = new Elysia({
 					};
 				},
 				{
+					detail: { tags: ["Invites"], summary: "Create invite" },
 					body: t.Object({
 						email: t.String({ format: "email" }),
 						expiresInDays: t.Optional(t.Number({ minimum: 1, maximum: 30 })),
@@ -811,6 +883,7 @@ export const app = new Elysia({
 					};
 				},
 				{
+					detail: { tags: ["Invites"], summary: "Get invite by ID" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -826,6 +899,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Invites"], summary: "Update invite" },
 					body: t.Object({
 						email: t.Optional(t.String({ format: "email" })),
 						roleId: t.Optional(t.String({ minLength: 1 })),
@@ -867,6 +941,7 @@ export const app = new Elysia({
 					});
 				},
 				{
+					detail: { tags: ["Users"], summary: "List users" },
 					query: t.Object({
 						active: t.Optional(
 							t.Union([
@@ -889,6 +964,7 @@ export const app = new Elysia({
 					return getUserById(db, params.id);
 				},
 				{
+					detail: { tags: ["Users"], summary: "Get user by ID" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -911,6 +987,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Users"], summary: "Update user" },
 					body: t.Object({
 						isActive: t.Optional(t.Boolean()),
 						name: t.Optional(t.String({ minLength: 2 })),
@@ -928,6 +1005,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Users"], summary: "Assign user role" },
 					body: t.Object({
 						roleId: t.String({ minLength: 1 }),
 					}),
@@ -948,15 +1026,22 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Users"], summary: "Delete user" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
-			.get("/sessions", async ({ request }) => {
-				await requirePermissionOrError(request, "sessions.manage");
-				return createAuth(request).api.listSessions({
-					headers: request.headers,
-				});
-			})
+			.get(
+				"/sessions",
+				async ({ request }) => {
+					await requirePermissionOrError(request, "sessions.manage");
+					return createAuth(request).api.listSessions({
+						headers: request.headers,
+					});
+				},
+				{
+					detail: { tags: ["Sessions"], summary: "List active sessions" },
+				},
+			)
 			.post(
 				"/sessions/revoke",
 				async ({ body, request }) => {
@@ -967,22 +1052,35 @@ export const app = new Elysia({
 					});
 				},
 				{
+					detail: { tags: ["Sessions"], summary: "Revoke a session" },
 					body: t.Object({
 						token: t.String({ minLength: 1 }),
 					}),
 				},
 			)
-			.post("/sessions/revoke-other", async ({ request }) => {
-				await requireSecurePermissionOrError(request, "sessions.manage");
-				return createAuth(request).api.revokeOtherSessions({
-					headers: request.headers,
-				});
-			})
-			.delete("/sessions/current", async ({ request }) => {
-				assertTrustedAdminWrite(request);
-				await requireAuthOrError(request);
-				return signOutResponse(request);
-			})
+			.post(
+				"/sessions/revoke-other",
+				async ({ request }) => {
+					await requireSecurePermissionOrError(request, "sessions.manage");
+					return createAuth(request).api.revokeOtherSessions({
+						headers: request.headers,
+					});
+				},
+				{
+					detail: { tags: ["Sessions"], summary: "Revoke all other sessions" },
+				},
+			)
+			.delete(
+				"/sessions/current",
+				async ({ request }) => {
+					assertTrustedAdminWrite(request);
+					await requireAuthOrError(request);
+					return signOutResponse(request);
+				},
+				{
+					detail: { tags: ["Sessions"], summary: "Sign out current session" },
+				},
+			)
 			.get(
 				"/api-keys",
 				async ({ query, request }) => {
@@ -998,6 +1096,7 @@ export const app = new Elysia({
 					});
 				},
 				{
+					detail: { tags: ["API Keys"], summary: "List API keys" },
 					query: apiKeyListQuery,
 				},
 			)
@@ -1014,6 +1113,7 @@ export const app = new Elysia({
 					});
 				},
 				{
+					detail: { tags: ["API Keys"], summary: "Create API key" },
 					body: apiKeyCreateBody,
 				},
 			)
@@ -1035,6 +1135,7 @@ export const app = new Elysia({
 					});
 				},
 				{
+					detail: { tags: ["API Keys"], summary: "Update API key" },
 					body: apiKeyUpdateBody,
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
@@ -1049,6 +1150,7 @@ export const app = new Elysia({
 					});
 				},
 				{
+					detail: { tags: ["API Keys"], summary: "Delete API key" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -1076,6 +1178,7 @@ export const app = new Elysia({
 					};
 				},
 				{
+					detail: { tags: ["Invites"], summary: "List invites" },
 					query: t.Object({
 						page: t.Optional(t.Number({ minimum: 1 })),
 						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
@@ -1100,6 +1203,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Invites"], summary: "Delete invite" },
 					body: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -1110,22 +1214,38 @@ export const app = new Elysia({
 					return { slug: await suggestSlugWithAi(query.targetUrl) };
 				},
 				{
+					detail: { tags: ["Links"], summary: "Suggest a slug from URL" },
 					query: t.Object({
 						targetUrl: t.String({ minLength: 1 }),
 					}),
 				},
 			)
-			.get("/permissions", async ({ request }) => {
-				await requirePermissionOrError(request, "roles.read");
-				return {
-					permissions: PERMISSIONS,
-					groups: PERMISSION_GROUPS,
-				};
-			})
-			.get("/roles/assignable", async ({ db, request }) => {
-				await requirePermissionOrError(request, "users.read");
-				return listAssignableRoles(db);
-			})
+			.get(
+				"/permissions",
+				async ({ request }) => {
+					await requirePermissionOrError(request, "roles.read");
+					return {
+						permissions: PERMISSIONS,
+						groups: PERMISSION_GROUPS,
+					};
+				},
+				{
+					detail: {
+						tags: ["Roles"],
+						summary: "List all permissions and groups",
+					},
+				},
+			)
+			.get(
+				"/roles/assignable",
+				async ({ db, request }) => {
+					await requirePermissionOrError(request, "users.read");
+					return listAssignableRoles(db);
+				},
+				{
+					detail: { tags: ["Roles"], summary: "List assignable roles" },
+				},
+			)
 			.get(
 				"/roles",
 				async ({ db, query, request }) => {
@@ -1137,6 +1257,7 @@ export const app = new Elysia({
 					});
 				},
 				{
+					detail: { tags: ["Roles"], summary: "List roles" },
 					query: t.Object({
 						page: t.Optional(t.Number({ minimum: 1 })),
 						pageSize: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
@@ -1155,6 +1276,7 @@ export const app = new Elysia({
 					return role;
 				},
 				{
+					detail: { tags: ["Roles"], summary: "Get role by ID" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
@@ -1168,7 +1290,10 @@ export const app = new Elysia({
 					});
 					return { id };
 				},
-				{ body: roleBody },
+				{
+					detail: { tags: ["Roles"], summary: "Create role" },
+					body: roleBody,
+				},
 			)
 			.patch(
 				"/roles/:id",
@@ -1181,6 +1306,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Roles"], summary: "Update role" },
 					body: roleBody,
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
@@ -1193,6 +1319,7 @@ export const app = new Elysia({
 					return { ok: true };
 				},
 				{
+					detail: { tags: ["Roles"], summary: "Delete role" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			),
@@ -1212,6 +1339,7 @@ export const app = new Elysia({
 			};
 		},
 		{
+			detail: { tags: ["Invites"], summary: "Lookup invite by token" },
 			params: t.Object({ token: t.String({ minLength: 16 }) }),
 		},
 	)
@@ -1225,6 +1353,7 @@ export const app = new Elysia({
 			};
 		},
 		{
+			detail: { tags: ["Onboarding"], summary: "Accept onboarding invite" },
 			body: t.Object({
 				locale: t.Optional(t.String()),
 				name: t.String({ minLength: 2 }),
@@ -1232,88 +1361,97 @@ export const app = new Elysia({
 			}),
 		},
 	)
-	.get("/*", async ({ db, request }) => {
-		const url = new URL(request.url);
-		const tMessage = createTranslator(localeFromRequest(request));
-		const slug = url.pathname.replace(/^\/+/, "");
-		const hostname = url.hostname.toLowerCase();
-		const managedDomain =
-			hostname === DEFAULT_HOSTNAME
-				? null
-				: await getManagedDomainByHostname(db, hostname);
+	.get(
+		"/*",
+		async ({ db, request }) => {
+			const url = new URL(request.url);
+			const tMessage = createTranslator(localeFromRequest(request));
+			const slug = url.pathname.replace(/^\/+/, "");
+			const hostname = url.hostname.toLowerCase();
+			const managedDomain =
+				hostname === DEFAULT_HOSTNAME
+					? null
+					: await getManagedDomainByHostname(db, hostname);
 
-		if (!slug) {
-			const rootRedirect = managedDomainRedirectResponse(request, {
-				statusCode: managedDomain?.rootRedirectStatusCode ?? null,
-				targetUrl: managedDomain?.rootRedirectTargetUrl ?? null,
-			});
-			if (managedDomain?.rootBehavior === "redirect" && rootRedirect) {
-				return rootRedirect;
-			}
-			return new Response(tMessage("redirect.online"), { status: 200 });
-		}
-
-		const link = managedDomain
-			? await resolveExactRedirect(db, {
-					hostname,
-					slug,
-				})
-			: await resolveRedirect(db, {
-					hostname,
-					slug,
+			if (!slug) {
+				const rootRedirect = managedDomainRedirectResponse(request, {
+					statusCode: managedDomain?.rootRedirectStatusCode ?? null,
+					targetUrl: managedDomain?.rootRedirectTargetUrl ?? null,
 				});
-
-		if (!link) {
-			const unknownSlugRedirect = managedDomainRedirectResponse(request, {
-				statusCode: managedDomain?.unknownSlugRedirectStatusCode ?? null,
-				targetUrl: managedDomain?.unknownSlugRedirectTargetUrl ?? null,
-			});
-			if (
-				managedDomain?.unknownSlugBehavior === "redirect" &&
-				unknownSlugRedirect
-			) {
-				return unknownSlugRedirect;
+				if (managedDomain?.rootBehavior === "redirect" && rootRedirect) {
+					return rootRedirect;
+				}
+				return new Response(tMessage("redirect.online"), { status: 200 });
 			}
-			return new Response(tMessage("redirect.notFound"), { status: 404 });
-		}
 
-		const redirectTarget = buildRedirectTarget(
-			link.targetUrl,
-			request.url,
-			link.preserveQueryParams,
-		);
-		const analyticsTarget = buildAnalyticsTarget(
-			link.targetUrl,
-			request.url,
-			link.preserveQueryParams,
-		);
-		const cf = request.cf;
+			const link = managedDomain
+				? await resolveExactRedirect(db, {
+						hostname,
+						slug,
+					})
+				: await resolveRedirect(db, {
+						hostname,
+						slug,
+					});
 
-		const utm = extractUtmParams(request.url);
-
-		waitUntil(
-			(async () => {
-				await recordRedirectEvent(db, {
-					linkId: link.id,
-					hostname: link.hostname,
-					slug: link.slug,
-					targetUrl: analyticsTarget,
-					statusCode: link.statusCode,
-					city: typeof cf?.city === "string" ? cf.city : null,
-					colo: typeof cf?.colo === "string" ? cf.colo : null,
-					country: typeof cf?.country === "string" ? cf.country : null,
-					ipHash: await hashIp(getClientIp(request)),
-					referer: request.headers.get("referer"),
-					userAgent: request.headers.get("user-agent"),
-					...utm,
+			if (!link) {
+				const unknownSlugRedirect = managedDomainRedirectResponse(request, {
+					statusCode: managedDomain?.unknownSlugRedirectStatusCode ?? null,
+					targetUrl: managedDomain?.unknownSlugRedirectTargetUrl ?? null,
 				});
-			})(),
-		);
+				if (
+					managedDomain?.unknownSlugBehavior === "redirect" &&
+					unknownSlugRedirect
+				) {
+					return unknownSlugRedirect;
+				}
+				return new Response(tMessage("redirect.notFound"), { status: 404 });
+			}
 
-		return Response.redirect(
-			redirectTarget,
-			link.statusCode as RedirectStatusCode,
-		);
-	});
+			const redirectTarget = buildRedirectTarget(
+				link.targetUrl,
+				request.url,
+				link.preserveQueryParams,
+			);
+			const analyticsTarget = buildAnalyticsTarget(
+				link.targetUrl,
+				request.url,
+				link.preserveQueryParams,
+			);
+			const cf = request.cf;
+
+			const utm = extractUtmParams(request.url);
+
+			waitUntil(
+				(async () => {
+					await recordRedirectEvent(db, {
+						linkId: link.id,
+						hostname: link.hostname,
+						slug: link.slug,
+						targetUrl: analyticsTarget,
+						statusCode: link.statusCode,
+						city: typeof cf?.city === "string" ? cf.city : null,
+						colo: typeof cf?.colo === "string" ? cf.colo : null,
+						country: typeof cf?.country === "string" ? cf.country : null,
+						ipHash: await hashIp(getClientIp(request)),
+						referer: request.headers.get("referer"),
+						userAgent: request.headers.get("user-agent"),
+						...utm,
+					});
+				})(),
+			);
+
+			return Response.redirect(
+				redirectTarget,
+				link.statusCode as RedirectStatusCode,
+			);
+		},
+		{
+			detail: {
+				tags: ["Redirects"],
+				summary: "Resolve and redirect short link",
+			},
+		},
+	);
 
 export type App = typeof app;

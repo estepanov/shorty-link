@@ -7,6 +7,7 @@ const ORDER: readonly OrderEntry[] = [
 	"self-hosting",
 	"configuration",
 	"admin-api",
+	{ slug: "roadmap", children: ["roadmap/multi-service-architecture"] },
 	"upgrading",
 	"releases",
 ];
