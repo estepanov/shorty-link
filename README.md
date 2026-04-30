@@ -166,20 +166,28 @@ pnpm cf-typegen         # generate Cloudflare binding types
 pnpm db:migrate:local   # apply local D1 schema
 pnpm db:migrate:remote  # apply remote D1 schema
 pnpm deploy             # build and deploy
+pnpm postman:generate      # generate OpenAPI spec + Postman collection
 ```
 
 ## Routes
 
 - `/admin`: admin dashboard
-- `/admin/profile`: profile name, email, and locale
-- `/admin/sessions`: session management
-- `/admin/api-keys`: optional admin API key management
-- `/admin/invite/:token`: passkey-first invite acceptance
-- `/api/auth/*`: Better Auth
-- `/api/admin/*`: Elysia admin API with Server-Timing headers
+
+[... existing routes list ...]
+
 - `/:slug`: redirect lookup for non-reserved paths
 
 Reserved paths include `/admin`, `/api`, static asset paths, `favicon.ico`, `robots.txt`, and `manifest.webmanifest`.
+
+## API Documentation (OpenAPI / Swagger)
+
+In development (`pnpm dev`), an OpenAPI 3.0 spec is served at `/api/docs/json` with a Swagger UI at `/api/docs`. The spec is auto-generated from Elysia route schemas and is stripped from production builds.
+
+Generate `openapi.json` and a `postman-collection.json`:
+
+```bash
+pnpm docs:generate    # starts dev server, fetches spec, writes both files
+```
 
 ## Redirect Status Codes
 

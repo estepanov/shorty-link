@@ -31,7 +31,6 @@
 		"setup:local": "pnpm install && pnpm cf-typegen && pnpm db:migrate:local",
 		"docs:dev": "cd docs-site && pnpm install --ignore-workspace && pnpm dev --ignore-workspace",
 		"build:docs": "cd docs-site && pnpm install --ignore-workspace && pnpm build --ignore-workspace",
-		"docs:generate": "bash scripts/generate-docs.sh",
 		"postman:generate": "bash scripts/generate-docs.sh"
 	},
 	"dependencies": {

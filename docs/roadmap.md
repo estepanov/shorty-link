@@ -27,12 +27,13 @@ The roadmap is to keep that simple baseline while growing toward a more polished
 | Independent docs deployment | Planned | Let documentation build and ship without touching the runtime application Worker. | [Docs target](/roadmap/multi-service-architecture/#docs) |
 | Shared behavior modules | Planned | Extract normalization, redirect target construction, analytics event shape, and D1 schema in a way that does not pull UI or auth into the redirector. | [Shared code](/roadmap/multi-service-architecture/#shared-code) |
 | Staged migration | Planned | Move one boundary at a time while preserving current redirect behavior and the self-hosted upgrade path. | [Migration path](/roadmap/multi-service-architecture/#migration-path) |
+| Analytics pipeline | Planned | Evolve from direct `waitUntil` D1 writes to opt-in event emission with a consumer and rollup aggregator. | [Analytics pipeline](/roadmap/analytics-pipeline/) |
 
 ## Target shape
 
 The intended destination is a small set of deployable apps:
 
-- **Redirector:** public short-link resolution, domain fallback behavior, redirects, and analytics writes in `waitUntil`.
+- **Redirector:** public short-link resolution, domain fallback behavior, redirects, and analytics event emission (direct D1 write today; queue or Analytics Engine when bound).
 - **Admin:** dashboard, passkey authentication, roles, API keys, domains, links, invites, analytics views, and `/api/admin/*`.
 - **Docs:** static documentation with its own build and deploy lifecycle.
 - **Shared core:** schema, migrations, normalization, redirect construction, and types that must stay consistent across services.

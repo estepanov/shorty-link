@@ -31,7 +31,7 @@ Responsibilities:
 - Resolve hostname plus slug.
 - Preserve the exact-hostname-first, default-hostname-fallback behavior.
 - Build the redirect target and apply the configured status code.
-- Write analytics with `waitUntil` so the redirect response is not blocked.
+- Emit analytics events without blocking the redirect response. The default is a direct D1 write in `waitUntil`; an opt-in queue or Analytics Engine binding can replace the direct write without changing the redirector contract. See [Analytics pipeline](/roadmap/analytics-pipeline/).
 - Return domain root and unknown-slug fallback responses.
 
 The redirector should avoid dashboard, auth, role, invite, and OpenAPI dependencies.
@@ -69,7 +69,7 @@ Good candidates:
 - D1 schema and migrations.
 - Hostname and slug normalization.
 - Redirect target construction.
-- Analytics event shape.
+- Analytics event shape. This contract must be stable before a queue or external sink is introduced, since consumers will be versioned independently of the redirector.
 - Shared TypeScript types for service boundaries.
 
 Poor candidates:
