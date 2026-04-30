@@ -40,3 +40,27 @@ pnpm build
 pnpm db:migrate:local
 pnpm deploy
 ```
+
+## Cursor Cloud specific instructions
+
+### Local development without Cloudflare auth
+
+The `@cloudflare/vite-plugin` tries to establish a remote proxy for the AI binding. Without `CLOUDFLARE_API_TOKEN` set, this times out and crashes the dev server. The `vite.config.ts` conditionally sets `remoteBindings: false` when no token is available, allowing `pnpm dev` to work without Cloudflare credentials. The AI slug-suggestion feature will be unavailable (falls back to deterministic slug generation).
+
+### Agent browser auth for testing
+
+For headless/automated testing, enable `AGENT_BROWSER_AUTH_ENABLED=true` in `.dev.vars` and use the endpoint `GET /api/dev/agent-login?secret=<URL_ENCODED_SECRET>&redirect=/admin` to create a session without passkey interaction. The secret must match `AGENT_BROWSER_AUTH_SECRET` in `.dev.vars`.
+
+### Admin API CSRF protection
+
+POST/PUT/DELETE requests to `/api/admin/*` with cookie auth require an `Origin` header matching the request URL origin (CSRF protection). Requests without this header return 403.
+
+### Pre-existing issues
+
+- `pnpm lint` reports 6 pre-existing Biome errors and 5 warnings (mostly React hook dependency warnings).
+- `pnpm test` has 1 pre-existing failure in `test/admin-api-wrappers.test.ts` (expects 403 but receives 400).
+- A non-fatal `vite-tsconfig-paths` warning appears during dev about `docs-site/tsconfig.json` (astro not installed in root). This does not affect functionality.
+
+### First-time local DB setup
+
+Run `pnpm db:migrate:local` to apply D1 migrations before the first `pnpm dev`. The migrations create all tables including the `system_owner` role.
