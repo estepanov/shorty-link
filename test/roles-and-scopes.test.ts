@@ -205,12 +205,15 @@ describe("roles and scopes", () => {
 			.select({ id: shortLinks.id, hostname: shortLinks.hostname })
 			.from(shortLinks)
 			.where(eq(shortLinks.hostname, "y.example.com"));
-		expect(yRows[0]?.id).toBeDefined();
-		const yLinkId = yRows[0]?.id as string;
+		const y0 = yRows[0];
+		if (!y0) {
+			throw new Error("expected y link row");
+		}
+		expect(y0.id).toBeDefined();
 		const onlyY = await listShortLinks(
 			db,
 			{},
-			{ hostnames: null, linkIds: new Set([yLinkId]) },
+			{ hostnames: null, linkIds: new Set([y0.id]) },
 		);
 		expect(onlyY.items).toHaveLength(1);
 		expect(onlyY.items[0]?.hostname).toBe("y.example.com");
@@ -221,7 +224,7 @@ describe("roles and scopes", () => {
 			{},
 			{
 				hostnames: new Set(["x.example.com"]),
-				linkIds: new Set([yLinkId]),
+				linkIds: new Set([y0.id]),
 			},
 		);
 		expect(union.items).toHaveLength(2);
