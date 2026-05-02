@@ -55,9 +55,9 @@ For headless/automated testing, enable `AGENT_BROWSER_AUTH_ENABLED=true` in `.de
 
 POST/PUT/DELETE requests to `/api/admin/*` with cookie auth require an `Origin` header matching the request URL origin (CSRF protection). Requests without this header return 403.
 
-### Pre-existing issues
+### Generated API docs (`openapi.json`, `postman-collection.json`)
 
-- A non-fatal `vite-tsconfig-paths` warning appears during dev and in Vitest about `docs-site/tsconfig.json` (Astro is not installed in the root workspace). This does not affect functionality.
+These files are formatted with Biome. Regenerate with `pnpm docs:generate` (which runs `scripts/generate-docs.sh` and then formats both files). If you edit them by hand, run `pnpm exec biome format --write openapi.json postman-collection.json` before CI.
 
 ### First-time local DB setup
 

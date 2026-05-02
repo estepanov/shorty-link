@@ -33,6 +33,9 @@ npx --yes openapi-to-postmanv2 \
 	-p 2>/dev/null || npx openapi-to-postmanv2 -s "$OPENAPI_FILE" -o "$POSTMAN_FILE"
 echo "✅ $POSTMAN_FILE generated"
 
+echo "Formatting OpenAPI and Postman JSON for Biome CI..."
+pnpm exec biome format --write "$OPENAPI_FILE" "$POSTMAN_FILE"
+
 # Cleanup
 kill $DEV_PID 2>/dev/null || true
 echo "Done."
