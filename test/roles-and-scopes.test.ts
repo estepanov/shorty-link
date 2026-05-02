@@ -200,18 +200,17 @@ describe("roles and scopes", () => {
 		expect(scoped.items[0]?.hostname).toBe("x.example.com");
 
 		// linkScope-only union: include just one specific link id
-		const xRows = await db
-			.select({ id: shortLinks.id, hostname: shortLinks.hostname })
-			.from(shortLinks)
-			.where(eq(shortLinks.hostname, "x.example.com"));
+		expect(scoped.items[0]?.id).toBeDefined();
 		const yRows = await db
 			.select({ id: shortLinks.id, hostname: shortLinks.hostname })
 			.from(shortLinks)
 			.where(eq(shortLinks.hostname, "y.example.com"));
+		expect(yRows[0]?.id).toBeDefined();
+		const yLinkId = yRows[0]?.id as string;
 		const onlyY = await listShortLinks(
 			db,
 			{},
-			{ hostnames: null, linkIds: new Set([yRows[0]!.id]) },
+			{ hostnames: null, linkIds: new Set([yLinkId]) },
 		);
 		expect(onlyY.items).toHaveLength(1);
 		expect(onlyY.items[0]?.hostname).toBe("y.example.com");
@@ -222,7 +221,7 @@ describe("roles and scopes", () => {
 			{},
 			{
 				hostnames: new Set(["x.example.com"]),
-				linkIds: new Set([yRows[0]!.id]),
+				linkIds: new Set([yLinkId]),
 			},
 		);
 		expect(union.items).toHaveLength(2);

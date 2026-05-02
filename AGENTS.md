@@ -40,3 +40,25 @@ pnpm build
 pnpm db:migrate:local
 pnpm deploy
 ```
+
+## Cursor Cloud specific instructions
+
+### Local development without Cloudflare auth
+
+The `@cloudflare/vite-plugin` tries to establish a remote proxy for the AI binding. Without `CLOUDFLARE_API_TOKEN` set, this times out and crashes the dev server. The `vite.config.ts` conditionally sets `remoteBindings: false` when no token is available, allowing `pnpm dev` to work without Cloudflare credentials. The AI slug-suggestion feature will be unavailable (falls back to deterministic slug generation).
+
+### Agent browser auth for testing
+
+For headless/automated testing, enable `AGENT_BROWSER_AUTH_ENABLED=true` in `.dev.vars` and use the endpoint `GET /api/dev/agent-login?secret=<URL_ENCODED_SECRET>&redirect=/admin` to create a session without passkey interaction. The secret must match `AGENT_BROWSER_AUTH_SECRET` in `.dev.vars`.
+
+### Admin API CSRF protection
+
+POST/PUT/DELETE requests to `/api/admin/*` with cookie auth require an `Origin` header matching the request URL origin (CSRF protection). Requests without this header return 403.
+
+### Generated API docs (`openapi.json`, `postman-collection.json`)
+
+These files are formatted with Biome. Regenerate with `pnpm docs:generate` (which runs `scripts/generate-docs.sh` and then formats both files). If you edit them by hand, run `pnpm exec biome format --write openapi.json postman-collection.json` before CI.
+
+### First-time local DB setup
+
+Run `pnpm db:migrate:local` to apply D1 migrations before the first `pnpm dev`. The migrations create all tables including the `system_owner` role.

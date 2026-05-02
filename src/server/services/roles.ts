@@ -1,15 +1,4 @@
-import {
-	and,
-	count,
-	desc,
-	eq,
-	gt,
-	inArray,
-	isNull,
-	ne,
-	or,
-	sql,
-} from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNull, ne, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
