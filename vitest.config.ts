@@ -1,9 +1,8 @@
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-	plugins: [tsconfigPaths()],
 	resolve: {
+		tsconfigPaths: true,
 		alias: {
 			"cloudflare:workers": new URL(
 				"./test/cloudflare-workers-mock.ts",

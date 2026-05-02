@@ -19,7 +19,9 @@
 			"!src/routeTree.gen.ts",
 			"!worker-configuration.d.ts",
 			"!migrations",
-			"!pnpm-lock.yaml"
+			"!pnpm-lock.yaml",
+			"!openapi.json",
+			"!postman-collection.json"
 		]
 	},
 	"formatter": {

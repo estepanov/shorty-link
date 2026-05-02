@@ -141,7 +141,7 @@ function DomainList() {
 		}
 
 		void refresh();
-	}, [isDomainListRoute, session?.user.id]);
+	}, [isDomainListRoute, session]);
 
 	if (!isDomainListRoute) {
 		return <Outlet />;

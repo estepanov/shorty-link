@@ -5,7 +5,6 @@ import {
 	Outlet,
 	useLocation,
 	useNavigate,
-	useRouter,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { DataPagination } from "@/components/data-pagination";
@@ -65,7 +64,6 @@ const defaultFilters: RoleFilters = {
 
 function RolesTab() {
 	const location = useLocation();
-	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
 	const { hasPermission } = useAuthContext();
 	const isRolesListRoute =
@@ -131,13 +129,7 @@ function RolesTab() {
 		if (session && isRolesListRoute) {
 			void refresh();
 		}
-	}, [
-		session?.user.id,
-		filters.pageSize,
-		filters.search,
-		page,
-		isRolesListRoute,
-	]);
+	}, [session, filters.pageSize, filters.search, page, isRolesListRoute]);
 
 	if (!isRolesListRoute) {
 		return <Outlet />;
