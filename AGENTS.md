@@ -57,9 +57,7 @@ POST/PUT/DELETE requests to `/api/admin/*` with cookie auth require an `Origin` 
 
 ### Pre-existing issues
 
-- `pnpm lint` reports 6 pre-existing Biome errors and 5 warnings (mostly React hook dependency warnings).
-- `pnpm test` has 1 pre-existing failure in `test/admin-api-wrappers.test.ts` (expects 403 but receives 400).
-- A non-fatal `vite-tsconfig-paths` warning appears during dev about `docs-site/tsconfig.json` (astro not installed in root). This does not affect functionality.
+- A non-fatal `vite-tsconfig-paths` warning appears during dev and in Vitest about `docs-site/tsconfig.json` (Astro is not installed in the root workspace). This does not affect functionality.
 
 ### First-time local DB setup
 

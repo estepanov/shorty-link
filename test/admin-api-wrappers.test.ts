@@ -312,7 +312,7 @@ describe("admin api auth wrappers", () => {
 		});
 
 		const inviteResponse = await app.fetch(
-			new Request("https://shorty.test/api/admin/invites/invite-token-value"),
+			new Request("https://shorty.test/api/invites/invite-token-value"),
 		);
 		expect(inviteResponse.status).toBe(403);
 		await expect(inviteResponse.json()).resolves.toMatchObject({
@@ -322,7 +322,7 @@ describe("admin api auth wrappers", () => {
 		expect(mocks.getInviteByToken).not.toHaveBeenCalled();
 
 		const onboardingResponse = await app.fetch(
-			new Request("https://shorty.test/api/admin/onboarding/invite", {
+			new Request("https://shorty.test/api/onboarding/invite", {
 				body: JSON.stringify({
 					locale: "en",
 					name: "Invited Admin",
