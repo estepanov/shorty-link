@@ -200,6 +200,7 @@ describe("roles and scopes", () => {
 		expect(scoped.items[0]?.hostname).toBe("x.example.com");
 
 		// linkScope-only union: include just one specific link id
+		expect(scoped.items[0]?.id).toBeDefined();
 		const yRows = await db
 			.select({ id: shortLinks.id, hostname: shortLinks.hostname })
 			.from(shortLinks)
@@ -208,6 +209,7 @@ describe("roles and scopes", () => {
 		if (!y0) {
 			throw new Error("expected y link row");
 		}
+		expect(y0.id).toBeDefined();
 		const onlyY = await listShortLinks(
 			db,
 			{},

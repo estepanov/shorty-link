@@ -1,1 +1,1734 @@
-{"openapi":"3.0.3","info":{"title":"Shorty Link API","description":"Development documentation","version":"0.1.0"},"paths":{"/api/health":{"get":{"operationId":"getApiHealth","tags":["Health"],"summary":"Health check","responses":{"200":{}}}},"/api/dev/agent-login":{"get":{"parameters":[{"schema":{"type":"string","format":"email"},"in":"query","name":"email","required":false},{"schema":{"type":"string"},"in":"query","name":"locale","required":false},{"schema":{"type":"string"},"in":"query","name":"name","required":false},{"schema":{"type":"string"},"in":"query","name":"redirect","required":false},{"schema":{"type":"string"},"in":"query","name":"secret","required":false}],"operationId":"getApiDevAgent-login","tags":["Dev"],"summary":"Agent browser login","description":"Dev-only endpoint returning HTML for agent browser authentication.","responses":{"200":{}}}},"/api/admin/bootstrap":{"get":{"operationId":"getApiAdminBootstrap","tags":["Onboarding"],"summary":"Check bootstrap state","responses":{"200":{}}}},"/api/admin/onboarding/bootstrap":{"post":{"parameters":[],"operationId":"postApiAdminOnboardingBootstrap","tags":["Onboarding"],"summary":"Complete onboarding bootstrap","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["email","name"],"properties":{"email":{"format":"email","type":"string"},"locale":{"type":"string"},"name":{"minLength":2,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["email","name"],"properties":{"email":{"format":"email","type":"string"},"locale":{"type":"string"},"name":{"minLength":2,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["email","name"],"properties":{"email":{"format":"email","type":"string"},"locale":{"type":"string"},"name":{"minLength":2,"type":"string"}}}}}},"responses":{"200":{}}}},"/api/admin/dashboard":{"get":{"operationId":"getApiAdminDashboard","tags":["Dashboard"],"summary":"Get dashboard data","responses":{"200":{}}}},"/api/admin/profile":{"get":{"operationId":"getApiAdminProfile","tags":["Profile"],"summary":"Get current user profile","responses":{"200":{}}},"patch":{"parameters":[],"operationId":"patchApiAdminProfile","tags":["Profile"],"summary":"Update current user profile","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["email","name"],"properties":{"email":{"format":"email","type":"string"},"locale":{"type":"string"},"name":{"minLength":2,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["email","name"],"properties":{"email":{"format":"email","type":"string"},"locale":{"type":"string"},"name":{"minLength":2,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["email","name"],"properties":{"email":{"format":"email","type":"string"},"locale":{"type":"string"},"name":{"minLength":2,"type":"string"}}}}}},"responses":{"200":{}}}},"/api/admin/auth-context":{"get":{"operationId":"getApiAdminAuth-context","tags":["Auth"],"summary":"Get current auth context","responses":{"200":{}}}},"/api/admin/links":{"get":{"parameters":[{"schema":{"anyOf":[{"const":"active","type":"string"},{"const":"inactive","type":"string"},{"const":"all","type":"string"}]},"in":"query","name":"active","required":false},{"schema":{"type":"string"},"in":"query","name":"hostname","required":false},{"schema":{"type":"number","minimum":1},"in":"query","name":"page","required":false},{"schema":{"type":"number","minimum":1,"maximum":100},"in":"query","name":"pageSize","required":false},{"schema":{"type":"string"},"in":"query","name":"search","required":false},{"schema":{"type":"number","minimum":301,"maximum":308},"in":"query","name":"statusCode","required":false}],"operationId":"getApiAdminLinks","tags":["Links"],"summary":"List links","responses":{"200":{}}},"post":{"parameters":[],"operationId":"postApiAdminLinks","tags":["Links"],"summary":"Create link","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["targetUrl"],"properties":{"hostname":{"type":"string"},"slug":{"type":"string"},"targetUrl":{"minLength":1,"type":"string"},"title":{"type":"string"},"notes":{"type":"string"},"statusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"preserveQueryParams":{"type":"boolean"},"isActive":{"type":"boolean"}}}},"multipart/form-data":{"schema":{"type":"object","required":["targetUrl"],"properties":{"hostname":{"type":"string"},"slug":{"type":"string"},"targetUrl":{"minLength":1,"type":"string"},"title":{"type":"string"},"notes":{"type":"string"},"statusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"preserveQueryParams":{"type":"boolean"},"isActive":{"type":"boolean"}}}},"text/plain":{"schema":{"type":"object","required":["targetUrl"],"properties":{"hostname":{"type":"string"},"slug":{"type":"string"},"targetUrl":{"minLength":1,"type":"string"},"title":{"type":"string"},"notes":{"type":"string"},"statusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"preserveQueryParams":{"type":"boolean"},"isActive":{"type":"boolean"}}}}}},"responses":{"200":{}}}},"/api/admin/links/{id}":{"get":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"getApiAdminLinksById","tags":["Links"],"summary":"Get link by ID","responses":{"200":{}}},"patch":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"patchApiAdminLinksById","tags":["Links"],"summary":"Update link","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["targetUrl"],"properties":{"hostname":{"type":"string"},"slug":{"type":"string"},"targetUrl":{"minLength":1,"type":"string"},"title":{"type":"string"},"notes":{"type":"string"},"statusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"preserveQueryParams":{"type":"boolean"},"isActive":{"type":"boolean"}}}},"multipart/form-data":{"schema":{"type":"object","required":["targetUrl"],"properties":{"hostname":{"type":"string"},"slug":{"type":"string"},"targetUrl":{"minLength":1,"type":"string"},"title":{"type":"string"},"notes":{"type":"string"},"statusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"preserveQueryParams":{"type":"boolean"},"isActive":{"type":"boolean"}}}},"text/plain":{"schema":{"type":"object","required":["targetUrl"],"properties":{"hostname":{"type":"string"},"slug":{"type":"string"},"targetUrl":{"minLength":1,"type":"string"},"title":{"type":"string"},"notes":{"type":"string"},"statusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"preserveQueryParams":{"type":"boolean"},"isActive":{"type":"boolean"}}}}}},"responses":{"200":{}}},"delete":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"deleteApiAdminLinksById","tags":["Links"],"summary":"Delete link","responses":{"200":{}}}},"/api/admin/links/{id}/stats":{"get":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true},{"schema":{"type":"number","minimum":1,"maximum":180},"in":"query","name":"days","required":false}],"operationId":"getApiAdminLinksByIdStats","tags":["Links"],"summary":"Get link statistics","responses":{"200":{}}}},"/api/admin/domains":{"get":{"operationId":"getApiAdminDomains","tags":["Domains"],"summary":"List domains","responses":{"200":{}}},"post":{"parameters":[],"operationId":"postApiAdminDomains","tags":["Domains"],"summary":"Create domain","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["hostname"],"properties":{"hostname":{"minLength":1,"type":"string"},"label":{"type":"string"},"isPrimary":{"type":"boolean"},"isActive":{"type":"boolean"},"rootBehavior":{"anyOf":[{"const":"landing","type":"string"},{"const":"redirect","type":"string"}]},"rootRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"rootRedirectTargetUrl":{"type":"string"},"unknownSlugBehavior":{"anyOf":[{"const":"not_found","type":"string"},{"const":"redirect","type":"string"}]},"unknownSlugRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"unknownSlugRedirectTargetUrl":{"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["hostname"],"properties":{"hostname":{"minLength":1,"type":"string"},"label":{"type":"string"},"isPrimary":{"type":"boolean"},"isActive":{"type":"boolean"},"rootBehavior":{"anyOf":[{"const":"landing","type":"string"},{"const":"redirect","type":"string"}]},"rootRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"rootRedirectTargetUrl":{"type":"string"},"unknownSlugBehavior":{"anyOf":[{"const":"not_found","type":"string"},{"const":"redirect","type":"string"}]},"unknownSlugRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"unknownSlugRedirectTargetUrl":{"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["hostname"],"properties":{"hostname":{"minLength":1,"type":"string"},"label":{"type":"string"},"isPrimary":{"type":"boolean"},"isActive":{"type":"boolean"},"rootBehavior":{"anyOf":[{"const":"landing","type":"string"},{"const":"redirect","type":"string"}]},"rootRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"rootRedirectTargetUrl":{"type":"string"},"unknownSlugBehavior":{"anyOf":[{"const":"not_found","type":"string"},{"const":"redirect","type":"string"}]},"unknownSlugRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"unknownSlugRedirectTargetUrl":{"type":"string"}}}}}},"responses":{"200":{}}}},"/api/admin/domains/{id}":{"get":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"getApiAdminDomainsById","tags":["Domains"],"summary":"Get domain by ID","responses":{"200":{}}},"patch":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"patchApiAdminDomainsById","tags":["Domains"],"summary":"Update domain","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["hostname"],"properties":{"hostname":{"minLength":1,"type":"string"},"label":{"type":"string"},"isPrimary":{"type":"boolean"},"isActive":{"type":"boolean"},"rootBehavior":{"anyOf":[{"const":"landing","type":"string"},{"const":"redirect","type":"string"}]},"rootRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"rootRedirectTargetUrl":{"type":"string"},"unknownSlugBehavior":{"anyOf":[{"const":"not_found","type":"string"},{"const":"redirect","type":"string"}]},"unknownSlugRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"unknownSlugRedirectTargetUrl":{"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["hostname"],"properties":{"hostname":{"minLength":1,"type":"string"},"label":{"type":"string"},"isPrimary":{"type":"boolean"},"isActive":{"type":"boolean"},"rootBehavior":{"anyOf":[{"const":"landing","type":"string"},{"const":"redirect","type":"string"}]},"rootRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"rootRedirectTargetUrl":{"type":"string"},"unknownSlugBehavior":{"anyOf":[{"const":"not_found","type":"string"},{"const":"redirect","type":"string"}]},"unknownSlugRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"unknownSlugRedirectTargetUrl":{"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["hostname"],"properties":{"hostname":{"minLength":1,"type":"string"},"label":{"type":"string"},"isPrimary":{"type":"boolean"},"isActive":{"type":"boolean"},"rootBehavior":{"anyOf":[{"const":"landing","type":"string"},{"const":"redirect","type":"string"}]},"rootRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"rootRedirectTargetUrl":{"type":"string"},"unknownSlugBehavior":{"anyOf":[{"const":"not_found","type":"string"},{"const":"redirect","type":"string"}]},"unknownSlugRedirectStatusCode":{"anyOf":[{"const":301,"type":"number"},{"const":302,"type":"number"},{"const":303,"type":"number"},{"const":307,"type":"number"},{"const":308,"type":"number"}]},"unknownSlugRedirectTargetUrl":{"type":"string"}}}}}},"responses":{"200":{}}},"delete":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"deleteApiAdminDomainsById","tags":["Domains"],"summary":"Delete domain","responses":{"200":{}}}},"/api/admin/invites":{"post":{"parameters":[],"operationId":"postApiAdminInvites","tags":["Invites"],"summary":"Create invite","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["email"],"properties":{"email":{"format":"email","type":"string"},"expiresInDays":{"minimum":1,"maximum":30,"type":"number"},"roleId":{"minLength":1,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["email"],"properties":{"email":{"format":"email","type":"string"},"expiresInDays":{"minimum":1,"maximum":30,"type":"number"},"roleId":{"minLength":1,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["email"],"properties":{"email":{"format":"email","type":"string"},"expiresInDays":{"minimum":1,"maximum":30,"type":"number"},"roleId":{"minLength":1,"type":"string"}}}}}},"responses":{"200":{}}},"get":{"parameters":[{"schema":{"type":"number","minimum":1},"in":"query","name":"page","required":false},{"schema":{"type":"number","minimum":1,"maximum":100},"in":"query","name":"pageSize","required":false},{"schema":{"type":"string","minLength":1},"in":"query","name":"roleId","required":false},{"schema":{"type":"string"},"in":"query","name":"search","required":false},{"schema":{"anyOf":[{"const":"pending","type":"string"},{"const":"expired","type":"string"},{"const":"accepted","type":"string"},{"const":"all","type":"string"}]},"in":"query","name":"status","required":false}],"operationId":"getApiAdminInvites","tags":["Invites"],"summary":"List invites","responses":{"200":{}}},"delete":{"parameters":[],"operationId":"deleteApiAdminInvites","tags":["Invites"],"summary":"Delete invite","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["id"],"properties":{"id":{"minLength":1,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["id"],"properties":{"id":{"minLength":1,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["id"],"properties":{"id":{"minLength":1,"type":"string"}}}}}},"responses":{"200":{}}}},"/api/admin/invites/{id}":{"get":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"getApiAdminInvitesById","tags":["Invites"],"summary":"Get invite by ID","responses":{"200":{}}},"patch":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"patchApiAdminInvitesById","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"email":{"format":"email","type":"string"},"roleId":{"minLength":1,"type":"string"},"expiresInDays":{"minimum":1,"maximum":30,"type":"number"}}}},"multipart/form-data":{"schema":{"type":"object","properties":{"email":{"format":"email","type":"string"},"roleId":{"minLength":1,"type":"string"},"expiresInDays":{"minimum":1,"maximum":30,"type":"number"}}}},"text/plain":{"schema":{"type":"object","properties":{"email":{"format":"email","type":"string"},"roleId":{"minLength":1,"type":"string"},"expiresInDays":{"minimum":1,"maximum":30,"type":"number"}}}}}},"responses":{"200":{}}}},"/api/admin/users":{"get":{"parameters":[{"schema":{"anyOf":[{"const":"active","type":"string"},{"const":"inactive","type":"string"},{"const":"all","type":"string"}]},"in":"query","name":"active","required":false},{"schema":{"type":"number","minimum":1},"in":"query","name":"page","required":false},{"schema":{"type":"number","minimum":1,"maximum":100},"in":"query","name":"pageSize","required":false},{"schema":{"type":"string","minLength":1},"in":"query","name":"roleId","required":false},{"schema":{"type":"string"},"in":"query","name":"search","required":false}],"operationId":"getApiAdminUsers","tags":["Users"],"summary":"List users","responses":{"200":{}}}},"/api/admin/users/{id}":{"get":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"getApiAdminUsersById","tags":["Users"],"summary":"Get user by ID","responses":{"200":{}}},"patch":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"patchApiAdminUsersById","tags":["Users"],"summary":"Update user","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"isActive":{"type":"boolean"},"name":{"minLength":2,"type":"string"},"email":{"format":"email","type":"string"},"locale":{"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","properties":{"isActive":{"type":"boolean"},"name":{"minLength":2,"type":"string"},"email":{"format":"email","type":"string"},"locale":{"type":"string"}}}},"text/plain":{"schema":{"type":"object","properties":{"isActive":{"type":"boolean"},"name":{"minLength":2,"type":"string"},"email":{"format":"email","type":"string"},"locale":{"type":"string"}}}}}},"responses":{"200":{}}},"delete":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"deleteApiAdminUsersById","tags":["Users"],"summary":"Delete user","responses":{"200":{}}}},"/api/admin/users/{id}/role":{"patch":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"patchApiAdminUsersByIdRole","tags":["Users"],"summary":"Assign user role","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["roleId"],"properties":{"roleId":{"minLength":1,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["roleId"],"properties":{"roleId":{"minLength":1,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["roleId"],"properties":{"roleId":{"minLength":1,"type":"string"}}}}}},"responses":{"200":{}}}},"/api/admin/sessions":{"get":{"operationId":"getApiAdminSessions","tags":["Sessions"],"summary":"List active sessions","responses":{"200":{}}}},"/api/admin/sessions/revoke":{"post":{"parameters":[],"operationId":"postApiAdminSessionsRevoke","tags":["Sessions"],"summary":"Revoke a session","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["token"],"properties":{"token":{"minLength":1,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["token"],"properties":{"token":{"minLength":1,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["token"],"properties":{"token":{"minLength":1,"type":"string"}}}}}},"responses":{"200":{}}}},"/api/admin/sessions/revoke-other":{"post":{"operationId":"postApiAdminSessionsRevoke-other","tags":["Sessions"],"summary":"Revoke all other sessions","responses":{"200":{}}}},"/api/admin/sessions/current":{"delete":{"operationId":"deleteApiAdminSessionsCurrent","tags":["Sessions"],"summary":"Sign out current session","responses":{"200":{}}}},"/api/admin/api-keys":{"get":{"parameters":[{"schema":{"type":"number","minimum":1,"maximum":100},"in":"query","name":"limit","required":false},{"schema":{"type":"number","minimum":0},"in":"query","name":"offset","required":false},{"schema":{"anyOf":[{"const":"createdAt","type":"string"},{"const":"name","type":"string"}]},"in":"query","name":"sortBy","required":false},{"schema":{"anyOf":[{"const":"asc","type":"string"},{"const":"desc","type":"string"}]},"in":"query","name":"sortDirection","required":false}],"operationId":"getApiAdminApi-keys","tags":["API Keys"],"summary":"List API keys","responses":{"200":{}}},"post":{"parameters":[],"operationId":"postApiAdminApi-keys","tags":["API Keys"],"summary":"Create API key","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["name"],"properties":{"expiresInDays":{"minimum":1,"maximum":365,"type":"number"},"name":{"minLength":1,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["name"],"properties":{"expiresInDays":{"minimum":1,"maximum":365,"type":"number"},"name":{"minLength":1,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["name"],"properties":{"expiresInDays":{"minimum":1,"maximum":365,"type":"number"},"name":{"minLength":1,"type":"string"}}}}}},"responses":{"200":{}}}},"/api/admin/api-keys/{id}":{"patch":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"patchApiAdminApi-keysById","tags":["API Keys"],"summary":"Update API key","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"enabled":{"type":"boolean"},"expiresInDays":{"minimum":1,"maximum":365,"type":"number"},"name":{"minLength":1,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","properties":{"enabled":{"type":"boolean"},"expiresInDays":{"minimum":1,"maximum":365,"type":"number"},"name":{"minLength":1,"type":"string"}}}},"text/plain":{"schema":{"type":"object","properties":{"enabled":{"type":"boolean"},"expiresInDays":{"minimum":1,"maximum":365,"type":"number"},"name":{"minLength":1,"type":"string"}}}}}},"responses":{"200":{}}},"delete":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"deleteApiAdminApi-keysById","tags":["API Keys"],"summary":"Delete API key","responses":{"200":{}}}},"/api/admin/suggest-slug":{"get":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"query","name":"targetUrl","required":true}],"operationId":"getApiAdminSuggest-slug","tags":["Links"],"summary":"Suggest a slug from URL","responses":{"200":{}}}},"/api/admin/permissions":{"get":{"operationId":"getApiAdminPermissions","tags":["Roles"],"summary":"List all permissions and groups","responses":{"200":{}}}},"/api/admin/roles/assignable":{"get":{"operationId":"getApiAdminRolesAssignable","tags":["Roles"],"summary":"List assignable roles","responses":{"200":{}}}},"/api/admin/roles":{"get":{"parameters":[{"schema":{"type":"number","minimum":1},"in":"query","name":"page","required":false},{"schema":{"type":"number","minimum":1,"maximum":100},"in":"query","name":"pageSize","required":false},{"schema":{"type":"string"},"in":"query","name":"search","required":false}],"operationId":"getApiAdminRoles","tags":["Roles"],"summary":"List roles","responses":{"200":{}}},"post":{"parameters":[],"operationId":"postApiAdminRoles","tags":["Roles"],"summary":"Create role","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["name","permissions"],"properties":{"name":{"minLength":1,"maxLength":64,"type":"string"},"description":{"type":"string"},"permissions":{"minItems":1,"type":"array","items":{"minLength":1,"type":"string"}},"domainScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}},"linkScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}}}}},"multipart/form-data":{"schema":{"type":"object","required":["name","permissions"],"properties":{"name":{"minLength":1,"maxLength":64,"type":"string"},"description":{"type":"string"},"permissions":{"minItems":1,"type":"array","items":{"minLength":1,"type":"string"}},"domainScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}},"linkScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}}}}},"text/plain":{"schema":{"type":"object","required":["name","permissions"],"properties":{"name":{"minLength":1,"maxLength":64,"type":"string"},"description":{"type":"string"},"permissions":{"minItems":1,"type":"array","items":{"minLength":1,"type":"string"}},"domainScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}},"linkScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}}}}}}},"responses":{"200":{}}}},"/api/admin/roles/{id}":{"get":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"getApiAdminRolesById","tags":["Roles"],"summary":"Get role by ID","responses":{"200":{}}},"patch":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"patchApiAdminRolesById","tags":["Roles"],"summary":"Update role","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["name","permissions"],"properties":{"name":{"minLength":1,"maxLength":64,"type":"string"},"description":{"type":"string"},"permissions":{"minItems":1,"type":"array","items":{"minLength":1,"type":"string"}},"domainScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}},"linkScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}}}}},"multipart/form-data":{"schema":{"type":"object","required":["name","permissions"],"properties":{"name":{"minLength":1,"maxLength":64,"type":"string"},"description":{"type":"string"},"permissions":{"minItems":1,"type":"array","items":{"minLength":1,"type":"string"}},"domainScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}},"linkScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}}}}},"text/plain":{"schema":{"type":"object","required":["name","permissions"],"properties":{"name":{"minLength":1,"maxLength":64,"type":"string"},"description":{"type":"string"},"permissions":{"minItems":1,"type":"array","items":{"minLength":1,"type":"string"}},"domainScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}},"linkScopeIds":{"type":"array","items":{"minLength":1,"type":"string"}}}}}}},"responses":{"200":{}}},"delete":{"parameters":[{"schema":{"type":"string","minLength":1},"in":"path","name":"id","required":true}],"operationId":"deleteApiAdminRolesById","tags":["Roles"],"summary":"Delete role","responses":{"200":{}}}},"/api/invites/{token}":{"get":{"parameters":[{"schema":{"type":"string","minLength":16},"in":"path","name":"token","required":true}],"operationId":"getApiInvitesByToken","tags":["Invites"],"summary":"Lookup invite by token","responses":{"200":{}}}},"/api/onboarding/invite":{"post":{"parameters":[],"operationId":"postApiOnboardingInvite","tags":["Onboarding"],"summary":"Accept onboarding invite","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["name","token"],"properties":{"locale":{"type":"string"},"name":{"minLength":2,"type":"string"},"token":{"minLength":16,"type":"string"}}}},"multipart/form-data":{"schema":{"type":"object","required":["name","token"],"properties":{"locale":{"type":"string"},"name":{"minLength":2,"type":"string"},"token":{"minLength":16,"type":"string"}}}},"text/plain":{"schema":{"type":"object","required":["name","token"],"properties":{"locale":{"type":"string"},"name":{"minLength":2,"type":"string"},"token":{"minLength":16,"type":"string"}}}}}},"responses":{"200":{}}}}},"components":{"schemas":{}}}
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Shorty Link API",
+		"description": "Development documentation",
+		"version": "0.1.0"
+	},
+	"paths": {
+		"/api/health": {
+			"get": {
+				"operationId": "getApiHealth",
+				"tags": ["Health"],
+				"summary": "Health check",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/dev/agent-login": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "format": "email" },
+						"in": "query",
+						"name": "email",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "locale",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "name",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "redirect",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "secret",
+						"required": false
+					}
+				],
+				"operationId": "getApiDevAgent-login",
+				"tags": ["Dev"],
+				"summary": "Agent browser login",
+				"description": "Dev-only endpoint returning HTML for agent browser authentication.",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/bootstrap": {
+			"get": {
+				"operationId": "getApiAdminBootstrap",
+				"tags": ["Onboarding"],
+				"summary": "Check bootstrap state",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/onboarding/bootstrap": {
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminOnboardingBootstrap",
+				"tags": ["Onboarding"],
+				"summary": "Complete onboarding bootstrap",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["email", "name"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["email", "name"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["email", "name"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/dashboard": {
+			"get": {
+				"operationId": "getApiAdminDashboard",
+				"tags": ["Dashboard"],
+				"summary": "Get dashboard data",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/profile": {
+			"get": {
+				"operationId": "getApiAdminProfile",
+				"tags": ["Profile"],
+				"summary": "Get current user profile",
+				"responses": { "200": {} }
+			},
+			"patch": {
+				"parameters": [],
+				"operationId": "patchApiAdminProfile",
+				"tags": ["Profile"],
+				"summary": "Update current user profile",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["email", "name"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["email", "name"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["email", "name"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/auth-context": {
+			"get": {
+				"operationId": "getApiAdminAuth-context",
+				"tags": ["Auth"],
+				"summary": "Get current auth context",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/links": {
+			"get": {
+				"parameters": [
+					{
+						"schema": {
+							"anyOf": [
+								{ "const": "active", "type": "string" },
+								{ "const": "inactive", "type": "string" },
+								{ "const": "all", "type": "string" }
+							]
+						},
+						"in": "query",
+						"name": "active",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "hostname",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 1 },
+						"in": "query",
+						"name": "page",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 1, "maximum": 100 },
+						"in": "query",
+						"name": "pageSize",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "search",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 301, "maximum": 308 },
+						"in": "query",
+						"name": "statusCode",
+						"required": false
+					}
+				],
+				"operationId": "getApiAdminLinks",
+				"tags": ["Links"],
+				"summary": "List links",
+				"responses": { "200": {} }
+			},
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminLinks",
+				"tags": ["Links"],
+				"summary": "Create link",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["targetUrl"],
+								"properties": {
+									"hostname": { "type": "string" },
+									"slug": { "type": "string" },
+									"targetUrl": { "minLength": 1, "type": "string" },
+									"title": { "type": "string" },
+									"notes": { "type": "string" },
+									"statusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"preserveQueryParams": { "type": "boolean" },
+									"isActive": { "type": "boolean" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["targetUrl"],
+								"properties": {
+									"hostname": { "type": "string" },
+									"slug": { "type": "string" },
+									"targetUrl": { "minLength": 1, "type": "string" },
+									"title": { "type": "string" },
+									"notes": { "type": "string" },
+									"statusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"preserveQueryParams": { "type": "boolean" },
+									"isActive": { "type": "boolean" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["targetUrl"],
+								"properties": {
+									"hostname": { "type": "string" },
+									"slug": { "type": "string" },
+									"targetUrl": { "minLength": 1, "type": "string" },
+									"title": { "type": "string" },
+									"notes": { "type": "string" },
+									"statusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"preserveQueryParams": { "type": "boolean" },
+									"isActive": { "type": "boolean" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/links/{id}": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminLinksById",
+				"tags": ["Links"],
+				"summary": "Get link by ID",
+				"responses": { "200": {} }
+			},
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminLinksById",
+				"tags": ["Links"],
+				"summary": "Update link",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["targetUrl"],
+								"properties": {
+									"hostname": { "type": "string" },
+									"slug": { "type": "string" },
+									"targetUrl": { "minLength": 1, "type": "string" },
+									"title": { "type": "string" },
+									"notes": { "type": "string" },
+									"statusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"preserveQueryParams": { "type": "boolean" },
+									"isActive": { "type": "boolean" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["targetUrl"],
+								"properties": {
+									"hostname": { "type": "string" },
+									"slug": { "type": "string" },
+									"targetUrl": { "minLength": 1, "type": "string" },
+									"title": { "type": "string" },
+									"notes": { "type": "string" },
+									"statusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"preserveQueryParams": { "type": "boolean" },
+									"isActive": { "type": "boolean" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["targetUrl"],
+								"properties": {
+									"hostname": { "type": "string" },
+									"slug": { "type": "string" },
+									"targetUrl": { "minLength": 1, "type": "string" },
+									"title": { "type": "string" },
+									"notes": { "type": "string" },
+									"statusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"preserveQueryParams": { "type": "boolean" },
+									"isActive": { "type": "boolean" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			},
+			"delete": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "deleteApiAdminLinksById",
+				"tags": ["Links"],
+				"summary": "Delete link",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/links/{id}/stats": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					},
+					{
+						"schema": { "type": "number", "minimum": 1, "maximum": 180 },
+						"in": "query",
+						"name": "days",
+						"required": false
+					}
+				],
+				"operationId": "getApiAdminLinksByIdStats",
+				"tags": ["Links"],
+				"summary": "Get link statistics",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/domains": {
+			"get": {
+				"operationId": "getApiAdminDomains",
+				"tags": ["Domains"],
+				"summary": "List domains",
+				"responses": { "200": {} }
+			},
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminDomains",
+				"tags": ["Domains"],
+				"summary": "Create domain",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["hostname"],
+								"properties": {
+									"hostname": { "minLength": 1, "type": "string" },
+									"label": { "type": "string" },
+									"isPrimary": { "type": "boolean" },
+									"isActive": { "type": "boolean" },
+									"rootBehavior": {
+										"anyOf": [
+											{ "const": "landing", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"rootRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"rootRedirectTargetUrl": { "type": "string" },
+									"unknownSlugBehavior": {
+										"anyOf": [
+											{ "const": "not_found", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"unknownSlugRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"unknownSlugRedirectTargetUrl": { "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["hostname"],
+								"properties": {
+									"hostname": { "minLength": 1, "type": "string" },
+									"label": { "type": "string" },
+									"isPrimary": { "type": "boolean" },
+									"isActive": { "type": "boolean" },
+									"rootBehavior": {
+										"anyOf": [
+											{ "const": "landing", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"rootRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"rootRedirectTargetUrl": { "type": "string" },
+									"unknownSlugBehavior": {
+										"anyOf": [
+											{ "const": "not_found", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"unknownSlugRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"unknownSlugRedirectTargetUrl": { "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["hostname"],
+								"properties": {
+									"hostname": { "minLength": 1, "type": "string" },
+									"label": { "type": "string" },
+									"isPrimary": { "type": "boolean" },
+									"isActive": { "type": "boolean" },
+									"rootBehavior": {
+										"anyOf": [
+											{ "const": "landing", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"rootRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"rootRedirectTargetUrl": { "type": "string" },
+									"unknownSlugBehavior": {
+										"anyOf": [
+											{ "const": "not_found", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"unknownSlugRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"unknownSlugRedirectTargetUrl": { "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/domains/{id}": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminDomainsById",
+				"tags": ["Domains"],
+				"summary": "Get domain by ID",
+				"responses": { "200": {} }
+			},
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminDomainsById",
+				"tags": ["Domains"],
+				"summary": "Update domain",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["hostname"],
+								"properties": {
+									"hostname": { "minLength": 1, "type": "string" },
+									"label": { "type": "string" },
+									"isPrimary": { "type": "boolean" },
+									"isActive": { "type": "boolean" },
+									"rootBehavior": {
+										"anyOf": [
+											{ "const": "landing", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"rootRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"rootRedirectTargetUrl": { "type": "string" },
+									"unknownSlugBehavior": {
+										"anyOf": [
+											{ "const": "not_found", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"unknownSlugRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"unknownSlugRedirectTargetUrl": { "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["hostname"],
+								"properties": {
+									"hostname": { "minLength": 1, "type": "string" },
+									"label": { "type": "string" },
+									"isPrimary": { "type": "boolean" },
+									"isActive": { "type": "boolean" },
+									"rootBehavior": {
+										"anyOf": [
+											{ "const": "landing", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"rootRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"rootRedirectTargetUrl": { "type": "string" },
+									"unknownSlugBehavior": {
+										"anyOf": [
+											{ "const": "not_found", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"unknownSlugRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"unknownSlugRedirectTargetUrl": { "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["hostname"],
+								"properties": {
+									"hostname": { "minLength": 1, "type": "string" },
+									"label": { "type": "string" },
+									"isPrimary": { "type": "boolean" },
+									"isActive": { "type": "boolean" },
+									"rootBehavior": {
+										"anyOf": [
+											{ "const": "landing", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"rootRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"rootRedirectTargetUrl": { "type": "string" },
+									"unknownSlugBehavior": {
+										"anyOf": [
+											{ "const": "not_found", "type": "string" },
+											{ "const": "redirect", "type": "string" }
+										]
+									},
+									"unknownSlugRedirectStatusCode": {
+										"anyOf": [
+											{ "const": 301, "type": "number" },
+											{ "const": 302, "type": "number" },
+											{ "const": 303, "type": "number" },
+											{ "const": 307, "type": "number" },
+											{ "const": 308, "type": "number" }
+										]
+									},
+									"unknownSlugRedirectTargetUrl": { "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			},
+			"delete": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "deleteApiAdminDomainsById",
+				"tags": ["Domains"],
+				"summary": "Delete domain",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/invites": {
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminInvites",
+				"tags": ["Invites"],
+				"summary": "Create invite",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["email"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 30,
+										"type": "number"
+									},
+									"roleId": { "minLength": 1, "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["email"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 30,
+										"type": "number"
+									},
+									"roleId": { "minLength": 1, "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["email"],
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 30,
+										"type": "number"
+									},
+									"roleId": { "minLength": 1, "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			},
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "number", "minimum": 1 },
+						"in": "query",
+						"name": "page",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 1, "maximum": 100 },
+						"in": "query",
+						"name": "pageSize",
+						"required": false
+					},
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "query",
+						"name": "roleId",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "search",
+						"required": false
+					},
+					{
+						"schema": {
+							"anyOf": [
+								{ "const": "pending", "type": "string" },
+								{ "const": "expired", "type": "string" },
+								{ "const": "accepted", "type": "string" },
+								{ "const": "all", "type": "string" }
+							]
+						},
+						"in": "query",
+						"name": "status",
+						"required": false
+					}
+				],
+				"operationId": "getApiAdminInvites",
+				"tags": ["Invites"],
+				"summary": "List invites",
+				"responses": { "200": {} }
+			},
+			"delete": {
+				"parameters": [],
+				"operationId": "deleteApiAdminInvites",
+				"tags": ["Invites"],
+				"summary": "Delete invite",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["id"],
+								"properties": { "id": { "minLength": 1, "type": "string" } }
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["id"],
+								"properties": { "id": { "minLength": 1, "type": "string" } }
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["id"],
+								"properties": { "id": { "minLength": 1, "type": "string" } }
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/invites/{id}": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminInvitesById",
+				"tags": ["Invites"],
+				"summary": "Get invite by ID",
+				"responses": { "200": {} }
+			},
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminInvitesById",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"roleId": { "minLength": 1, "type": "string" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 30,
+										"type": "number"
+									}
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"roleId": { "minLength": 1, "type": "string" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 30,
+										"type": "number"
+									}
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"email": { "format": "email", "type": "string" },
+									"roleId": { "minLength": 1, "type": "string" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 30,
+										"type": "number"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/users": {
+			"get": {
+				"parameters": [
+					{
+						"schema": {
+							"anyOf": [
+								{ "const": "active", "type": "string" },
+								{ "const": "inactive", "type": "string" },
+								{ "const": "all", "type": "string" }
+							]
+						},
+						"in": "query",
+						"name": "active",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 1 },
+						"in": "query",
+						"name": "page",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 1, "maximum": 100 },
+						"in": "query",
+						"name": "pageSize",
+						"required": false
+					},
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "query",
+						"name": "roleId",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "search",
+						"required": false
+					}
+				],
+				"operationId": "getApiAdminUsers",
+				"tags": ["Users"],
+				"summary": "List users",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/users/{id}": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminUsersById",
+				"tags": ["Users"],
+				"summary": "Get user by ID",
+				"responses": { "200": {} }
+			},
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminUsersById",
+				"tags": ["Users"],
+				"summary": "Update user",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"isActive": { "type": "boolean" },
+									"name": { "minLength": 2, "type": "string" },
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"isActive": { "type": "boolean" },
+									"name": { "minLength": 2, "type": "string" },
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"isActive": { "type": "boolean" },
+									"name": { "minLength": 2, "type": "string" },
+									"email": { "format": "email", "type": "string" },
+									"locale": { "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			},
+			"delete": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "deleteApiAdminUsersById",
+				"tags": ["Users"],
+				"summary": "Delete user",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/users/{id}/role": {
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminUsersByIdRole",
+				"tags": ["Users"],
+				"summary": "Assign user role",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["roleId"],
+								"properties": { "roleId": { "minLength": 1, "type": "string" } }
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["roleId"],
+								"properties": { "roleId": { "minLength": 1, "type": "string" } }
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["roleId"],
+								"properties": { "roleId": { "minLength": 1, "type": "string" } }
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sessions": {
+			"get": {
+				"operationId": "getApiAdminSessions",
+				"tags": ["Sessions"],
+				"summary": "List active sessions",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sessions/revoke": {
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminSessionsRevoke",
+				"tags": ["Sessions"],
+				"summary": "Revoke a session",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["token"],
+								"properties": { "token": { "minLength": 1, "type": "string" } }
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["token"],
+								"properties": { "token": { "minLength": 1, "type": "string" } }
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["token"],
+								"properties": { "token": { "minLength": 1, "type": "string" } }
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sessions/revoke-other": {
+			"post": {
+				"operationId": "postApiAdminSessionsRevoke-other",
+				"tags": ["Sessions"],
+				"summary": "Revoke all other sessions",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sessions/current": {
+			"delete": {
+				"operationId": "deleteApiAdminSessionsCurrent",
+				"tags": ["Sessions"],
+				"summary": "Sign out current session",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/api-keys": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "number", "minimum": 1, "maximum": 100 },
+						"in": "query",
+						"name": "limit",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 0 },
+						"in": "query",
+						"name": "offset",
+						"required": false
+					},
+					{
+						"schema": {
+							"anyOf": [
+								{ "const": "createdAt", "type": "string" },
+								{ "const": "name", "type": "string" }
+							]
+						},
+						"in": "query",
+						"name": "sortBy",
+						"required": false
+					},
+					{
+						"schema": {
+							"anyOf": [
+								{ "const": "asc", "type": "string" },
+								{ "const": "desc", "type": "string" }
+							]
+						},
+						"in": "query",
+						"name": "sortDirection",
+						"required": false
+					}
+				],
+				"operationId": "getApiAdminApi-keys",
+				"tags": ["API Keys"],
+				"summary": "List API keys",
+				"responses": { "200": {} }
+			},
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminApi-keys",
+				"tags": ["API Keys"],
+				"summary": "Create API key",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["name"],
+								"properties": {
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 365,
+										"type": "number"
+									},
+									"name": { "minLength": 1, "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["name"],
+								"properties": {
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 365,
+										"type": "number"
+									},
+									"name": { "minLength": 1, "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["name"],
+								"properties": {
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 365,
+										"type": "number"
+									},
+									"name": { "minLength": 1, "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/api-keys/{id}": {
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminApi-keysById",
+				"tags": ["API Keys"],
+				"summary": "Update API key",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"enabled": { "type": "boolean" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 365,
+										"type": "number"
+									},
+									"name": { "minLength": 1, "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"enabled": { "type": "boolean" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 365,
+										"type": "number"
+									},
+									"name": { "minLength": 1, "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"enabled": { "type": "boolean" },
+									"expiresInDays": {
+										"minimum": 1,
+										"maximum": 365,
+										"type": "number"
+									},
+									"name": { "minLength": 1, "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			},
+			"delete": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "deleteApiAdminApi-keysById",
+				"tags": ["API Keys"],
+				"summary": "Delete API key",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/suggest-slug": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "query",
+						"name": "targetUrl",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminSuggest-slug",
+				"tags": ["Links"],
+				"summary": "Suggest a slug from URL",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/permissions": {
+			"get": {
+				"operationId": "getApiAdminPermissions",
+				"tags": ["Roles"],
+				"summary": "List all permissions and groups",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/roles/assignable": {
+			"get": {
+				"operationId": "getApiAdminRolesAssignable",
+				"tags": ["Roles"],
+				"summary": "List assignable roles",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/roles": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "number", "minimum": 1 },
+						"in": "query",
+						"name": "page",
+						"required": false
+					},
+					{
+						"schema": { "type": "number", "minimum": 1, "maximum": 100 },
+						"in": "query",
+						"name": "pageSize",
+						"required": false
+					},
+					{
+						"schema": { "type": "string" },
+						"in": "query",
+						"name": "search",
+						"required": false
+					}
+				],
+				"operationId": "getApiAdminRoles",
+				"tags": ["Roles"],
+				"summary": "List roles",
+				"responses": { "200": {} }
+			},
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminRoles",
+				"tags": ["Roles"],
+				"summary": "Create role",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "permissions"],
+								"properties": {
+									"name": { "minLength": 1, "maxLength": 64, "type": "string" },
+									"description": { "type": "string" },
+									"permissions": {
+										"minItems": 1,
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"domainScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"linkScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									}
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "permissions"],
+								"properties": {
+									"name": { "minLength": 1, "maxLength": 64, "type": "string" },
+									"description": { "type": "string" },
+									"permissions": {
+										"minItems": 1,
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"domainScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"linkScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									}
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "permissions"],
+								"properties": {
+									"name": { "minLength": 1, "maxLength": 64, "type": "string" },
+									"description": { "type": "string" },
+									"permissions": {
+										"minItems": 1,
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"domainScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"linkScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/roles/{id}": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminRolesById",
+				"tags": ["Roles"],
+				"summary": "Get role by ID",
+				"responses": { "200": {} }
+			},
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminRolesById",
+				"tags": ["Roles"],
+				"summary": "Update role",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "permissions"],
+								"properties": {
+									"name": { "minLength": 1, "maxLength": 64, "type": "string" },
+									"description": { "type": "string" },
+									"permissions": {
+										"minItems": 1,
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"domainScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"linkScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									}
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "permissions"],
+								"properties": {
+									"name": { "minLength": 1, "maxLength": 64, "type": "string" },
+									"description": { "type": "string" },
+									"permissions": {
+										"minItems": 1,
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"domainScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"linkScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									}
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "permissions"],
+								"properties": {
+									"name": { "minLength": 1, "maxLength": 64, "type": "string" },
+									"description": { "type": "string" },
+									"permissions": {
+										"minItems": 1,
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"domainScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									},
+									"linkScopeIds": {
+										"type": "array",
+										"items": { "minLength": 1, "type": "string" }
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			},
+			"delete": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				],
+				"operationId": "deleteApiAdminRolesById",
+				"tags": ["Roles"],
+				"summary": "Delete role",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/invites/{token}": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 16 },
+						"in": "path",
+						"name": "token",
+						"required": true
+					}
+				],
+				"operationId": "getApiInvitesByToken",
+				"tags": ["Invites"],
+				"summary": "Lookup invite by token",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/onboarding/invite": {
+			"post": {
+				"parameters": [],
+				"operationId": "postApiOnboardingInvite",
+				"tags": ["Onboarding"],
+				"summary": "Accept onboarding invite",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "token"],
+								"properties": {
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" },
+									"token": { "minLength": 16, "type": "string" }
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "token"],
+								"properties": {
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" },
+									"token": { "minLength": 16, "type": "string" }
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": ["name", "token"],
+								"properties": {
+									"locale": { "type": "string" },
+									"name": { "minLength": 2, "type": "string" },
+									"token": { "minLength": 16, "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		}
+	},
+	"components": { "schemas": {} }
+}

@@ -81,6 +81,11 @@
 		"wrangler": "^4.87.0"
 	},
 	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild",
+			"sharp",
+			"workerd"
+		],
 		"overrides": {
 			"@esbuild-kit/core-utils>esbuild": "0.25.12"
 		}
