@@ -58,7 +58,6 @@ import {
 	listDomains,
 	listShortLinks,
 	normalizeHostname,
-	recordRedirectEvent,
 	resolveExactRedirect,
 	resolveRedirect,
 	saveDomain,
@@ -66,6 +65,7 @@ import {
 	suggestSlugFromUrl,
 	updateInvite,
 } from "../services/links";
+import { recordClick } from "../services/analytics/record-click";
 import {
 	createRole,
 	deleteRole,
@@ -1424,20 +1424,26 @@ export const app = new Elysia({
 
 			waitUntil(
 				(async () => {
-					await recordRedirectEvent(db, {
-						linkId: link.id,
-						hostname: link.hostname,
-						slug: link.slug,
-						targetUrl: analyticsTarget,
-						statusCode: link.statusCode,
-						city: typeof cf?.city === "string" ? cf.city : null,
-						colo: typeof cf?.colo === "string" ? cf.colo : null,
-						country: typeof cf?.country === "string" ? cf.country : null,
-						ipHash: await hashIp(getClientIp(request)),
-						referer: request.headers.get("referer"),
-						userAgent: request.headers.get("user-agent"),
-						...utm,
-					});
+					try {
+						await recordClick(db, {
+							linkId: link.id,
+							hostname: link.hostname,
+							slug: link.slug,
+							targetUrl: analyticsTarget,
+							statusCode: link.statusCode,
+							city: typeof cf?.city === "string" ? cf.city : null,
+							colo: typeof cf?.colo === "string" ? cf.colo : null,
+							country: typeof cf?.country === "string" ? cf.country : null,
+							ipHash: await hashIp(getClientIp(request)),
+							referer: request.headers.get("referer"),
+							userAgent: request.headers.get("user-agent"),
+							...utm,
+						});
+					} catch (error) {
+						apiLog.warning("redirect analytics failed", {
+							error: serializeError(error),
+						});
+					}
 				})(),
 			);
 

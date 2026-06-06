@@ -83,8 +83,8 @@ Fields the shape must cover:
 
 The split should happen in stages and remain reversible at each step.
 
-1. Extract `recordClick` into a small module behind a stable interface. Keep the direct D1 write as the only implementation.
-2. Stabilize the analytics event shape and add a schema version field.
+1. **Done:** Extract `recordClick` into `src/server/services/analytics/record-click.ts` with a stable `RecordClickInput` contract. The only implementation today is still the direct D1 write inside `waitUntil`.
+2. **Done:** Persist `event_schema_version` on each `redirect_event` row (`REDIRECT_EVENT_SCHEMA_VERSION` in `src/server/db/redirect-event-schema-version.ts`) so future queue consumers can branch on the stored shape.
 3. Add a Queues-backed implementation of `recordClick` plus a consumer Worker that writes the same rows the direct path writes. Select by binding presence.
 4. Add the rollup tables and an aggregator Cron Trigger. Switch admin dashboard reads to the rollups.
 5. Add an Analytics Engine implementation of `recordClick` as a second optional sink.

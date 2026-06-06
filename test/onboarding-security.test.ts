@@ -1,5 +1,4 @@
-import { mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -17,29 +16,7 @@ import {
 	user,
 } from "../src/server/db/schema";
 import { deleteInvite, listAllInvites } from "../src/server/services/users";
-
-async function applyMigrations(database: D1Database) {
-	for (const file of [
-		"0000_fresh_shorty_link.sql",
-		"0001_redirect_event_utm.sql",
-		"0002_short_link_last_click.sql",
-		"0005_managed_domain_fallbacks.sql",
-		"0003_user_is_active.sql",
-		"0004_roles_and_scopes.sql",
-		"0006_user_invited_by.sql",
-	]) {
-		const statements = readFileSync(
-			join(process.cwd(), "migrations", file),
-			"utf8",
-		)
-			.split(";")
-			.map((statement) => statement.trim())
-			.filter(Boolean);
-		for (const statement of statements) {
-			await database.prepare(statement).run();
-		}
-	}
-}
+import { applyD1Migrations } from "./apply-d1-migrations";
 
 describe("onboarding security", () => {
 	let proxy: Awaited<ReturnType<typeof getPlatformProxy>> | null = null;
@@ -57,7 +34,7 @@ describe("onboarding security", () => {
 			remoteBindings: false,
 		});
 		const database = (proxy.env as { DB: D1Database }).DB;
-		await applyMigrations(database);
+		await applyD1Migrations(database);
 		db = drizzle(database, { schema });
 	});
 

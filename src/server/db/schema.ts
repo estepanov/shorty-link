@@ -5,6 +5,7 @@ import {
 	text,
 	uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import { REDIRECT_EVENT_SCHEMA_VERSION } from "./redirect-event-schema-version";
 
 export const DEFAULT_HOSTNAME = "__default__";
 
@@ -280,6 +281,9 @@ export const redirectEvents = sqliteTable(
 		utmCampaign: text("utm_campaign"),
 		utmTerm: text("utm_term"),
 		utmContent: text("utm_content"),
+		eventSchemaVersion: integer("event_schema_version")
+			.notNull()
+			.default(REDIRECT_EVENT_SCHEMA_VERSION),
 		createdAt: integer("created_at").notNull(),
 	},
 	(table) => [

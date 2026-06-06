@@ -1,5 +1,4 @@
-import { mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync } from "node:fs";
 
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -7,15 +6,17 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
+import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
+import { recordClick } from "../src/server/services/analytics/record-click";
 import {
 	getLinkStats,
 	getManagedDomainByHostname,
 	listShortLinks,
-	recordRedirectEvent,
 	resolveExactRedirect,
 	saveDomain,
 	saveLink,
 } from "../src/server/services/links";
+import { applyD1Migrations } from "./apply-d1-migrations";
 
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -23,27 +24,6 @@ function startOfUtcDay(timestamp: number) {
 	const date = new Date(timestamp);
 	date.setUTCHours(0, 0, 0, 0);
 	return date.getTime();
-}
-
-async function applyMigrations(database: D1Database) {
-	for (const file of [
-		"0000_fresh_shorty_link.sql",
-		"0001_redirect_event_utm.sql",
-		"0002_short_link_last_click.sql",
-		"0005_managed_domain_fallbacks.sql",
-		"0008_redirect_event_user_agent_dimensions.sql",
-	]) {
-		const statements = readFileSync(
-			join(process.cwd(), "migrations", file),
-			"utf8",
-		)
-			.split(";")
-			.map((statement) => statement.trim())
-			.filter(Boolean);
-		for (const statement of statements) {
-			await database.prepare(statement).run();
-		}
-	}
 }
 
 describe("link services", () => {
@@ -61,7 +41,7 @@ describe("link services", () => {
 			remoteBindings: false,
 		});
 		const database = (proxy.env as { DB: D1Database }).DB;
-		await applyMigrations(database);
+		await applyD1Migrations(database);
 		db = drizzle(database, { schema });
 	});
 
@@ -260,6 +240,7 @@ describe("link services", () => {
 				userAgentOs: "Windows",
 				userAgentDeviceType: "desktop",
 				userAgentIsBot: false,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
 				createdAt: windowStart + 1_000,
 			},
 			{
@@ -275,6 +256,7 @@ describe("link services", () => {
 				userAgentOs: "iOS",
 				userAgentDeviceType: "mobile",
 				userAgentIsBot: false,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
 				createdAt: windowStart + dayMs + 1_000,
 			},
 			{
@@ -290,6 +272,7 @@ describe("link services", () => {
 				userAgentOs: "Linux",
 				userAgentDeviceType: "desktop",
 				userAgentIsBot: false,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
 				createdAt: windowStart - dayMs,
 			},
 		]);
@@ -325,7 +308,7 @@ describe("link services", () => {
 			targetUrl: "https://example.com/utm",
 		});
 
-		await recordRedirectEvent(db, {
+		await recordClick(db, {
 			linkId,
 			hostname: "__default__",
 			slug: "utm",
@@ -350,6 +333,7 @@ describe("link services", () => {
 			.where(eq(shortLinks.id, linkId));
 
 		expect(event).toMatchObject({
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
 			utmCampaign: "spring",
 			utmContent: "hero",
 			utmMedium: "email",

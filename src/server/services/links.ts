@@ -37,7 +37,6 @@ import {
 	shortLinks,
 	user,
 } from "../db/schema";
-import { parseRedirectUserAgent } from "./user-agent";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export type ScopeFilter = {
@@ -1198,72 +1197,4 @@ export function extractUtmParams(requestUrl: string) {
 			utmContent: null,
 		};
 	}
-}
-
-function truncateStoredText(
-	value: string | null | undefined,
-	maxLength: number,
-) {
-	const normalized = value?.trim();
-	return normalized ? normalized.slice(0, maxLength) : null;
-}
-
-export async function recordRedirectEvent(
-	db: AppDb,
-	input: {
-		linkId: string;
-		hostname: string;
-		slug: string;
-		targetUrl: string;
-		statusCode: number;
-		country?: string | null;
-		city?: string | null;
-		colo?: string | null;
-		referer?: string | null;
-		userAgent?: string | null;
-		ipHash?: string | null;
-		utmSource?: string | null;
-		utmMedium?: string | null;
-		utmCampaign?: string | null;
-		utmTerm?: string | null;
-		utmContent?: string | null;
-	},
-) {
-	const timestamp = now();
-	const userAgent = truncateStoredText(input.userAgent, 512);
-	const parsedUserAgent = parseRedirectUserAgent(userAgent);
-
-	await db.insert(redirectEvents).values({
-		id: nanoid(),
-		linkId: input.linkId,
-		hostname: input.hostname,
-		slug: input.slug,
-		targetUrl: input.targetUrl,
-		statusCode: input.statusCode,
-		country: truncateStoredText(input.country, 32),
-		city: truncateStoredText(input.city, 128),
-		colo: truncateStoredText(input.colo, 32),
-		referer: truncateStoredText(input.referer, 2048),
-		userAgent,
-		userAgentBrowser: parsedUserAgent.browser,
-		userAgentOs: parsedUserAgent.os,
-		userAgentDeviceType: parsedUserAgent.deviceType,
-		userAgentIsBot: parsedUserAgent.isBot,
-		ipHash: input.ipHash ?? null,
-		utmSource: truncateStoredText(input.utmSource, 256),
-		utmMedium: truncateStoredText(input.utmMedium, 256),
-		utmCampaign: truncateStoredText(input.utmCampaign, 256),
-		utmTerm: truncateStoredText(input.utmTerm, 256),
-		utmContent: truncateStoredText(input.utmContent, 256),
-		createdAt: timestamp,
-	});
-
-	await db
-		.update(shortLinks)
-		.set({
-			hitCount: sql`${shortLinks.hitCount} + 1`,
-			lastClickAt: timestamp,
-			updatedAt: timestamp,
-		})
-		.where(eq(shortLinks.id, input.linkId));
 }
