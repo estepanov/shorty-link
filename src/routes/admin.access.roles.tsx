@@ -129,13 +129,7 @@ function RolesTab() {
 		if (session && isRolesListRoute) {
 			void refresh();
 		}
-	}, [
-		session?.user.id,
-		filters.pageSize,
-		filters.search,
-		page,
-		isRolesListRoute,
-	]);
+	}, [session, filters.pageSize, filters.search, page, isRolesListRoute]);
 
 	if (!isRolesListRoute) {
 		return <Outlet />;
