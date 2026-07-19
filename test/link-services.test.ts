@@ -4,9 +4,8 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
-
-import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
+import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
 import { recordClick } from "../src/server/services/analytics/record-click";
 import {
 	getLinkStats,
