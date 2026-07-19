@@ -1,2 +1,13 @@
 packages:
   - "."
+
+allowBuilds:
+  esbuild: true
+  msw: true
+  sharp: true
+  workerd: true
+
+minimumReleaseAge: 0
+
+overrides:
+  "@esbuild-kit/core-utils>esbuild": "0.25.12"

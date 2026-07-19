@@ -6,7 +6,7 @@ Shorty Link is designed to be forked and deployed to your own Cloudflare account
 
 - Cloudflare account
 - Node.js 22
-- pnpm 10
+- pnpm 11
 - Wrangler access to your Cloudflare account
 - A Cloudflare D1 database
 - One or more hostnames routed to the Worker
