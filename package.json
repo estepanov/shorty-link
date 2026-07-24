@@ -1,6 +1,6 @@
 {
 	"name": "shorty-link",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "A single-deploy Cloudflare Workers URL shortener with Elysia, TanStack Start, Better Auth passkeys, and D1.",
 	"type": "module",
 	"private": false,
