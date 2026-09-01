@@ -1,0 +1,210 @@
+import { mkdirSync } from "node:fs";
+
+import { eq, lt } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { getPlatformProxy } from "wrangler";
+import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
+import {
+	analyticsAggregationState,
+	redirectEvents,
+	schema,
+	shortLinks,
+} from "../src/server/db/schema";
+import { aggregateAnalytics } from "../src/server/services/analytics/aggregate";
+import {
+	parseRetentionDays,
+	readRetentionDays,
+} from "../src/server/services/analytics/retention";
+import { getLinkStats } from "../src/server/services/analytics/stats";
+import { saveLink } from "../src/server/services/links";
+import { applyD1Migrations } from "./apply-d1-migrations";
+
+const dayMs = 24 * 60 * 60 * 1000;
+
+function startOfUtcDay(timestamp: number) {
+	const date = new Date(timestamp);
+	date.setUTCHours(0, 0, 0, 0);
+	return date.getTime();
+}
+
+describe("analytics rollups and retention", () => {
+	let proxy: Awaited<ReturnType<typeof getPlatformProxy>> | null = null;
+	let db: ReturnType<typeof drizzle<typeof schema>>;
+
+	beforeEach(async () => {
+		mkdirSync("/tmp/wrangler-logs", { recursive: true });
+		process.env.WRANGLER_LOG_PATH = "/tmp/wrangler-logs";
+		process.env.WRANGLER_LOG = "error";
+
+		proxy = await getPlatformProxy({
+			configPath: "wrangler.jsonc",
+			persist: false,
+			remoteBindings: false,
+		});
+		const database = (proxy.env as { DB: D1Database }).DB;
+		await applyD1Migrations(database);
+		db = drizzle(database, { schema });
+	});
+
+	afterEach(async () => {
+		await proxy?.dispose();
+		proxy = null;
+	});
+
+	it("does not write aggregation state when there are no new events", async () => {
+		await aggregateAnalytics(db, { now: Date.now() });
+
+		const states = await db.select().from(analyticsAggregationState);
+		expect(states).toEqual([]);
+	});
+
+	it("reads raw events until the aggregator has run, then matches from rollups", async () => {
+		const linkId = await saveLink(db, {
+			slug: "stats",
+			targetUrl: "https://example.com/stats",
+		});
+		const windowStart = startOfUtcDay(Date.now() - dayMs);
+
+		await db.insert(redirectEvents).values([
+			{
+				id: "event-window-null",
+				linkId,
+				hostname: "__default__",
+				slug: "stats",
+				targetUrl: "https://example.com/stats",
+				statusCode: 302,
+				utmSource: null,
+				utmMedium: "email",
+				userAgentBrowser: "Chrome",
+				userAgentOs: "Windows",
+				userAgentDeviceType: "desktop",
+				userAgentIsBot: false,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: windowStart + 1_000,
+			},
+			{
+				id: "event-window-newsletter",
+				linkId,
+				hostname: "__default__",
+				slug: "stats",
+				targetUrl: "https://example.com/stats",
+				statusCode: 302,
+				utmSource: "newsletter",
+				utmMedium: "email",
+				userAgentBrowser: "Safari",
+				userAgentOs: "iOS",
+				userAgentDeviceType: "mobile",
+				userAgentIsBot: false,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: windowStart + dayMs + 1_000,
+			},
+			{
+				id: "event-old",
+				linkId,
+				hostname: "__default__",
+				slug: "stats",
+				targetUrl: "https://example.com/stats",
+				statusCode: 302,
+				utmSource: "old",
+				utmMedium: "social",
+				userAgentBrowser: "Firefox",
+				userAgentOs: "Linux",
+				userAgentDeviceType: "desktop",
+				userAgentIsBot: false,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: windowStart - dayMs,
+			},
+		]);
+
+		const rawStats = await getLinkStats(db, linkId, {
+			breakdownLimit: 5,
+			days: 2,
+		});
+		expect(rawStats.totals).toEqual({ allTime: 3, window: 2 });
+
+		await aggregateAnalytics(db, { now: Date.now() });
+
+		const rolled = await getLinkStats(db, linkId, {
+			breakdownLimit: 5,
+			days: 2,
+		});
+		expect(rolled.totals).toEqual(rawStats.totals);
+		expect(rolled.histogram).toEqual(rawStats.histogram);
+		expect(rolled.breakdowns).toEqual(rawStats.breakdowns);
+		expect(rolled.userAgents).toEqual(rawStats.userAgents);
+		expect(rolled.recentEvents).toHaveLength(3);
+	});
+
+	it("increments rollups for new events only and retains rolled-up raw rows", async () => {
+		const linkId = await saveLink(db, {
+			slug: "retain",
+			targetUrl: "https://example.com/retain",
+		});
+		const now = Date.now();
+		const oldDay = startOfUtcDay(now - 10 * dayMs);
+
+		await db.insert(redirectEvents).values({
+			id: "old-click",
+			linkId,
+			hostname: "__default__",
+			slug: "retain",
+			targetUrl: "https://example.com/retain",
+			statusCode: 302,
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+			createdAt: oldDay + 1_000,
+		});
+
+		await aggregateAnalytics(db, { now, retainDays: 7 });
+
+		await db.insert(redirectEvents).values({
+			id: "new-click",
+			linkId,
+			hostname: "__default__",
+			slug: "retain",
+			targetUrl: "https://example.com/retain",
+			statusCode: 302,
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+			createdAt: now,
+		});
+
+		await aggregateAnalytics(db, { now, retainDays: 7 });
+
+		const remaining = await db
+			.select({ id: redirectEvents.id })
+			.from(redirectEvents)
+			.where(eq(redirectEvents.linkId, linkId));
+		const [link] = await db
+			.select()
+			.from(shortLinks)
+			.where(eq(shortLinks.id, linkId));
+		const stats = await getLinkStats(db, linkId, { days: 30 });
+		const stale = await db
+			.select({ id: redirectEvents.id })
+			.from(redirectEvents)
+			.where(lt(redirectEvents.createdAt, now - 7 * dayMs));
+
+		expect(remaining.map((row) => row.id)).toEqual(["new-click"]);
+		expect(stale).toHaveLength(0);
+		expect(stats.totals.allTime).toBe(2);
+		expect(link?.hitCount).toBe(0);
+	});
+});
+
+describe("analytics retention config", () => {
+	it("parses a positive day count and ignores unset values", () => {
+		expect(parseRetentionDays(undefined)).toBeUndefined();
+		expect(parseRetentionDays("")).toBeUndefined();
+		expect(parseRetentionDays("0")).toBeUndefined();
+		expect(parseRetentionDays("-1")).toBeUndefined();
+		expect(parseRetentionDays("90")).toBe(90);
+		expect(parseRetentionDays(" 14 ")).toBe(14);
+		expect(readRetentionDays({})).toBeUndefined();
+		expect(
+			readRetentionDays({ ANALYTICS_RAW_EVENT_RETENTION_DAYS: 90 }),
+		).toBeUndefined();
+		expect(
+			readRetentionDays({ ANALYTICS_RAW_EVENT_RETENTION_DAYS: "30" }),
+		).toBe(30);
+	});
+});

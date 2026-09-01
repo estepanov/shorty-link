@@ -1,0 +1,24 @@
+export function parseRetentionDays(
+	value: string | undefined,
+): number | undefined {
+	if (!value) {
+		return undefined;
+	}
+
+	const parsed = Number.parseInt(value.trim(), 10);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		return undefined;
+	}
+
+	return parsed;
+}
+
+export function readRetentionDays(env: object): number | undefined {
+	if (!("ANALYTICS_RAW_EVENT_RETENTION_DAYS" in env)) {
+		return undefined;
+	}
+
+	const value = (env as { ANALYTICS_RAW_EVENT_RETENTION_DAYS?: unknown })
+		.ANALYTICS_RAW_EVENT_RETENTION_DAYS;
+	return typeof value === "string" ? parseRetentionDays(value) : undefined;
+}

@@ -1,6 +1,7 @@
 import {
 	index,
 	integer,
+	primaryKey,
 	sqliteTable,
 	text,
 	uniqueIndex,
@@ -312,6 +313,53 @@ export const redirectEvents = sqliteTable(
 	],
 );
 
+export const redirectEventDaily = sqliteTable(
+	"redirect_event_daily",
+	{
+		linkId: text("link_id")
+			.notNull()
+			.references(() => shortLinks.id, { onDelete: "cascade" }),
+		day: integer("day").notNull(),
+		total: integer("total").notNull(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.linkId, table.day] }),
+		index("redirect_event_daily_day_idx").on(table.day),
+	],
+);
+
+export const redirectEventDimensionDaily = sqliteTable(
+	"redirect_event_dimension_daily",
+	{
+		linkId: text("link_id")
+			.notNull()
+			.references(() => shortLinks.id, { onDelete: "cascade" }),
+		day: integer("day").notNull(),
+		dimension: text("dimension").notNull(),
+		value: text("value").notNull(),
+		total: integer("total").notNull(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.linkId, table.day, table.dimension, table.value],
+		}),
+		index("redirect_event_dimension_daily_lookup_idx").on(
+			table.linkId,
+			table.dimension,
+			table.day,
+		),
+	],
+);
+
+export const analyticsAggregationState = sqliteTable(
+	"analytics_aggregation_state",
+	{
+		id: text("id").primaryKey(),
+		lastSuccessAt: integer("last_success_at").notNull(),
+		lastEventCreatedAt: integer("last_event_created_at").notNull(),
+	},
+);
+
 export const schema = {
 	account,
 	adminInvites,
@@ -319,6 +367,9 @@ export const schema = {
 	apikey: apiKey,
 	managedDomains,
 	passkey,
+	analyticsAggregationState,
+	redirectEventDaily,
+	redirectEventDimensionDaily,
 	redirectEvents,
 	roleDomainScopes,
 	roleLinkScopes,
