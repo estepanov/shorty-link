@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
+import { consumeAnalyticsBatch } from "../src/server/services/analytics/consume-clicks";
 import {
 	ANALYTICS_QUEUE_MESSAGE_VERSION,
 	getAnalyticsQueue,
@@ -14,7 +15,6 @@ import {
 	recordClick,
 	toAnalyticsQueueMessage,
 } from "../src/server/services/analytics/record-click";
-import { consumeAnalyticsBatch } from "../src/server/services/analytics/consume-clicks";
 import { saveLink } from "../src/server/services/links";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
@@ -106,10 +106,10 @@ describe("analytics persist and enqueue", () => {
 				utmSource: "newsletter",
 			},
 			{
-				send: async (body: unknown) => {
+				send: async (body) => {
 					sent.push(body);
 				},
-			} as Queue,
+			},
 		);
 
 		const events = await db

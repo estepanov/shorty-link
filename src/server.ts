@@ -201,4 +201,4 @@ export default {
 			return applySecurityHeaders(request, genericErrorResponse());
 		}
 	},
-} satisfies ExportedHandler;
+} satisfies ExportedHandler<Env>;

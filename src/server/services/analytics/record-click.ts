@@ -49,9 +49,13 @@ export type AnalyticsQueueMessage = {
 	click: RecordClickInput;
 };
 
+export type AnalyticsQueueSender = {
+	send(message: AnalyticsQueueMessage): Promise<unknown>;
+};
+
 export function getAnalyticsQueue(
 	bindings: unknown,
-): Queue<AnalyticsQueueMessage> | undefined {
+): AnalyticsQueueSender | undefined {
 	if (typeof bindings !== "object" || bindings === null) {
 		return undefined;
 	}
@@ -64,7 +68,7 @@ export function getAnalyticsQueue(
 		return undefined;
 	}
 
-	return queue as Queue<AnalyticsQueueMessage>;
+	return queue as AnalyticsQueueSender;
 }
 
 export function toAnalyticsQueueMessage(
@@ -256,7 +260,7 @@ export async function persistClicks(
 export async function recordClick(
 	db: AppDb,
 	input: RecordClickInput,
-	queue: Queue<AnalyticsQueueMessage> | undefined = getAnalyticsQueue(env),
+	queue: AnalyticsQueueSender | undefined = getAnalyticsQueue(env),
 ) {
 	if (queue) {
 		await queue.send(toAnalyticsQueueMessage(input));
