@@ -9,18 +9,18 @@ import {
 import {
 	ANALYTICS_AGGREGATION_STATE_ID,
 	startOfUtcDay,
-	UTM_DIMENSIONS,
-	UTM_EVENT_FIELDS,
 	USER_AGENT_DIMENSIONS,
 	USER_AGENT_EVENT_FIELDS,
 	type UserAgentDimension,
+	UTM_DIMENSIONS,
+	UTM_EVENT_FIELDS,
 	type UtmDimension,
 } from "./dimensions";
 
 export {
-	UTM_DIMENSIONS,
 	USER_AGENT_DIMENSIONS,
 	type UserAgentDimension,
+	UTM_DIMENSIONS,
 	type UtmDimension,
 };
 
