@@ -116,8 +116,10 @@ describe("analytics persist and enqueue", () => {
 				utmSource: "newsletter",
 			},
 			{
-				send: async (body) => {
-					sent.push(body);
+				queue: {
+					send: async (body) => {
+						sent.push(body);
+					},
 				},
 			},
 		);

@@ -71,7 +71,23 @@ export type AnalyticsQueueBatch = {
 	}[];
 };
 
-type AnalyticsQueueBindings = {
+export type AnalyticsEngineDataPoint = {
+	indexes: [string];
+	blobs: string[];
+	doubles: number[];
+};
+
+export type AnalyticsEngineWriter = {
+	writeDataPoint(event: AnalyticsEngineDataPoint): void;
+};
+
+export type AnalyticsSinks = {
+	queue?: AnalyticsQueueSender;
+	engine?: AnalyticsEngineWriter;
+};
+
+type AnalyticsBindings = {
+	ANALYTICS?: unknown;
 	ANALYTICS_QUEUE?: unknown;
 };
 
@@ -83,6 +99,14 @@ function isQueueSender(value: unknown): value is AnalyticsQueueSender {
 	);
 }
 
+function isEngineWriter(value: unknown): value is AnalyticsEngineWriter {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		typeof (value as AnalyticsEngineWriter).writeDataPoint === "function"
+	);
+}
+
 export function getAnalyticsQueue(
 	bindings: object | undefined,
 ): AnalyticsQueueSender | undefined {
@@ -90,8 +114,60 @@ export function getAnalyticsQueue(
 		return undefined;
 	}
 
-	const queue = (bindings as AnalyticsQueueBindings).ANALYTICS_QUEUE;
+	const queue = (bindings as AnalyticsBindings).ANALYTICS_QUEUE;
 	return isQueueSender(queue) ? queue : undefined;
+}
+
+export function getAnalyticsEngine(
+	bindings: object | undefined,
+): AnalyticsEngineWriter | undefined {
+	if (!bindings || !("ANALYTICS" in bindings)) {
+		return undefined;
+	}
+
+	const engine = (bindings as AnalyticsBindings).ANALYTICS;
+	return isEngineWriter(engine) ? engine : undefined;
+}
+
+function defaultAnalyticsSinks(): AnalyticsSinks {
+	return {
+		queue: getAnalyticsQueue(env),
+		engine: getAnalyticsEngine(env),
+	};
+}
+
+function analyticsBlob(value: string | null | undefined, maxLength: number) {
+	return truncateStoredText(value, maxLength) ?? "";
+}
+
+/**
+ * Stable Analytics Engine columns for the optional `ANALYTICS` binding.
+ * `index1` is `linkId`. `double1` is `statusCode`. Blobs are hostname, slug,
+ * country, city, colo, referer, userAgent, utmSource, utmMedium, utmCampaign,
+ * utmTerm, utmContent, then targetUrl.
+ */
+export function toAnalyticsEngineDataPoint(
+	input: RecordClickInput,
+): AnalyticsEngineDataPoint {
+	return {
+		indexes: [input.linkId],
+		blobs: [
+			input.hostname,
+			input.slug,
+			analyticsBlob(input.country, 32),
+			analyticsBlob(input.city, 128),
+			analyticsBlob(input.colo, 32),
+			analyticsBlob(input.referer, 2048),
+			analyticsBlob(input.userAgent, 512),
+			analyticsBlob(input.utmSource, 256),
+			analyticsBlob(input.utmMedium, 256),
+			analyticsBlob(input.utmCampaign, 256),
+			analyticsBlob(input.utmTerm, 256),
+			analyticsBlob(input.utmContent, 256),
+			analyticsBlob(input.targetUrl, 2048),
+		],
+		doubles: [input.statusCode],
+	};
 }
 
 export function stampClick(input: RecordClickInput): StampedClick {
@@ -260,16 +336,21 @@ export async function persistClicks(
 }
 
 /**
- * Records a click by enqueueing when `ANALYTICS_QUEUE` is bound, otherwise
- * writing D1 directly. Must run inside `waitUntil` on the redirect path.
+ * Records a click by writing an optional Analytics Engine data point, then
+ * enqueueing when `ANALYTICS_QUEUE` is bound, otherwise writing D1 directly.
+ * Must run inside `waitUntil` on the redirect path.
  */
 export async function recordClick(
 	db: AppDb,
 	input: RecordClickInput,
-	queue: AnalyticsQueueSender | undefined = getAnalyticsQueue(env),
+	sinks: AnalyticsSinks = defaultAnalyticsSinks(),
 ) {
-	if (queue) {
-		await queue.send(toAnalyticsQueueMessage(input));
+	if (sinks.engine) {
+		sinks.engine.writeDataPoint(toAnalyticsEngineDataPoint(input));
+	}
+
+	if (sinks.queue) {
+		await sinks.queue.send(toAnalyticsQueueMessage(input));
 		return;
 	}
 
