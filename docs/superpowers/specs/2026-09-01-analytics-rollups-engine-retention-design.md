@@ -27,21 +27,21 @@ Tables:
 
 - `redirect_event_daily (link_id, day, total)` — UTC midnight ms, PK `(link_id, day)`
 - `redirect_event_dimension_daily (link_id, day, dimension, value, total)` — PK `(link_id, day, dimension, value)`
-- `analytics_aggregation_state (id, last_success_at, last_event_created_at)` — single row `default`
+- `analytics_aggregation_state (id, last_success_at, last_event_created_at)` — single row `default` (ops breadcrumb; not a read input)
+- `redirect_event.aggregated` — boolean, default false
 
-Dimensions match the dashboard: `utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`, `browser`, `os`, `deviceType`. UTM nulls are omitted. UA nulls become `Unknown`. No hourly or referrer rollups; those are not dashboard query patterns. Recent events stay a raw-event detail query.
+Dimensions match the dashboard and live in one catalog (`DIMENSIONS`): `utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`, `browser`, `os`, `deviceType`. UTM nulls are omitted. UA nulls become `Unknown`. No hourly or referrer rollups; those are not dashboard query patterns. Recent events stay a raw-event detail query.
 
 `aggregateAnalytics(db, { now, retainDays? })`:
 
-1. Read watermark (`last_event_created_at`, or 0).
-2. Load raw events with `created_at > watermark`.
-3. Upsert daily and dimension totals (`total = total + excluded.total`).
-4. Set watermark to the max `created_at` processed and `last_success_at = now`.
-5. If `retainDays` is a positive integer, delete raw events with `created_at <= watermark` and `created_at < now - retainDays * 86400000`.
+1. Load raw events with `aggregated = 0`, oldest first, in chunks.
+2. Fold daily and dimension totals from the catalog.
+3. Multi-row upsert rollups (`total = total + excluded.total`), mark those rows `aggregated = 1`, write state, and recount `short_link` hit metadata for touched link IDs.
+4. If `retainDays` is a positive integer, delete raw events with `aggregated = 1` and `created_at < now - retainDays * 86400000`.
 
 The Worker `scheduled` handler runs this. Cron is commented in `wrangler.jsonc` (same opt-in style as queues). Tests call `aggregateAnalytics` directly.
 
-`getLinkStats` moves to `src/server/services/analytics/stats.ts`. Totals, histogram, and breakdowns are rollups plus raw events after the watermark. Before the first successful run the watermark is 0, so that is all raw events. Recent events always read raw rows.
+`getLinkStats` lives in `src/server/services/analytics/stats.ts`. All-time totals use the same SQL as `persistClicks` (`sum(daily.total) + count(unaggregated)`). Window, histogram, and breakdowns are rollups plus `aggregated = 0` events. Recent events always read raw rows.
 
 ### Stage 5 — Analytics Engine
 
@@ -51,7 +51,7 @@ Optional binding `ANALYTICS`. Duck-type: has `writeDataPoint`. When present, `re
 
 ### Stage 6 — Retention
 
-`ANALYTICS_RAW_EVENT_RETENTION_DAYS` is optional. Unset or non-positive: keep raw events. Positive integer: aggregator deletes rolled-up events older than that many days. Document the policy: dashboards use rollups after the first successful aggregation; raw events are a bounded detail log.
+`ANALYTICS_RAW_EVENT_RETENTION_DAYS` is optional. Unset or non-positive: keep raw events. Positive integer: aggregator deletes rolled-up events older than that many days. Document the policy: dashboards use rollups plus the unaggregated tail; raw events are a bounded detail log.
 
 ## Non-goals
 

@@ -218,39 +218,6 @@ export function buildRedirectTarget(
 	return destination.toString();
 }
 
-const ANALYTICS_SAFE_QUERY_KEYS = new Set([
-	"utm_source",
-	"utm_medium",
-	"utm_campaign",
-	"utm_term",
-	"utm_content",
-]);
-
-export function buildAnalyticsTarget(
-	targetUrl: string,
-	requestUrl: string,
-	preserveQueryParams: boolean,
-) {
-	const destination = new URL(normalizeTargetUrl(targetUrl));
-
-	if (!preserveQueryParams) {
-		return destination.toString();
-	}
-
-	const incoming = new URL(requestUrl);
-
-	for (const [key, value] of incoming.searchParams.entries()) {
-		if (
-			ANALYTICS_SAFE_QUERY_KEYS.has(key.toLowerCase()) &&
-			!destination.searchParams.has(key)
-		) {
-			destination.searchParams.append(key, value);
-		}
-	}
-
-	return destination.toString();
-}
-
 export async function ensureUniqueSlug(
 	db: AppDb,
 	hostname: string,
@@ -985,30 +952,4 @@ export async function resolveExactRedirect(
 		.limit(1);
 
 	return exact[0] ?? null;
-}
-
-export function extractUtmParams(requestUrl: string) {
-	try {
-		const params = new URL(requestUrl).searchParams;
-		const read = (key: string) => {
-			const value = params.get(key)?.trim();
-			return value ? value.slice(0, 256) : null;
-		};
-
-		return {
-			utmSource: read("utm_source"),
-			utmMedium: read("utm_medium"),
-			utmCampaign: read("utm_campaign"),
-			utmTerm: read("utm_term"),
-			utmContent: read("utm_content"),
-		};
-	} catch {
-		return {
-			utmSource: null,
-			utmMedium: null,
-			utmCampaign: null,
-			utmTerm: null,
-			utmContent: null,
-		};
-	}
 }

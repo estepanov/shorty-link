@@ -1,16 +1,18 @@
 import { env } from "cloudflare:workers";
-import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { AppDb } from "../../db/client";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../../db/redirect-event-schema-version";
-import { redirectEvents, shortLinks } from "../../db/schema";
+import { redirectEvents } from "../../db/schema";
 import { parseRedirectUserAgent } from "../user-agent";
-import { CLICK_FIELD_LIMITS, truncateStoredText } from "./click-fields";
+import { normalizeClickFields, type RecordClickInput } from "./click-fields";
+import { updateLinkHitMetadata } from "./counts";
 import {
 	type AnalyticsEngineWriter,
 	getAnalyticsEngine,
 	toAnalyticsEngineDataPoint,
 } from "./engine";
+
+export type { RecordClickInput };
 
 export const ANALYTICS_QUEUE_MESSAGE_VERSION = 1 as const;
 
@@ -27,35 +29,6 @@ const OPTIONAL_CLICK_KEYS = [
 	"utmTerm",
 	"utmContent",
 ] as const;
-
-/**
- * Fields required to record one redirect click for analytics. Matches the data the
- * redirect handler already collects; `recordClick` normalizes and persists it.
- *
- * Callers should pass `targetUrl` from `buildAnalyticsTarget` and UTM fields from
- * `extractUtmParams` (both in `src/server/services/links.ts`). That way only UTM query
- * params from the incoming request are merged when the link preserves query params;
- * non-UTM request params are never copied into the stored analytics URL.
- */
-export type RecordClickInput = {
-	linkId: string;
-	hostname: string;
-	slug: string;
-	/** Analytics target URL (UTM-safe query merge only). */
-	targetUrl: string;
-	statusCode: number;
-	country?: string | null;
-	city?: string | null;
-	colo?: string | null;
-	referer?: string | null;
-	userAgent?: string | null;
-	ipHash?: string | null;
-	utmSource?: string | null;
-	utmMedium?: string | null;
-	utmCampaign?: string | null;
-	utmTerm?: string | null;
-	utmContent?: string | null;
-};
 
 export type StampedClick = RecordClickInput & {
 	id: string;
@@ -202,11 +175,8 @@ export function parseAnalyticsQueueMessage(
 }
 
 function toEventRow(input: StampedClick) {
-	const userAgent = truncateStoredText(
-		input.userAgent,
-		CLICK_FIELD_LIMITS.userAgent,
-	);
-	const parsedUserAgent = parseRedirectUserAgent(userAgent);
+	const fields = normalizeClickFields(input);
+	const parsedUserAgent = parseRedirectUserAgent(fields.userAgent);
 
 	return {
 		id: input.id,
@@ -216,50 +186,24 @@ function toEventRow(input: StampedClick) {
 		targetUrl: input.targetUrl,
 		statusCode: input.statusCode,
 		eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
-		country: truncateStoredText(input.country, CLICK_FIELD_LIMITS.country),
-		city: truncateStoredText(input.city, CLICK_FIELD_LIMITS.city),
-		colo: truncateStoredText(input.colo, CLICK_FIELD_LIMITS.colo),
-		referer: truncateStoredText(input.referer, CLICK_FIELD_LIMITS.referer),
-		userAgent,
+		country: fields.country,
+		city: fields.city,
+		colo: fields.colo,
+		referer: fields.referer,
+		userAgent: fields.userAgent,
 		userAgentBrowser: parsedUserAgent.browser,
 		userAgentOs: parsedUserAgent.os,
 		userAgentDeviceType: parsedUserAgent.deviceType,
 		userAgentIsBot: parsedUserAgent.isBot,
 		ipHash: input.ipHash ?? null,
-		utmSource: truncateStoredText(
-			input.utmSource,
-			CLICK_FIELD_LIMITS.utmSource,
-		),
-		utmMedium: truncateStoredText(
-			input.utmMedium,
-			CLICK_FIELD_LIMITS.utmMedium,
-		),
-		utmCampaign: truncateStoredText(
-			input.utmCampaign,
-			CLICK_FIELD_LIMITS.utmCampaign,
-		),
-		utmTerm: truncateStoredText(input.utmTerm, CLICK_FIELD_LIMITS.utmTerm),
-		utmContent: truncateStoredText(
-			input.utmContent,
-			CLICK_FIELD_LIMITS.utmContent,
-		),
+		utmSource: fields.utmSource,
+		utmMedium: fields.utmMedium,
+		utmCampaign: fields.utmCampaign,
+		utmTerm: fields.utmTerm,
+		utmContent: fields.utmContent,
 		aggregated: false,
 		createdAt: input.createdAt,
 	};
-}
-
-function linkHitCountSql(linkId: string) {
-	return sql`(
-		coalesce((select sum(total) from redirect_event_daily where link_id = ${linkId}), 0)
-		+ (select count(*) from redirect_event where link_id = ${linkId} and aggregated = 0)
-	)`;
-}
-
-function linkLastClickSql(linkId: string) {
-	return sql`max(
-		coalesce(${shortLinks.lastClickAt}, 0),
-		coalesce((select max(created_at) from redirect_event where link_id = ${linkId}), 0)
-	)`;
 }
 
 /**
@@ -278,16 +222,7 @@ export async function persistClicks(
 	const linkIds = [...new Set(rows.map((row) => row.linkId))];
 	await db.batch([
 		db.insert(redirectEvents).values(rows).onConflictDoNothing(),
-		...linkIds.map((linkId) =>
-			db
-				.update(shortLinks)
-				.set({
-					hitCount: linkHitCountSql(linkId),
-					lastClickAt: linkLastClickSql(linkId),
-					updatedAt: linkLastClickSql(linkId),
-				})
-				.where(eq(shortLinks.id, linkId)),
-		),
+		...linkIds.map((linkId) => updateLinkHitMetadata(db, linkId)),
 	]);
 }
 

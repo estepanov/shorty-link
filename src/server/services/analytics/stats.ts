@@ -1,57 +1,66 @@
 import { and, count, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import {
-	analyticsAggregationState,
 	redirectEventDaily,
 	redirectEventDimensionDaily,
 	redirectEvents,
+	shortLinks,
 } from "../../db/schema";
+import { linkHitCountSql } from "./counts";
 import {
-	ANALYTICS_AGGREGATION_STATE_ID,
+	DIMENSIONS,
+	type Dimension,
+	isUtmDimension,
 	startOfUtcDay,
-	USER_AGENT_DIMENSIONS,
-	USER_AGENT_EVENT_FIELDS,
 	type UserAgentDimension,
-	UTM_DIMENSIONS,
-	UTM_EVENT_FIELDS,
 	type UtmDimension,
 } from "./dimensions";
 
-export {
-	USER_AGENT_DIMENSIONS,
-	type UserAgentDimension,
-	UTM_DIMENSIONS,
-	type UtmDimension,
-};
+export type { UserAgentDimension, UtmDimension };
 
 type CountedValue = { value: string | null; total: number };
 type NamedValue = { value: string; total: number };
 
 type StatsPartials = {
-	allTime: number;
 	window: number;
 	histogramRows: Array<{ day: number; total: number }>;
 	breakdowns: Record<UtmDimension, CountedValue[]>;
-	userAgents: Record<UserAgentDimension, NamedValue[]>;
+	userAgents: Record<UserAgentDimension, CountedValue[]>;
 };
 
-function emptyPartials(): StatsPartials {
+function emptyUtmBreakdowns(): Record<UtmDimension, CountedValue[]> {
 	return {
-		allTime: 0,
-		window: 0,
-		histogramRows: [],
-		breakdowns: {
-			utmSource: [],
-			utmMedium: [],
-			utmCampaign: [],
-			utmTerm: [],
-			utmContent: [],
-		},
-		userAgents: {
-			browser: [],
-			os: [],
-			deviceType: [],
-		},
+		utmSource: [],
+		utmMedium: [],
+		utmCampaign: [],
+		utmTerm: [],
+		utmContent: [],
+	};
+}
+
+function emptyUserAgents(): Record<UserAgentDimension, CountedValue[]> {
+	return {
+		browser: [],
+		os: [],
+		deviceType: [],
+	};
+}
+
+function emptyNamedUtm(): Record<UtmDimension, NamedValue[]> {
+	return {
+		utmSource: [],
+		utmMedium: [],
+		utmCampaign: [],
+		utmTerm: [],
+		utmContent: [],
+	};
+}
+
+function emptyNamedUserAgents(): Record<UserAgentDimension, NamedValue[]> {
+	return {
+		browser: [],
+		os: [],
+		deviceType: [],
 	};
 }
 
@@ -77,11 +86,23 @@ function mergeCounted(
 	left: CountedValue[],
 	right: CountedValue[],
 	limit: number,
-	empty: "omit" | "unknown",
+	empty: Dimension["empty"],
 ): NamedValue[] {
 	const totals = new Map<string, number>();
 	for (const row of [...left, ...right]) {
-		const value = row.value ?? (empty === "unknown" ? "Unknown" : null);
+		let value: string | null;
+		switch (empty) {
+			case "omit":
+				value = row.value;
+				break;
+			case "unknown":
+				value = row.value ?? "Unknown";
+				break;
+			default: {
+				const _exhaustive: never = empty;
+				throw new Error(`Unhandled dimension empty policy: ${_exhaustive}`);
+			}
+		}
 		if (value === null) {
 			continue;
 		}
@@ -102,48 +123,71 @@ function mergeCounted(
 		.slice(0, limit);
 }
 
+type MergedPartials = {
+	window: number;
+	histogramRows: Array<{ day: number; total: number }>;
+	breakdowns: Record<UtmDimension, NamedValue[]>;
+	userAgents: Record<UserAgentDimension, NamedValue[]>;
+};
+
 function mergePartials(
 	left: StatsPartials,
 	right: StatsPartials,
 	breakdownLimit: number,
-): StatsPartials {
+): MergedPartials {
+	const breakdowns = emptyNamedUtm();
+	const userAgents = emptyNamedUserAgents();
+
+	for (const dimension of DIMENSIONS) {
+		const merged = mergeCounted(
+			isUtmDimension(dimension)
+				? left.breakdowns[dimension.key]
+				: left.userAgents[dimension.key],
+			isUtmDimension(dimension)
+				? right.breakdowns[dimension.key]
+				: right.userAgents[dimension.key],
+			breakdownLimit,
+			dimension.empty,
+		);
+		if (isUtmDimension(dimension)) {
+			breakdowns[dimension.key] = merged;
+		} else {
+			userAgents[dimension.key] = merged;
+		}
+	}
+
 	return {
-		allTime: left.allTime + right.allTime,
 		window: left.window + right.window,
 		histogramRows: [...left.histogramRows, ...right.histogramRows],
-		breakdowns: Object.fromEntries(
-			UTM_DIMENSIONS.map((dimension) => [
-				dimension,
-				mergeCounted(
-					left.breakdowns[dimension],
-					right.breakdowns[dimension],
-					breakdownLimit,
-					"omit",
-				),
-			]),
-		) as Record<UtmDimension, NamedValue[]>,
-		userAgents: Object.fromEntries(
-			USER_AGENT_DIMENSIONS.map((dimension) => [
-				dimension,
-				mergeCounted(
-					left.userAgents[dimension],
-					right.userAgents[dimension],
-					breakdownLimit,
-					"unknown",
-				),
-			]),
-		) as Record<UserAgentDimension, NamedValue[]>,
+		breakdowns,
+		userAgents,
 	};
 }
 
-async function readWatermark(db: AppDb) {
-	const [state] = await db
-		.select({
-			lastEventCreatedAt: analyticsAggregationState.lastEventCreatedAt,
-		})
-		.from(analyticsAggregationState)
-		.where(eq(analyticsAggregationState.id, ANALYTICS_AGGREGATION_STATE_ID));
-	return state?.lastEventCreatedAt ?? 0;
+function partitionDimensionRows(
+	rows: Array<{ dimension: string; value: string | null; total: number }>,
+): Pick<StatsPartials, "breakdowns" | "userAgents"> {
+	const breakdowns = emptyUtmBreakdowns();
+	const userAgents = emptyUserAgents();
+	const byKey = new Map<string, CountedValue[]>();
+	for (const dimension of DIMENSIONS) {
+		byKey.set(dimension.key, []);
+	}
+	for (const row of rows) {
+		byKey.get(row.dimension)?.push({
+			value: row.value,
+			total: Number(row.total),
+		});
+	}
+	for (const dimension of DIMENSIONS) {
+		const values = byKey.get(dimension.key) ?? [];
+		if (isUtmDimension(dimension)) {
+			breakdowns[dimension.key] = values;
+		} else {
+			userAgents[dimension.key] = values;
+		}
+	}
+	return { breakdowns, userAgents };
 }
 
 async function getRecentEvents(db: AppDb, linkId: string, recentLimit: number) {
@@ -174,9 +218,8 @@ async function queryRollupPartials(
 	linkId: string,
 	windowStart: number,
 ): Promise<StatsPartials> {
-	const linkColumn = eq(redirectEventDaily.linkId, linkId);
 	const windowFilter = and(
-		linkColumn,
+		eq(redirectEventDaily.linkId, linkId),
 		gte(redirectEventDaily.day, windowStart),
 	);
 	const dimensionWindow = and(
@@ -184,81 +227,44 @@ async function queryRollupPartials(
 		gte(redirectEventDimensionDaily.day, windowStart),
 	);
 
-	const [[totalsRow], [windowRow], histogramRows, breakdowns, userAgents] =
-		await Promise.all([
-			db
-				.select({
-					total: sql<number>`coalesce(sum(${redirectEventDaily.total}), 0)`,
-				})
-				.from(redirectEventDaily)
-				.where(linkColumn),
-			db
-				.select({
-					total: sql<number>`coalesce(sum(${redirectEventDaily.total}), 0)`,
-				})
-				.from(redirectEventDaily)
-				.where(windowFilter),
-			db
-				.select({
-					day: redirectEventDaily.day,
-					total: redirectEventDaily.total,
-				})
-				.from(redirectEventDaily)
-				.where(windowFilter)
-				.orderBy(redirectEventDaily.day),
-			Promise.all(
-				UTM_DIMENSIONS.map(async (dimension) => {
-					const rows = await db
-						.select({
-							value: redirectEventDimensionDaily.value,
-							total: sql<number>`sum(${redirectEventDimensionDaily.total})`.as(
-								"total",
-							),
-						})
-						.from(redirectEventDimensionDaily)
-						.where(
-							and(
-								dimensionWindow,
-								eq(redirectEventDimensionDaily.dimension, dimension),
-							),
-						)
-						.groupBy(redirectEventDimensionDaily.value);
-
-					return [dimension, rows] as const;
-				}),
+	const [[windowRow], histogramRows, dimensionRows] = await Promise.all([
+		db
+			.select({
+				total: sql<number>`coalesce(sum(${redirectEventDaily.total}), 0)`,
+			})
+			.from(redirectEventDaily)
+			.where(windowFilter),
+		db
+			.select({
+				day: redirectEventDaily.day,
+				total: redirectEventDaily.total,
+			})
+			.from(redirectEventDaily)
+			.where(windowFilter)
+			.orderBy(redirectEventDaily.day),
+		db
+			.select({
+				dimension: redirectEventDimensionDaily.dimension,
+				value: redirectEventDimensionDaily.value,
+				total: sql<number>`sum(${redirectEventDimensionDaily.total})`.as(
+					"total",
+				),
+			})
+			.from(redirectEventDimensionDaily)
+			.where(dimensionWindow)
+			.groupBy(
+				redirectEventDimensionDaily.dimension,
+				redirectEventDimensionDaily.value,
 			),
-			Promise.all(
-				USER_AGENT_DIMENSIONS.map(async (dimension) => {
-					const rows = await db
-						.select({
-							value: redirectEventDimensionDaily.value,
-							total: sql<number>`sum(${redirectEventDimensionDaily.total})`.as(
-								"total",
-							),
-						})
-						.from(redirectEventDimensionDaily)
-						.where(
-							and(
-								dimensionWindow,
-								eq(redirectEventDimensionDaily.dimension, dimension),
-							),
-						)
-						.groupBy(redirectEventDimensionDaily.value);
-
-					return [dimension, rows] as const;
-				}),
-			),
-		]);
+	]);
 
 	return {
-		allTime: Number(totalsRow?.total ?? 0),
 		window: Number(windowRow?.total ?? 0),
 		histogramRows: histogramRows.map((row) => ({
 			day: Number(row.day),
 			total: Number(row.total),
 		})),
-		breakdowns: Object.fromEntries(breakdowns) as StatsPartials["breakdowns"],
-		userAgents: Object.fromEntries(userAgents) as StatsPartials["userAgents"],
+		...partitionDimensionRows(dimensionRows),
 	};
 }
 
@@ -277,54 +283,49 @@ async function queryEventPartials(
 	);
 	const dayExpr = sql<number>`(${redirectEvents.createdAt} / 86400000) * 86400000`;
 
-	const [[totalsRow], [windowRow], histogramRows, breakdowns, userAgents] =
-		await Promise.all([
-			db.select({ total: count() }).from(redirectEvents).where(linkColumn),
-			db.select({ total: count() }).from(redirectEvents).where(windowFilter),
-			db
-				.select({
-					day: dayExpr.as("day"),
-					total: count(),
-				})
-				.from(redirectEvents)
-				.where(windowFilter)
-				.groupBy(dayExpr)
-				.orderBy(dayExpr),
-			Promise.all(
-				UTM_DIMENSIONS.map(async (dimension) => {
-					const column = redirectEvents[UTM_EVENT_FIELDS[dimension]];
-					const rows = await db
-						.select({ value: column, total: count() })
-						.from(redirectEvents)
-						.where(and(windowFilter, isNotNull(column)))
-						.groupBy(column);
-
-					return [dimension, rows] as const;
-				}),
-			),
-			Promise.all(
-				USER_AGENT_DIMENSIONS.map(async (dimension) => {
-					const column = redirectEvents[USER_AGENT_EVENT_FIELDS[dimension]];
-					const rows = await db
-						.select({ value: column, total: count() })
-						.from(redirectEvents)
-						.where(windowFilter)
-						.groupBy(column);
-
-					return [dimension, rows] as const;
-				}),
-			),
-		]);
+	const [[windowRow], histogramRows, dimensionResults] = await Promise.all([
+		db.select({ total: count() }).from(redirectEvents).where(windowFilter),
+		db
+			.select({
+				day: dayExpr.as("day"),
+				total: count(),
+			})
+			.from(redirectEvents)
+			.where(windowFilter)
+			.groupBy(dayExpr)
+			.orderBy(dayExpr),
+		Promise.all(
+			DIMENSIONS.map(async (dimension) => {
+				const column = redirectEvents[dimension.eventField];
+				const filter =
+					dimension.empty === "omit"
+						? and(windowFilter, isNotNull(column))
+						: windowFilter;
+				const rows = await db
+					.select({ value: column, total: count() })
+					.from(redirectEvents)
+					.where(filter)
+					.groupBy(column);
+				return [dimension.key, rows] as const;
+			}),
+		),
+	]);
 
 	return {
-		allTime: Number(totalsRow?.total ?? 0),
 		window: Number(windowRow?.total ?? 0),
 		histogramRows: histogramRows.map((row) => ({
 			day: Number(row.day),
 			total: Number(row.total),
 		})),
-		breakdowns: Object.fromEntries(breakdowns) as StatsPartials["breakdowns"],
-		userAgents: Object.fromEntries(userAgents) as StatsPartials["userAgents"],
+		...partitionDimensionRows(
+			dimensionResults.flatMap(([dimension, rows]) =>
+				rows.map((row) => ({
+					dimension,
+					value: row.value,
+					total: Number(row.total),
+				})),
+			),
+		),
 	};
 }
 
@@ -342,11 +343,12 @@ export async function getLinkStats(
 	const windowStart = startOfUtcDay(
 		Date.now() - (days - 1) * 24 * 60 * 60 * 1000,
 	);
-	const watermark = await readWatermark(db);
-	const [rollups, tail, recentEvents] = await Promise.all([
-		watermark > 0
-			? queryRollupPartials(db, linkId, windowStart)
-			: emptyPartials(),
+	const [[allTimeRow], rollups, tail, recentEvents] = await Promise.all([
+		db
+			.select({ total: linkHitCountSql(linkId) })
+			.from(shortLinks)
+			.where(eq(shortLinks.id, linkId)),
+		queryRollupPartials(db, linkId, windowStart),
 		queryEventPartials(db, linkId, windowStart),
 		getRecentEvents(db, linkId, recentLimit),
 	]);
@@ -354,7 +356,7 @@ export async function getLinkStats(
 
 	return {
 		totals: {
-			allTime: merged.allTime,
+			allTime: Number(allTimeRow?.total ?? 0),
 			window: merged.window,
 		},
 		windowDays: days,

@@ -1,5 +1,4 @@
-import { CLICK_FIELD_LIMITS, truncateStoredText } from "./click-fields";
-import type { RecordClickInput } from "./record-click";
+import { normalizeClickFields, type RecordClickInput } from "./click-fields";
 
 export type AnalyticsEngineDataPoint = {
 	indexes: [string];
@@ -34,10 +33,6 @@ export function getAnalyticsEngine(
 	return isEngineWriter(engine) ? engine : undefined;
 }
 
-function analyticsBlob(value: string | null | undefined, maxLength: number) {
-	return truncateStoredText(value, maxLength) ?? "";
-}
-
 /**
  * Stable Analytics Engine columns for the optional `ANALYTICS` binding.
  * `index1` is `linkId`. `double1` is `statusCode`. Blobs are hostname, slug,
@@ -47,22 +42,23 @@ function analyticsBlob(value: string | null | undefined, maxLength: number) {
 export function toAnalyticsEngineDataPoint(
 	input: RecordClickInput,
 ): AnalyticsEngineDataPoint {
+	const fields = normalizeClickFields(input);
 	return {
 		indexes: [input.linkId],
 		blobs: [
 			input.hostname,
 			input.slug,
-			analyticsBlob(input.country, CLICK_FIELD_LIMITS.country),
-			analyticsBlob(input.city, CLICK_FIELD_LIMITS.city),
-			analyticsBlob(input.colo, CLICK_FIELD_LIMITS.colo),
-			analyticsBlob(input.referer, CLICK_FIELD_LIMITS.referer),
-			analyticsBlob(input.userAgent, CLICK_FIELD_LIMITS.userAgent),
-			analyticsBlob(input.utmSource, CLICK_FIELD_LIMITS.utmSource),
-			analyticsBlob(input.utmMedium, CLICK_FIELD_LIMITS.utmMedium),
-			analyticsBlob(input.utmCampaign, CLICK_FIELD_LIMITS.utmCampaign),
-			analyticsBlob(input.utmTerm, CLICK_FIELD_LIMITS.utmTerm),
-			analyticsBlob(input.utmContent, CLICK_FIELD_LIMITS.utmContent),
-			analyticsBlob(input.targetUrl, CLICK_FIELD_LIMITS.targetUrl),
+			fields.country ?? "",
+			fields.city ?? "",
+			fields.colo ?? "",
+			fields.referer ?? "",
+			fields.userAgent ?? "",
+			fields.utmSource ?? "",
+			fields.utmMedium ?? "",
+			fields.utmCampaign ?? "",
+			fields.utmTerm ?? "",
+			fields.utmContent ?? "",
+			fields.targetUrl,
 		],
 		doubles: [input.statusCode],
 	};

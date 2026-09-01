@@ -6,13 +6,12 @@ import {
 	redirectEventDimensionDaily,
 	redirectEvents,
 } from "../../db/schema";
+import { updateLinkHitMetadata } from "./counts";
 import {
 	ANALYTICS_AGGREGATION_STATE_ID,
+	DIMENSIONS,
+	dimensionValue,
 	startOfUtcDay,
-	USER_AGENT_DIMENSIONS,
-	USER_AGENT_EVENT_FIELDS,
-	UTM_DIMENSIONS,
-	UTM_EVENT_FIELDS,
 } from "./dimensions";
 
 export { ANALYTICS_AGGREGATION_STATE_ID, startOfUtcDay };
@@ -56,21 +55,14 @@ function foldEvents(events: Array<typeof redirectEvents.$inferSelect>) {
 		const day = startOfUtcDay(event.createdAt);
 		addDaily(daily, event.linkId, day);
 
-		for (const dimension of UTM_DIMENSIONS) {
-			const value = event[UTM_EVENT_FIELDS[dimension]];
-			if (value) {
-				addDimension(dimensions, event.linkId, day, dimension, value);
-			}
-		}
-
-		for (const dimension of USER_AGENT_DIMENSIONS) {
-			addDimension(
-				dimensions,
-				event.linkId,
-				day,
-				dimension,
-				event[USER_AGENT_EVENT_FIELDS[dimension]] ?? "Unknown",
+		for (const dimension of DIMENSIONS) {
+			const value = dimensionValue(
+				dimension.empty,
+				event[dimension.eventField],
 			);
+			if (value) {
+				addDimension(dimensions, event.linkId, day, dimension.key, value);
+			}
 		}
 	}
 
@@ -105,35 +97,40 @@ export async function aggregateAnalytics(
 		const { daily, dimensions } = foldEvents(events);
 		watermark = Math.max(...events.map((event) => event.createdAt));
 		const eventIds = events.map((event) => event.id);
+		const linkIds = [...new Set(events.map((event) => event.linkId))];
 
 		const statements = [
-			...[...daily.values()].map((bucket) =>
-				db
-					.insert(redirectEventDaily)
-					.values(bucket)
-					.onConflictDoUpdate({
-						target: [redirectEventDaily.linkId, redirectEventDaily.day],
-						set: {
-							total: sql`${redirectEventDaily.total} + ${bucket.total}`,
-						},
-					}),
-			),
-			...[...dimensions.values()].map((bucket) =>
-				db
-					.insert(redirectEventDimensionDaily)
-					.values(bucket)
-					.onConflictDoUpdate({
-						target: [
-							redirectEventDimensionDaily.linkId,
-							redirectEventDimensionDaily.day,
-							redirectEventDimensionDaily.dimension,
-							redirectEventDimensionDaily.value,
-						],
-						set: {
-							total: sql`${redirectEventDimensionDaily.total} + ${bucket.total}`,
-						},
-					}),
-			),
+			...(daily.size > 0
+				? [
+						db
+							.insert(redirectEventDaily)
+							.values([...daily.values()])
+							.onConflictDoUpdate({
+								target: [redirectEventDaily.linkId, redirectEventDaily.day],
+								set: {
+									total: sql`${redirectEventDaily.total} + excluded.total`,
+								},
+							}),
+					]
+				: []),
+			...(dimensions.size > 0
+				? [
+						db
+							.insert(redirectEventDimensionDaily)
+							.values([...dimensions.values()])
+							.onConflictDoUpdate({
+								target: [
+									redirectEventDimensionDaily.linkId,
+									redirectEventDimensionDaily.day,
+									redirectEventDimensionDaily.dimension,
+									redirectEventDimensionDaily.value,
+								],
+								set: {
+									total: sql`${redirectEventDimensionDaily.total} + excluded.total`,
+								},
+							}),
+					]
+				: []),
 			db
 				.update(redirectEvents)
 				.set({ aggregated: true })
@@ -152,6 +149,7 @@ export async function aggregateAnalytics(
 						lastEventCreatedAt: watermark,
 					},
 				}),
+			...linkIds.map((linkId) => updateLinkHitMetadata(db, linkId)),
 		];
 
 		await db.batch(

@@ -7,11 +7,13 @@ import { getPlatformProxy } from "wrangler";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
 import {
 	analyticsAggregationState,
+	redirectEventDaily,
 	redirectEvents,
 	schema,
 	shortLinks,
 } from "../src/server/db/schema";
 import { aggregateAnalytics } from "../src/server/services/analytics/aggregate";
+import { startOfUtcDay } from "../src/server/services/analytics/dimensions";
 import { persistClicks } from "../src/server/services/analytics/record-click";
 import {
 	parseRetentionDays,
@@ -22,12 +24,6 @@ import { saveLink } from "../src/server/services/links";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 const dayMs = 24 * 60 * 60 * 1000;
-
-function startOfUtcDay(timestamp: number) {
-	const date = new Date(timestamp);
-	date.setUTCHours(0, 0, 0, 0);
-	return date.getTime();
-}
 
 describe("analytics rollups and retention", () => {
 	let proxy: Awaited<ReturnType<typeof getPlatformProxy>> | null = null;
@@ -272,7 +268,24 @@ describe("analytics rollups and retention", () => {
 		expect(remaining.map((row) => row.id)).toEqual(["new-click"]);
 		expect(stale).toHaveLength(0);
 		expect(stats.totals.allTime).toBe(2);
-		expect(link?.hitCount).toBe(0);
+		expect(link?.hitCount).toBe(2);
+	});
+
+	it("reads rollups even when aggregation state is missing", async () => {
+		const linkId = await saveLink(db, {
+			slug: "orphan-rollup",
+			targetUrl: "https://example.com/orphan",
+		});
+		const day = startOfUtcDay(Date.now());
+		await db.insert(redirectEventDaily).values({
+			linkId,
+			day,
+			total: 4,
+		});
+
+		const stats = await getLinkStats(db, linkId, { days: 30 });
+		expect(stats.totals.allTime).toBe(4);
+		expect(stats.totals.window).toBe(4);
 	});
 
 	it("still counts a late event whose createdAt is behind the last watermark", async () => {

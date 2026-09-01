@@ -1,32 +1,84 @@
 export const ANALYTICS_AGGREGATION_STATE_ID = "default";
 
-export const UTM_DIMENSIONS = [
-	"utmSource",
-	"utmMedium",
-	"utmCampaign",
-	"utmTerm",
-	"utmContent",
+export type DimensionEmptyPolicy = "omit" | "unknown";
+export type DimensionGroup = "utm" | "ua";
+
+export const DIMENSIONS = [
+	{
+		key: "utmSource",
+		eventField: "utmSource",
+		empty: "omit",
+		group: "utm",
+	},
+	{
+		key: "utmMedium",
+		eventField: "utmMedium",
+		empty: "omit",
+		group: "utm",
+	},
+	{
+		key: "utmCampaign",
+		eventField: "utmCampaign",
+		empty: "omit",
+		group: "utm",
+	},
+	{
+		key: "utmTerm",
+		eventField: "utmTerm",
+		empty: "omit",
+		group: "utm",
+	},
+	{
+		key: "utmContent",
+		eventField: "utmContent",
+		empty: "omit",
+		group: "utm",
+	},
+	{
+		key: "browser",
+		eventField: "userAgentBrowser",
+		empty: "unknown",
+		group: "ua",
+	},
+	{
+		key: "os",
+		eventField: "userAgentOs",
+		empty: "unknown",
+		group: "ua",
+	},
+	{
+		key: "deviceType",
+		eventField: "userAgentDeviceType",
+		empty: "unknown",
+		group: "ua",
+	},
 ] as const;
 
-export type UtmDimension = (typeof UTM_DIMENSIONS)[number];
+export type Dimension = (typeof DIMENSIONS)[number];
+export type UtmDimension = Extract<Dimension, { group: "utm" }>["key"];
+export type UserAgentDimension = Extract<Dimension, { group: "ua" }>["key"];
 
-export const USER_AGENT_DIMENSIONS = ["browser", "os", "deviceType"] as const;
+export function isUtmDimension(
+	dimension: Dimension,
+): dimension is Extract<Dimension, { group: "utm" }> {
+	return dimension.group === "utm";
+}
 
-export type UserAgentDimension = (typeof USER_AGENT_DIMENSIONS)[number];
-
-export const UTM_EVENT_FIELDS = {
-	utmSource: "utmSource",
-	utmMedium: "utmMedium",
-	utmCampaign: "utmCampaign",
-	utmTerm: "utmTerm",
-	utmContent: "utmContent",
-} as const satisfies Record<UtmDimension, string>;
-
-export const USER_AGENT_EVENT_FIELDS = {
-	browser: "userAgentBrowser",
-	os: "userAgentOs",
-	deviceType: "userAgentDeviceType",
-} as const satisfies Record<UserAgentDimension, string>;
+export function dimensionValue(
+	empty: DimensionEmptyPolicy,
+	raw: string | null | undefined,
+): string | null {
+	switch (empty) {
+		case "omit":
+			return raw ? raw : null;
+		case "unknown":
+			return raw ?? "Unknown";
+		default: {
+			const _exhaustive: never = empty;
+			throw new Error(`Unhandled dimension empty policy: ${_exhaustive}`);
+		}
+	}
+}
 
 export function startOfUtcDay(timestamp: number) {
 	const date = new Date(timestamp);
