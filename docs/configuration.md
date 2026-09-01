@@ -9,7 +9,7 @@ App-owned settings:
 - `main`
 - `compatibility_date`
 - `compatibility_flags`
-- binding names such as `DB`, `AI`, and optional `ANALYTICS_QUEUE`
+- binding names such as `DB`, `AI`, and optional `ANALYTICS_QUEUE` / `ANALYTICS`
 - `migrations_dir`
 - observability and source-map settings
 
@@ -91,6 +91,47 @@ pnpm cf-typegen
 
 The application still treats the binding as optional at runtime, so default deploys without this block keep working.
 
+### `ANALYTICS`
+
+Optional Workers Analytics Engine dataset binding. When present, `recordClick` writes one data point (not awaited) **and** still enqueues or persists to D1. The admin dashboard does not query Analytics Engine; D1 remains the source of truth.
+
+Add this block to `wrangler.jsonc`:
+
+```jsonc
+"analytics_engine_datasets": [
+  {
+    "binding": "ANALYTICS",
+    "dataset": "shorty_link_clicks"
+  }
+]
+```
+
+Keep the binding name as `ANALYTICS`. The dataset name is operator-owned. After adding the binding, regenerate types if you want the dataset on the generated `Env`:
+
+```bash
+pnpm cf-typegen
+```
+
+Data-point layout for SQL/GraphQL queries:
+
+- `index1`: link id
+- `double1`: HTTP status code
+- `blob1`–`blob13`: hostname, slug, country, city, colo, referer, user agent, `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, target URL
+
+### Analytics aggregator cron
+
+Optional Cron Trigger that runs the analytics aggregator. When enabled, the Worker `scheduled` handler folds new `redirect_event` rows into `redirect_event_daily` and `redirect_event_dimension_daily`. Until the first successful aggregation, the admin dashboard keeps reading raw events.
+
+Add this block to `wrangler.jsonc`:
+
+```jsonc
+"triggers": {
+  "crons": ["*/5 * * * *"]
+}
+```
+
+The schedule is operator-owned. The default deploy works without a cron.
+
 ## Required Secrets
 
 ### `BETTER_AUTH_SECRET`
@@ -144,6 +185,12 @@ example.com
 ### `DEBUG_AUTH_ERRORS`
 
 When set to `"true"`, includes detailed error output for failed passkey authentication in server logs. Leave unset or set to any other value in production to avoid leaking error details.
+
+### `ANALYTICS_RAW_EVENT_RETENTION_DAYS`
+
+Optional. When set to a positive integer, the aggregator deletes raw `redirect_event` rows that have already been rolled up and are older than that many days. Unset, `0`, or a negative value keeps raw events forever.
+
+Dashboards use rollups after the first successful aggregation. Raw events remain a detail log (recent clicks). Enable a cron trigger before relying on retention; events that have not been aggregated are never deleted.
 
 ## Local Variables
 
