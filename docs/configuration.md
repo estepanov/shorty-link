@@ -95,6 +95,8 @@ The application still treats the binding as optional at runtime, so default depl
 
 Optional Workers Analytics Engine dataset binding. When present, `recordClick` writes one data point (not awaited) **and** still enqueues or persists to D1. The admin dashboard does not query Analytics Engine; D1 remains the source of truth.
 
+Enabling `ANALYTICS` also copies click metadata (referer, user agent, city, country, UTMs, and target URL — not `ipHash`) into a Cloudflare account–level dataset. Anyone with Analytics Engine SQL/GraphQL access on that account can query every link’s clicks. That path does not use Better Auth, link/domain scope, or `analytics.read`. Treat the binding as an explicit export of admin analytics, not a drop-in observability toggle.
+
 Add this block to `wrangler.jsonc`:
 
 ```jsonc
