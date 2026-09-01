@@ -54,4 +54,14 @@
 	//     }
 	//   ]
 	// }
+	// Optional daily-rollup cron. Uncomment to fold raw events into
+	// redirect_event_daily / redirect_event_dimension_daily:
+	// "triggers": {
+	//   "crons": ["*/5 * * * *"]
+	// }
+	// Optional Analytics Engine dataset. Writes are extra emit, not the admin
+	// source of truth. Create the dataset in the dashboard, then uncomment:
+	// "analytics_engine_datasets": [
+	//   { "binding": "ANALYTICS", "dataset": "shorty_link_clicks" }
+	// }
 }

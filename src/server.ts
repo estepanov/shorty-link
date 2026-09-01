@@ -3,11 +3,14 @@ import { app } from "./server/api/app";
 import { createAuth } from "./server/auth/auth";
 import { createDb } from "./server/db/client";
 import { getLogger, serializeError } from "./server/logging";
+import { aggregateAnalytics } from "./server/services/analytics/aggregate";
 import { consumeAnalyticsBatch } from "./server/services/analytics/record-click";
+import { readRetentionDays } from "./server/services/analytics/retention";
 
 const serverLog = getLogger(["server"]);
 const authLog = getLogger(["auth"]);
 const queueLog = getLogger(["analytics-queue"]);
+const cronLog = getLogger(["analytics-cron"]);
 
 const RESERVED_EXACT_PATHS = new Set([
 	"/admin",
@@ -168,6 +171,19 @@ export default {
 				error: serializeError(error),
 				queue: batch.queue,
 				size: batch.messages.length,
+			});
+			throw error;
+		}
+	},
+	async scheduled(_controller, env) {
+		try {
+			await aggregateAnalytics(createDb(env.DB), {
+				now: Date.now(),
+				retainDays: readRetentionDays(env),
+			});
+		} catch (error) {
+			cronLog.error("analytics aggregation failed", {
+				error: serializeError(error),
 			});
 			throw error;
 		}
