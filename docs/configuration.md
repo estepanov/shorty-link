@@ -9,7 +9,7 @@ App-owned settings:
 - `main`
 - `compatibility_date`
 - `compatibility_flags`
-- binding names such as `DB` and `AI`
+- binding names such as `DB`, `AI`, and optional `ANALYTICS_QUEUE`
 - `migrations_dir`
 - observability and source-map settings
 
@@ -49,6 +49,47 @@ Keep the binding name as `DB`; the server code expects that binding.
 ### `AI`
 
 Optional Workers AI binding used for slug suggestions. The core shortener works without AI-backed suggestions if the feature is not used.
+
+### `ANALYTICS_QUEUE`
+
+Optional Cloudflare Queues producer binding. When present, redirect analytics are enqueued and the same Worker consumes batches into D1. When absent, `recordClick` keeps writing D1 directly inside `waitUntil`.
+
+Create the queue and dead-letter queue first:
+
+```bash
+pnpm exec wrangler queues create shorty-link-analytics
+pnpm exec wrangler queues create shorty-link-analytics-dlq
+```
+
+Then add this block to `wrangler.jsonc`:
+
+```jsonc
+"queues": {
+  "producers": [
+    {
+      "binding": "ANALYTICS_QUEUE",
+      "queue": "shorty-link-analytics"
+    }
+  ],
+  "consumers": [
+    {
+      "queue": "shorty-link-analytics",
+      "max_batch_size": 100,
+      "max_batch_timeout": 5,
+      "max_retries": 5,
+      "dead_letter_queue": "shorty-link-analytics-dlq"
+    }
+  ]
+}
+```
+
+Keep the binding name as `ANALYTICS_QUEUE`. Queue names are operator-owned. After adding the binding, regenerate types if you want the producer on the generated `Env`:
+
+```bash
+pnpm cf-typegen
+```
+
+The application still treats the binding as optional at runtime, so default deploys without this block keep working.
 
 ## Required Secrets
 

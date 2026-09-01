@@ -37,4 +37,21 @@
 	"ai": {
 		"binding": "AI"
 	}
+	// Optional analytics queue. Create the queues first, then uncomment:
+	// pnpm exec wrangler queues create shorty-link-analytics
+	// pnpm exec wrangler queues create shorty-link-analytics-dlq
+	// "queues": {
+	//   "producers": [
+	//     { "binding": "ANALYTICS_QUEUE", "queue": "shorty-link-analytics" }
+	//   ],
+	//   "consumers": [
+	//     {
+	//       "queue": "shorty-link-analytics",
+	//       "max_batch_size": 100,
+	//       "max_batch_timeout": 5,
+	//       "max_retries": 5,
+	//       "dead_letter_queue": "shorty-link-analytics-dlq"
+	//     }
+	//   ]
+	// }
 }

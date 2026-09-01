@@ -44,6 +44,8 @@ If a release changes `wrangler.jsonc`, compare your fork carefully. Self-hosters
 
 Do not overwrite your production values when pulling upstream changes.
 
+Optional analytics queues are additive. If you do not add an `ANALYTICS_QUEUE` producer, the Worker keeps writing click events to D1 during the redirect `waitUntil`. See [Configuration](/configuration/#analytics_queue).
+
 ## Database Migration Policy
 
 After public releases begin, migrations are append-only. If you are upgrading from a tagged release, apply all later migrations in order with:
