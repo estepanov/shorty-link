@@ -43,7 +43,7 @@ Extract the current D1 write into `persistClicks(db, inputs)` so the direct path
 - `last_click_at` / `updated_at` set from the event timestamp
 - Same truncation and UA parsing as today
 
-Producer assigns `id` and `createdAt` before enqueue so consume-time delay does not shift the click timestamp and retries can be idempotent.
+Producer stamps `id` and `createdAt` once (`stampClick`) before enqueue or persist so consume-time delay does not shift the click timestamp and retries can be idempotent. `persistClicks` recounts `hit_count` and sets `last_click_at` to `max(created_at)` for touched links so a retried batch cannot desync metadata or move last-click backward.
 
 ### Queue message
 
@@ -52,11 +52,10 @@ type AnalyticsQueueMessage = {
 	v: 1;
 	id: string;
 	createdAt: number;
-	click: RecordClickInput;
-};
+} & RecordClickInput;
 ```
 
-`v` is the envelope version (`ANALYTICS_QUEUE_MESSAGE_VERSION`). Persisted `event_schema_version` stays `REDIRECT_EVENT_SCHEMA_VERSION`.
+`v` is the envelope version (`ANALYTICS_QUEUE_MESSAGE_VERSION`). The producer stamps `id` and `createdAt` once (`StampedClick`) before enqueue or persist. Persisted `event_schema_version` stays `REDIRECT_EVENT_SCHEMA_VERSION`.
 
 Unknown or invalid messages are `retry()`'d so Cloudflare can dead-letter them after `max_retries`. Valid messages persist; a persist failure throws so the batch retries.
 

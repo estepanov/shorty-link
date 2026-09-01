@@ -3,7 +3,7 @@ import { app } from "./server/api/app";
 import { createAuth } from "./server/auth/auth";
 import { createDb } from "./server/db/client";
 import { getLogger, serializeError } from "./server/logging";
-import { consumeAnalyticsBatch } from "./server/services/analytics/consume-clicks";
+import { consumeAnalyticsBatch } from "./server/services/analytics/record-click";
 
 const serverLog = getLogger(["server"]);
 const authLog = getLogger(["auth"]);

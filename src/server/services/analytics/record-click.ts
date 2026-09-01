@@ -8,6 +8,20 @@ import { parseRedirectUserAgent } from "../user-agent";
 
 export const ANALYTICS_QUEUE_MESSAGE_VERSION = 1 as const;
 
+const OPTIONAL_CLICK_KEYS = [
+	"country",
+	"city",
+	"colo",
+	"referer",
+	"userAgent",
+	"ipHash",
+	"utmSource",
+	"utmMedium",
+	"utmCampaign",
+	"utmTerm",
+	"utmContent",
+] as const;
+
 /**
  * Fields required to record one redirect click for analytics. Matches the data the
  * redirect handler already collects; `recordClick` normalizes and persists it.
@@ -37,38 +51,55 @@ export type RecordClickInput = {
 	utmContent?: string | null;
 };
 
-export type PersistClickInput = RecordClickInput & {
-	id?: string;
-	createdAt?: number;
+export type StampedClick = RecordClickInput & {
+	id: string;
+	createdAt: number;
 };
 
 export type AnalyticsQueueMessage = {
 	v: typeof ANALYTICS_QUEUE_MESSAGE_VERSION;
-	id: string;
-	createdAt: number;
-	click: RecordClickInput;
-};
+} & StampedClick;
 
 export type AnalyticsQueueSender = {
 	send(message: AnalyticsQueueMessage): Promise<unknown>;
 };
 
+export type AnalyticsQueueBatch = {
+	messages: readonly {
+		body: unknown;
+		retry: () => void;
+	}[];
+};
+
+type AnalyticsQueueBindings = {
+	ANALYTICS_QUEUE?: unknown;
+};
+
+function isQueueSender(value: unknown): value is AnalyticsQueueSender {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		typeof (value as AnalyticsQueueSender).send === "function"
+	);
+}
+
 export function getAnalyticsQueue(
-	bindings: unknown,
+	bindings: object | undefined,
 ): AnalyticsQueueSender | undefined {
-	if (typeof bindings !== "object" || bindings === null) {
+	if (!bindings || !("ANALYTICS_QUEUE" in bindings)) {
 		return undefined;
 	}
 
-	const queue = (bindings as { ANALYTICS_QUEUE?: unknown }).ANALYTICS_QUEUE;
-	if (typeof queue !== "object" || queue === null) {
-		return undefined;
-	}
-	if (typeof (queue as { send?: unknown }).send !== "function") {
-		return undefined;
-	}
+	const queue = (bindings as AnalyticsQueueBindings).ANALYTICS_QUEUE;
+	return isQueueSender(queue) ? queue : undefined;
+}
 
-	return queue as AnalyticsQueueSender;
+export function stampClick(input: RecordClickInput): StampedClick {
+	return {
+		...input,
+		id: nanoid(),
+		createdAt: Date.now(),
+	};
 }
 
 export function toAnalyticsQueueMessage(
@@ -76,23 +107,18 @@ export function toAnalyticsQueueMessage(
 ): AnalyticsQueueMessage {
 	return {
 		v: ANALYTICS_QUEUE_MESSAGE_VERSION,
-		id: nanoid(),
-		createdAt: Date.now(),
-		click: input,
+		...stampClick(input),
 	};
 }
 
-function optionalText(value: unknown): string | null | undefined {
-	if (value === undefined) {
-		return undefined;
-	}
-	if (value === null || typeof value === "string") {
+function readOptionalText(value: unknown): string | null | undefined | false {
+	if (value === undefined || value === null || typeof value === "string") {
 		return value;
 	}
-	return null;
+	return false;
 }
 
-function parseClick(value: unknown): RecordClickInput | null {
+function parseStampedClick(value: unknown): StampedClick | null {
 	if (typeof value !== "object" || value === null) {
 		return null;
 	}
@@ -104,28 +130,33 @@ function parseClick(value: unknown): RecordClickInput | null {
 		typeof click.slug !== "string" ||
 		typeof click.targetUrl !== "string" ||
 		typeof click.statusCode !== "number" ||
-		!Number.isFinite(click.statusCode)
+		!Number.isFinite(click.statusCode) ||
+		typeof click.id !== "string" ||
+		click.id.length === 0 ||
+		typeof click.createdAt !== "number" ||
+		!Number.isFinite(click.createdAt)
 	) {
 		return null;
 	}
 
+	const optional: Partial<RecordClickInput> = {};
+	for (const key of OPTIONAL_CLICK_KEYS) {
+		const parsed = readOptionalText(click[key]);
+		if (parsed === false) {
+			return null;
+		}
+		optional[key] = parsed;
+	}
+
 	return {
+		id: click.id,
+		createdAt: click.createdAt,
 		linkId: click.linkId,
 		hostname: click.hostname,
 		slug: click.slug,
 		targetUrl: click.targetUrl,
 		statusCode: click.statusCode,
-		country: optionalText(click.country),
-		city: optionalText(click.city),
-		colo: optionalText(click.colo),
-		referer: optionalText(click.referer),
-		userAgent: optionalText(click.userAgent),
-		ipHash: optionalText(click.ipHash),
-		utmSource: optionalText(click.utmSource),
-		utmMedium: optionalText(click.utmMedium),
-		utmCampaign: optionalText(click.utmCampaign),
-		utmTerm: optionalText(click.utmTerm),
-		utmContent: optionalText(click.utmContent),
+		...optional,
 	};
 }
 
@@ -140,26 +171,15 @@ export function parseAnalyticsQueueMessage(
 	if (message.v !== ANALYTICS_QUEUE_MESSAGE_VERSION) {
 		return null;
 	}
-	if (typeof message.id !== "string" || message.id.length === 0) {
-		return null;
-	}
-	if (
-		typeof message.createdAt !== "number" ||
-		!Number.isFinite(message.createdAt)
-	) {
-		return null;
-	}
 
-	const click = parseClick(message.click);
+	const click = parseStampedClick(message);
 	if (!click) {
 		return null;
 	}
 
 	return {
 		v: ANALYTICS_QUEUE_MESSAGE_VERSION,
-		id: message.id,
-		createdAt: message.createdAt,
-		click,
+		...click,
 	};
 }
 
@@ -171,13 +191,12 @@ function truncateStoredText(
 	return normalized ? normalized.slice(0, maxLength) : null;
 }
 
-function toEventRow(input: PersistClickInput) {
-	const timestamp = input.createdAt ?? Date.now();
+function toEventRow(input: StampedClick) {
 	const userAgent = truncateStoredText(input.userAgent, 512);
 	const parsedUserAgent = parseRedirectUserAgent(userAgent);
 
 	return {
-		id: input.id ?? nanoid(),
+		id: input.id,
 		linkId: input.linkId,
 		hostname: input.hostname,
 		slug: input.slug,
@@ -199,58 +218,45 @@ function toEventRow(input: PersistClickInput) {
 		utmCampaign: truncateStoredText(input.utmCampaign, 256),
 		utmTerm: truncateStoredText(input.utmTerm, 256),
 		utmContent: truncateStoredText(input.utmContent, 256),
-		createdAt: timestamp,
+		createdAt: input.createdAt,
 	};
 }
 
+function linkHitCountSql(linkId: string) {
+	return sql`(select count(*) from redirect_event where link_id = ${linkId})`;
+}
+
+function linkLastClickSql(linkId: string) {
+	return sql`(select max(created_at) from redirect_event where link_id = ${linkId})`;
+}
+
 /**
- * Writes click rows to `redirect_event` and bumps `short_link` hit metadata for
- * newly inserted ids only. Shared by the direct path and the queue consumer.
+ * Writes click rows to `redirect_event` and recounts `short_link` hit metadata
+ * from those rows so queue retries stay idempotent.
  */
 export async function persistClicks(
 	db: AppDb,
-	inputs: readonly PersistClickInput[],
+	inputs: readonly StampedClick[],
 ) {
 	if (inputs.length === 0) {
 		return;
 	}
 
 	const rows = inputs.map(toEventRow);
-	const inserted = await db
-		.insert(redirectEvents)
-		.values(rows)
-		.onConflictDoNothing()
-		.returning({
-			id: redirectEvents.id,
-			linkId: redirectEvents.linkId,
-			createdAt: redirectEvents.createdAt,
-		});
-
-	if (inserted.length === 0) {
-		return;
-	}
-
-	const byLink = new Map<string, { count: number; lastClickAt: number }>();
-	for (const row of inserted) {
-		const current = byLink.get(row.linkId);
-		if (!current) {
-			byLink.set(row.linkId, { count: 1, lastClickAt: row.createdAt });
-			continue;
-		}
-		current.count += 1;
-		current.lastClickAt = Math.max(current.lastClickAt, row.createdAt);
-	}
-
-	for (const [linkId, { count, lastClickAt }] of byLink) {
-		await db
-			.update(shortLinks)
-			.set({
-				hitCount: sql`${shortLinks.hitCount} + ${count}`,
-				lastClickAt,
-				updatedAt: lastClickAt,
-			})
-			.where(eq(shortLinks.id, linkId));
-	}
+	const linkIds = [...new Set(rows.map((row) => row.linkId))];
+	await db.batch([
+		db.insert(redirectEvents).values(rows).onConflictDoNothing(),
+		...linkIds.map((linkId) =>
+			db
+				.update(shortLinks)
+				.set({
+					hitCount: linkHitCountSql(linkId),
+					lastClickAt: linkLastClickSql(linkId),
+					updatedAt: linkLastClickSql(linkId),
+				})
+				.where(eq(shortLinks.id, linkId)),
+		),
+	]);
 }
 
 /**
@@ -267,5 +273,26 @@ export async function recordClick(
 		return;
 	}
 
-	await persistClicks(db, [input]);
+	await persistClicks(db, [stampClick(input)]);
+}
+
+/**
+ * Persists valid queued click messages and retries unparseable ones so
+ * Cloudflare can dead-letter them after max_retries.
+ */
+export async function consumeAnalyticsBatch(
+	db: AppDb,
+	batch: AnalyticsQueueBatch,
+) {
+	const valid: StampedClick[] = [];
+	for (const message of batch.messages) {
+		const parsed = parseAnalyticsQueueMessage(message.body);
+		if (!parsed) {
+			message.retry();
+			continue;
+		}
+		valid.push(parsed);
+	}
+
+	await persistClicks(db, valid);
 }

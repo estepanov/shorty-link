@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
-import { consumeAnalyticsBatch } from "../src/server/services/analytics/consume-clicks";
 import {
 	ANALYTICS_QUEUE_MESSAGE_VERSION,
+	consumeAnalyticsBatch,
 	getAnalyticsQueue,
 	parseAnalyticsQueueMessage,
 	persistClicks,
@@ -41,7 +41,7 @@ describe("analytics queue message", () => {
 	it("round-trips a versioned click message", () => {
 		const message = toAnalyticsQueueMessage(click);
 		expect(message.v).toBe(ANALYTICS_QUEUE_MESSAGE_VERSION);
-		expect(message.click).toEqual(click);
+		expect(message).toMatchObject(click);
 		expect(typeof message.id).toBe("string");
 		expect(message.id.length).toBeGreaterThan(0);
 		expect(Number.isFinite(message.createdAt)).toBe(true);
@@ -58,7 +58,17 @@ describe("analytics queue message", () => {
 				v: 1,
 				id: "x",
 				createdAt: 1,
-				click: { ...click, linkId: 1 },
+				...click,
+				linkId: 1,
+			}),
+		).toBeNull();
+		expect(
+			parseAnalyticsQueueMessage({
+				v: 1,
+				id: "x",
+				createdAt: 1,
+				...click,
+				country: 1,
 			}),
 		).toBeNull();
 	});
@@ -126,11 +136,9 @@ describe("analytics persist and enqueue", () => {
 		expect(sent).toHaveLength(1);
 		expect(parseAnalyticsQueueMessage(sent[0])).toMatchObject({
 			v: ANALYTICS_QUEUE_MESSAGE_VERSION,
-			click: {
-				linkId,
-				slug: "queued",
-				utmSource: "newsletter",
-			},
+			linkId,
+			slug: "queued",
+			utmSource: "newsletter",
 		});
 	});
 
@@ -174,6 +182,31 @@ describe("analytics persist and enqueue", () => {
 				(event) => event.eventSchemaVersion === REDIRECT_EVENT_SCHEMA_VERSION,
 			),
 		).toBe(true);
+		expect(link?.hitCount).toBe(2);
+		expect(link?.lastClickAt).toBe(200);
+	});
+
+	it("does not move lastClickAt backward when an older click arrives later", async () => {
+		const linkId = await saveLink(db, {
+			slug: "order",
+			targetUrl: "https://example.com/order",
+		});
+		const click = {
+			linkId,
+			hostname: "__default__",
+			slug: "order",
+			targetUrl: "https://example.com/order",
+			statusCode: 302,
+		};
+
+		await persistClicks(db, [{ ...click, id: "newer", createdAt: 200 }]);
+		await persistClicks(db, [{ ...click, id: "older", createdAt: 50 }]);
+
+		const [link] = await db
+			.select()
+			.from(shortLinks)
+			.where(eq(shortLinks.id, linkId));
+
 		expect(link?.hitCount).toBe(2);
 		expect(link?.lastClickAt).toBe(200);
 	});
