@@ -12,6 +12,7 @@ import {
 	shortLinks,
 } from "../src/server/db/schema";
 import { aggregateAnalytics } from "../src/server/services/analytics/aggregate";
+import { persistClicks } from "../src/server/services/analytics/record-click";
 import {
 	parseRetentionDays,
 	readRetentionDays,
@@ -272,6 +273,94 @@ describe("analytics rollups and retention", () => {
 		expect(stale).toHaveLength(0);
 		expect(stats.totals.allTime).toBe(2);
 		expect(link?.hitCount).toBe(0);
+	});
+
+	it("still counts a late event whose createdAt is behind the last watermark", async () => {
+		const linkId = await saveLink(db, {
+			slug: "late",
+			targetUrl: "https://example.com/late",
+		});
+		const now = Date.now();
+
+		await db.insert(redirectEvents).values({
+			id: "on-time",
+			linkId,
+			hostname: "__default__",
+			slug: "late",
+			targetUrl: "https://example.com/late",
+			statusCode: 302,
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+			createdAt: now,
+		});
+		await aggregateAnalytics(db, { now });
+		await db.insert(redirectEvents).values({
+			id: "late-arrival",
+			linkId,
+			hostname: "__default__",
+			slug: "late",
+			targetUrl: "https://example.com/late",
+			statusCode: 302,
+			utmSource: "late",
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+			createdAt: now - 5_000,
+		});
+
+		const before = await getLinkStats(db, linkId, {
+			days: 30,
+			breakdownLimit: 5,
+		});
+		expect(before.totals.allTime).toBe(2);
+		expect(before.breakdowns.utmSource).toEqual([{ value: "late", total: 1 }]);
+
+		await aggregateAnalytics(db, { now, batchSize: 1 });
+		const after = await getLinkStats(db, linkId, {
+			days: 30,
+			breakdownLimit: 5,
+		});
+		expect(after.totals.allTime).toBe(2);
+		expect(after.breakdowns.utmSource).toEqual([{ value: "late", total: 1 }]);
+	});
+
+	it("keeps hit_count aligned with rollups after retention and a new persist", async () => {
+		const linkId = await saveLink(db, {
+			slug: "hits",
+			targetUrl: "https://example.com/hits",
+		});
+		const now = Date.now();
+		const oldDay = startOfUtcDay(now - 10 * dayMs);
+
+		await persistClicks(db, [
+			{
+				id: "old-hit",
+				linkId,
+				hostname: "__default__",
+				slug: "hits",
+				targetUrl: "https://example.com/hits",
+				statusCode: 302,
+				createdAt: oldDay + 1_000,
+			},
+		]);
+		await aggregateAnalytics(db, { now, retainDays: 7 });
+		await persistClicks(db, [
+			{
+				id: "new-hit",
+				linkId,
+				hostname: "__default__",
+				slug: "hits",
+				targetUrl: "https://example.com/hits",
+				statusCode: 302,
+				createdAt: now,
+			},
+		]);
+
+		const [link] = await db
+			.select()
+			.from(shortLinks)
+			.where(eq(shortLinks.id, linkId));
+		const stats = await getLinkStats(db, linkId, { days: 30 });
+		expect(stats.totals.allTime).toBe(2);
+		expect(link?.hitCount).toBe(2);
+		expect(link?.lastClickAt).toBe(now);
 	});
 });
 

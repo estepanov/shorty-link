@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, gte, isNotNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import {
 	analyticsAggregationState,
@@ -266,13 +266,11 @@ async function queryEventPartials(
 	db: AppDb,
 	linkId: string,
 	windowStart: number,
-	watermark: number,
 ): Promise<StatsPartials> {
-	const afterWatermark =
-		watermark > 0 ? gt(redirectEvents.createdAt, watermark) : undefined;
-	const linkColumn = afterWatermark
-		? and(eq(redirectEvents.linkId, linkId), afterWatermark)
-		: eq(redirectEvents.linkId, linkId);
+	const linkColumn = and(
+		eq(redirectEvents.linkId, linkId),
+		eq(redirectEvents.aggregated, false),
+	);
 	const windowFilter = and(
 		linkColumn,
 		gte(redirectEvents.createdAt, windowStart),
@@ -349,7 +347,7 @@ export async function getLinkStats(
 		watermark > 0
 			? queryRollupPartials(db, linkId, windowStart)
 			: emptyPartials(),
-		queryEventPartials(db, linkId, windowStart, watermark),
+		queryEventPartials(db, linkId, windowStart),
 		getRecentEvents(db, linkId, recentLimit),
 	]);
 	const merged = mergePartials(rollups, tail, breakdownLimit);

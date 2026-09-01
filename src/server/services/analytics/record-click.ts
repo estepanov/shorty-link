@@ -243,16 +243,23 @@ function toEventRow(input: StampedClick) {
 			input.utmContent,
 			CLICK_FIELD_LIMITS.utmContent,
 		),
+		aggregated: false,
 		createdAt: input.createdAt,
 	};
 }
 
 function linkHitCountSql(linkId: string) {
-	return sql`(select count(*) from redirect_event where link_id = ${linkId})`;
+	return sql`(
+		coalesce((select sum(total) from redirect_event_daily where link_id = ${linkId}), 0)
+		+ (select count(*) from redirect_event where link_id = ${linkId} and aggregated = 0)
+	)`;
 }
 
 function linkLastClickSql(linkId: string) {
-	return sql`(select max(created_at) from redirect_event where link_id = ${linkId})`;
+	return sql`max(
+		coalesce(${shortLinks.lastClickAt}, 0),
+		coalesce((select max(created_at) from redirect_event where link_id = ${linkId}), 0)
+	)`;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, lt, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lt, sql } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import {
 	analyticsAggregationState,
@@ -77,46 +77,9 @@ function foldEvents(events: Array<typeof redirectEvents.$inferSelect>) {
 	return { daily, dimensions };
 }
 
-async function loadAggregateChunk(
-	db: AppDb,
-	watermark: number,
-	batchSize: number,
-) {
-	const first = await db
-		.select()
-		.from(redirectEvents)
-		.where(gt(redirectEvents.createdAt, watermark))
-		.orderBy(asc(redirectEvents.createdAt), asc(redirectEvents.id))
-		.limit(batchSize);
-
-	if (first.length === 0) {
-		return [];
-	}
-
-	const lastCreatedAt = first[first.length - 1]?.createdAt;
-	if (lastCreatedAt === undefined) {
-		return first;
-	}
-
-	const remainder = await db
-		.select()
-		.from(redirectEvents)
-		.where(
-			and(
-				gt(redirectEvents.createdAt, watermark),
-				eq(redirectEvents.createdAt, lastCreatedAt),
-			),
-		);
-	const byId = new Map(first.map((event) => [event.id, event]));
-	for (const event of remainder) {
-		byId.set(event.id, event);
-	}
-	return [...byId.values()];
-}
-
 /**
- * Incrementally folds new `redirect_event` rows into daily rollups, then
- * optionally deletes rolled-up raw events older than `retainDays`.
+ * Incrementally folds unaggregated `redirect_event` rows into daily rollups,
+ * then optionally deletes rolled-up raw events older than `retainDays`.
  */
 export async function aggregateAnalytics(
 	db: AppDb,
@@ -126,20 +89,22 @@ export async function aggregateAnalytics(
 		1,
 		options.batchSize ?? DEFAULT_AGGREGATE_BATCH_SIZE,
 	);
-	const [state] = await db
-		.select()
-		.from(analyticsAggregationState)
-		.where(eq(analyticsAggregationState.id, ANALYTICS_AGGREGATION_STATE_ID));
-	let watermark = state?.lastEventCreatedAt ?? 0;
+	let watermark = 0;
 
 	while (true) {
-		const events = await loadAggregateChunk(db, watermark, batchSize);
+		const events = await db
+			.select()
+			.from(redirectEvents)
+			.where(eq(redirectEvents.aggregated, false))
+			.orderBy(asc(redirectEvents.createdAt), asc(redirectEvents.id))
+			.limit(batchSize);
 		if (events.length === 0) {
 			break;
 		}
 
 		const { daily, dimensions } = foldEvents(events);
 		watermark = Math.max(...events.map((event) => event.createdAt));
+		const eventIds = events.map((event) => event.id);
 
 		const statements = [
 			...[...daily.values()].map((bucket) =>
@@ -170,6 +135,10 @@ export async function aggregateAnalytics(
 					}),
 			),
 			db
+				.update(redirectEvents)
+				.set({ aggregated: true })
+				.where(inArray(redirectEvents.id, eventIds)),
+			db
 				.insert(analyticsAggregationState)
 				.values({
 					id: ANALYTICS_AGGREGATION_STATE_ID,
@@ -190,7 +159,7 @@ export async function aggregateAnalytics(
 		);
 	}
 
-	if (!options.retainDays || options.retainDays <= 0 || watermark <= 0) {
+	if (!options.retainDays || options.retainDays <= 0) {
 		return;
 	}
 
@@ -199,7 +168,7 @@ export async function aggregateAnalytics(
 		.delete(redirectEvents)
 		.where(
 			and(
-				lte(redirectEvents.createdAt, watermark),
+				eq(redirectEvents.aggregated, true),
 				lt(redirectEvents.createdAt, cutoff),
 			),
 		);

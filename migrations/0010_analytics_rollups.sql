@@ -1,3 +1,6 @@
+ALTER TABLE `redirect_event` ADD `aggregated` integer DEFAULT 0 NOT NULL;
+CREATE INDEX `redirect_event_unaggregated_idx` ON `redirect_event` (`aggregated`, `created_at`);
+
 CREATE TABLE `redirect_event_daily` (
 	`link_id` text NOT NULL,
 	`day` integer NOT NULL,

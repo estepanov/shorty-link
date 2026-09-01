@@ -285,11 +285,18 @@ export const redirectEvents = sqliteTable(
 		eventSchemaVersion: integer("event_schema_version")
 			.notNull()
 			.default(REDIRECT_EVENT_SCHEMA_VERSION),
+		aggregated: integer("aggregated", { mode: "boolean" })
+			.notNull()
+			.default(false),
 		createdAt: integer("created_at").notNull(),
 	},
 	(table) => [
 		index("redirect_event_link_id_idx").on(table.linkId),
 		index("redirect_event_created_at_idx").on(table.createdAt),
+		index("redirect_event_unaggregated_idx").on(
+			table.aggregated,
+			table.createdAt,
+		),
 		index("redirect_event_user_agent_browser_idx").on(
 			table.linkId,
 			table.userAgentBrowser,
