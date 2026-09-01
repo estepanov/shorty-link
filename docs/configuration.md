@@ -120,7 +120,7 @@ Data-point layout for SQL/GraphQL queries:
 
 ### Analytics aggregator cron
 
-Optional Cron Trigger that runs the analytics aggregator. When enabled, the Worker `scheduled` handler folds new `redirect_event` rows into `redirect_event_daily` and `redirect_event_dimension_daily`. Until the first successful aggregation, the admin dashboard keeps reading raw events.
+Optional Cron Trigger that runs the analytics aggregator. When enabled, the Worker `scheduled` handler folds new `redirect_event` rows into `redirect_event_daily` and `redirect_event_dimension_daily`. The dashboard adds rollups to any raw events newer than the last watermark, so clicks stay visible between cron runs.
 
 Add this block to `wrangler.jsonc`:
 

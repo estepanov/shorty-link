@@ -41,7 +41,7 @@ Dimensions match the dashboard: `utmSource`, `utmMedium`, `utmCampaign`, `utmTer
 
 The Worker `scheduled` handler runs this. Cron is commented in `wrangler.jsonc` (same opt-in style as queues). Tests call `aggregateAnalytics` directly.
 
-`getLinkStats` moves to `src/server/services/analytics/stats.ts`. If aggregation state exists, totals / histogram / breakdowns read rollups. Recent events always read raw rows. If the aggregator has never run, stats use the current raw-event queries so default self-hosters keep working.
+`getLinkStats` moves to `src/server/services/analytics/stats.ts`. Totals, histogram, and breakdowns are rollups plus raw events after the watermark. Before the first successful run the watermark is 0, so that is all raw events. Recent events always read raw rows.
 
 ### Stage 5 — Analytics Engine
 

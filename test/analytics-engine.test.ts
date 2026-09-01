@@ -7,9 +7,9 @@ import { getPlatformProxy } from "wrangler";
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
 import {
 	getAnalyticsEngine,
-	recordClick,
 	toAnalyticsEngineDataPoint,
-} from "../src/server/services/analytics/record-click";
+} from "../src/server/services/analytics/engine";
+import { recordClick } from "../src/server/services/analytics/record-click";
 import { saveLink } from "../src/server/services/links";
 import { applyD1Migrations } from "./apply-d1-migrations";
 

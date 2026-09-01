@@ -65,7 +65,7 @@ The pipeline is selected by bindings, not by feature flags in code:
 - No queue binding and no Analytics Engine binding: direct D1 write in `waitUntil` (current behavior).
 - `ANALYTICS_QUEUE` producer present: redirector enqueues, the same Worker consumes and writes to D1.
 - Analytics Engine binding present: redirector also writes a data point to Analytics Engine. Admin reads still come from D1 (raw events or rollups).
-- Cron Trigger present: aggregator folds raw D1 events into daily rollups. Until the first successful run, the dashboard keeps reading raw events.
+- Cron Trigger present: aggregator folds raw D1 events into daily rollups. The dashboard reads those rollups plus any raw events newer than the last watermark.
 
 Self-hosters who do not configure any of these bindings keep the current single-Worker behavior with no extra deployables.
 
@@ -87,7 +87,7 @@ The split should happen in stages and remain reversible at each step.
 1. **Done:** Extract `recordClick` into `src/server/services/analytics/record-click.ts` with a stable `RecordClickInput` contract. The only implementation today is still the direct D1 write inside `waitUntil`.
 2. **Done:** Persist `event_schema_version` on each `redirect_event` row (`REDIRECT_EVENT_SCHEMA_VERSION` in `src/server/db/redirect-event-schema-version.ts`) so future queue consumers can branch on the stored shape.
 3. **Done:** Add a Queues-backed implementation of `recordClick` plus a same-Worker `queue` consumer that writes the same rows the direct path writes. Select by `ANALYTICS_QUEUE` binding presence. Default deploys without a queue keep the direct D1 write.
-4. **Done:** Add rollup tables (`redirect_event_daily`, `redirect_event_dimension_daily`, `analytics_aggregation_state`) and an aggregator Cron Trigger. `getLinkStats` reads rollups after the first successful aggregation and otherwise keeps using raw events.
+4. **Done:** Add rollup tables (`redirect_event_daily`, `redirect_event_dimension_daily`, `analytics_aggregation_state`) and an aggregator Cron Trigger. `getLinkStats` reads rollups plus raw events after the watermark; before the first run that is all raw events.
 5. **Done:** Add an Analytics Engine implementation of `recordClick` as a second optional emit sink. AE writes are extra; D1 remains the admin source of truth.
 6. **Done:** Document a retention policy for raw events (`ANALYTICS_RAW_EVENT_RETENTION_DAYS`) once rollups are authoritative for dashboards.
 

@@ -775,9 +775,6 @@ export async function deleteLink(db: AppDb, id: string) {
 	await db.delete(shortLinks).where(eq(shortLinks.id, id));
 }
 
-export { getLinkStats } from "./analytics/stats";
-export type { UserAgentDimension, UtmDimension } from "./analytics/stats";
-
 export async function createInvite(
 	db: AppDb,
 	input: {

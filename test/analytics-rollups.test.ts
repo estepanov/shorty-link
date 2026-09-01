@@ -136,6 +136,90 @@ describe("analytics rollups and retention", () => {
 		expect(rolled.recentEvents).toHaveLength(3);
 	});
 
+	it("includes events recorded after the last aggregation in dashboard totals", async () => {
+		const linkId = await saveLink(db, {
+			slug: "tail",
+			targetUrl: "https://example.com/tail",
+		});
+		const now = Date.now();
+
+		await db.insert(redirectEvents).values({
+			id: "rolled-click",
+			linkId,
+			hostname: "__default__",
+			slug: "tail",
+			targetUrl: "https://example.com/tail",
+			statusCode: 302,
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+			createdAt: now - 1_000,
+		});
+		await aggregateAnalytics(db, { now });
+		await db.insert(redirectEvents).values({
+			id: "fresh-click",
+			linkId,
+			hostname: "__default__",
+			slug: "tail",
+			targetUrl: "https://example.com/tail",
+			statusCode: 302,
+			utmSource: "fresh",
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+			createdAt: now,
+		});
+
+		const stats = await getLinkStats(db, linkId, {
+			days: 30,
+			breakdownLimit: 5,
+		});
+		expect(stats.totals.allTime).toBe(2);
+		expect(stats.breakdowns.utmSource).toEqual([{ value: "fresh", total: 1 }]);
+	});
+
+	it("matches a single run when events are folded in created_at chunks", async () => {
+		const linkId = await saveLink(db, {
+			slug: "chunk",
+			targetUrl: "https://example.com/chunk",
+		});
+		const now = Date.now();
+
+		await db.insert(redirectEvents).values([
+			{
+				id: "chunk-a",
+				linkId,
+				hostname: "__default__",
+				slug: "chunk",
+				targetUrl: "https://example.com/chunk",
+				statusCode: 302,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: now - 3_000,
+			},
+			{
+				id: "chunk-b",
+				linkId,
+				hostname: "__default__",
+				slug: "chunk",
+				targetUrl: "https://example.com/chunk",
+				statusCode: 302,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: now - 2_000,
+			},
+			{
+				id: "chunk-c",
+				linkId,
+				hostname: "__default__",
+				slug: "chunk",
+				targetUrl: "https://example.com/chunk",
+				statusCode: 302,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: now - 1_000,
+			},
+		]);
+
+		await aggregateAnalytics(db, { now, batchSize: 1 });
+
+		const stats = await getLinkStats(db, linkId, { days: 30 });
+		expect(stats.totals.allTime).toBe(3);
+	});
+
 	it("increments rollups for new events only and retains rolled-up raw rows", async () => {
 		const linkId = await saveLink(db, {
 			slug: "retain",

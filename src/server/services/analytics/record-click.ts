@@ -5,6 +5,12 @@ import type { AppDb } from "../../db/client";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../../db/redirect-event-schema-version";
 import { redirectEvents, shortLinks } from "../../db/schema";
 import { parseRedirectUserAgent } from "../user-agent";
+import { CLICK_FIELD_LIMITS, truncateStoredText } from "./click-fields";
+import {
+	type AnalyticsEngineWriter,
+	getAnalyticsEngine,
+	toAnalyticsEngineDataPoint,
+} from "./engine";
 
 export const ANALYTICS_QUEUE_MESSAGE_VERSION = 1 as const;
 
@@ -71,23 +77,12 @@ export type AnalyticsQueueBatch = {
 	}[];
 };
 
-export type AnalyticsEngineDataPoint = {
-	indexes: [string];
-	blobs: string[];
-	doubles: number[];
-};
-
-export type AnalyticsEngineWriter = {
-	writeDataPoint(event: AnalyticsEngineDataPoint): void;
-};
-
 export type AnalyticsSinks = {
 	queue?: AnalyticsQueueSender;
 	engine?: AnalyticsEngineWriter;
 };
 
-type AnalyticsBindings = {
-	ANALYTICS?: unknown;
+type AnalyticsQueueBindings = {
 	ANALYTICS_QUEUE?: unknown;
 };
 
@@ -99,14 +94,6 @@ function isQueueSender(value: unknown): value is AnalyticsQueueSender {
 	);
 }
 
-function isEngineWriter(value: unknown): value is AnalyticsEngineWriter {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		typeof (value as AnalyticsEngineWriter).writeDataPoint === "function"
-	);
-}
-
 export function getAnalyticsQueue(
 	bindings: object | undefined,
 ): AnalyticsQueueSender | undefined {
@@ -114,59 +101,14 @@ export function getAnalyticsQueue(
 		return undefined;
 	}
 
-	const queue = (bindings as AnalyticsBindings).ANALYTICS_QUEUE;
+	const queue = (bindings as AnalyticsQueueBindings).ANALYTICS_QUEUE;
 	return isQueueSender(queue) ? queue : undefined;
-}
-
-export function getAnalyticsEngine(
-	bindings: object | undefined,
-): AnalyticsEngineWriter | undefined {
-	if (!bindings || !("ANALYTICS" in bindings)) {
-		return undefined;
-	}
-
-	const engine = (bindings as AnalyticsBindings).ANALYTICS;
-	return isEngineWriter(engine) ? engine : undefined;
 }
 
 function defaultAnalyticsSinks(): AnalyticsSinks {
 	return {
 		queue: getAnalyticsQueue(env),
 		engine: getAnalyticsEngine(env),
-	};
-}
-
-function analyticsBlob(value: string | null | undefined, maxLength: number) {
-	return truncateStoredText(value, maxLength) ?? "";
-}
-
-/**
- * Stable Analytics Engine columns for the optional `ANALYTICS` binding.
- * `index1` is `linkId`. `double1` is `statusCode`. Blobs are hostname, slug,
- * country, city, colo, referer, userAgent, utmSource, utmMedium, utmCampaign,
- * utmTerm, utmContent, then targetUrl.
- */
-export function toAnalyticsEngineDataPoint(
-	input: RecordClickInput,
-): AnalyticsEngineDataPoint {
-	return {
-		indexes: [input.linkId],
-		blobs: [
-			input.hostname,
-			input.slug,
-			analyticsBlob(input.country, 32),
-			analyticsBlob(input.city, 128),
-			analyticsBlob(input.colo, 32),
-			analyticsBlob(input.referer, 2048),
-			analyticsBlob(input.userAgent, 512),
-			analyticsBlob(input.utmSource, 256),
-			analyticsBlob(input.utmMedium, 256),
-			analyticsBlob(input.utmCampaign, 256),
-			analyticsBlob(input.utmTerm, 256),
-			analyticsBlob(input.utmContent, 256),
-			analyticsBlob(input.targetUrl, 2048),
-		],
-		doubles: [input.statusCode],
 	};
 }
 
@@ -259,16 +201,11 @@ export function parseAnalyticsQueueMessage(
 	};
 }
 
-function truncateStoredText(
-	value: string | null | undefined,
-	maxLength: number,
-) {
-	const normalized = value?.trim();
-	return normalized ? normalized.slice(0, maxLength) : null;
-}
-
 function toEventRow(input: StampedClick) {
-	const userAgent = truncateStoredText(input.userAgent, 512);
+	const userAgent = truncateStoredText(
+		input.userAgent,
+		CLICK_FIELD_LIMITS.userAgent,
+	);
 	const parsedUserAgent = parseRedirectUserAgent(userAgent);
 
 	return {
@@ -279,21 +216,33 @@ function toEventRow(input: StampedClick) {
 		targetUrl: input.targetUrl,
 		statusCode: input.statusCode,
 		eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
-		country: truncateStoredText(input.country, 32),
-		city: truncateStoredText(input.city, 128),
-		colo: truncateStoredText(input.colo, 32),
-		referer: truncateStoredText(input.referer, 2048),
+		country: truncateStoredText(input.country, CLICK_FIELD_LIMITS.country),
+		city: truncateStoredText(input.city, CLICK_FIELD_LIMITS.city),
+		colo: truncateStoredText(input.colo, CLICK_FIELD_LIMITS.colo),
+		referer: truncateStoredText(input.referer, CLICK_FIELD_LIMITS.referer),
 		userAgent,
 		userAgentBrowser: parsedUserAgent.browser,
 		userAgentOs: parsedUserAgent.os,
 		userAgentDeviceType: parsedUserAgent.deviceType,
 		userAgentIsBot: parsedUserAgent.isBot,
 		ipHash: input.ipHash ?? null,
-		utmSource: truncateStoredText(input.utmSource, 256),
-		utmMedium: truncateStoredText(input.utmMedium, 256),
-		utmCampaign: truncateStoredText(input.utmCampaign, 256),
-		utmTerm: truncateStoredText(input.utmTerm, 256),
-		utmContent: truncateStoredText(input.utmContent, 256),
+		utmSource: truncateStoredText(
+			input.utmSource,
+			CLICK_FIELD_LIMITS.utmSource,
+		),
+		utmMedium: truncateStoredText(
+			input.utmMedium,
+			CLICK_FIELD_LIMITS.utmMedium,
+		),
+		utmCampaign: truncateStoredText(
+			input.utmCampaign,
+			CLICK_FIELD_LIMITS.utmCampaign,
+		),
+		utmTerm: truncateStoredText(input.utmTerm, CLICK_FIELD_LIMITS.utmTerm),
+		utmContent: truncateStoredText(
+			input.utmContent,
+			CLICK_FIELD_LIMITS.utmContent,
+		),
 		createdAt: input.createdAt,
 	};
 }
@@ -335,6 +284,19 @@ export async function persistClicks(
 	]);
 }
 
+async function writeDurableClick(
+	db: AppDb,
+	input: RecordClickInput,
+	queue: AnalyticsQueueSender | undefined,
+) {
+	if (queue) {
+		await queue.send(toAnalyticsQueueMessage(input));
+		return;
+	}
+
+	await persistClicks(db, [stampClick(input)]);
+}
+
 /**
  * Records a click by writing an optional Analytics Engine data point, then
  * enqueueing when `ANALYTICS_QUEUE` is bound, otherwise writing D1 directly.
@@ -349,12 +311,7 @@ export async function recordClick(
 		sinks.engine.writeDataPoint(toAnalyticsEngineDataPoint(input));
 	}
 
-	if (sinks.queue) {
-		await sinks.queue.send(toAnalyticsQueueMessage(input));
-		return;
-	}
-
-	await persistClicks(db, [stampClick(input)]);
+	await writeDurableClick(db, input, sinks.queue);
 }
 
 /**

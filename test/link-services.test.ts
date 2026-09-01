@@ -7,8 +7,8 @@ import { getPlatformProxy } from "wrangler";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
 import { recordClick } from "../src/server/services/analytics/record-click";
+import { getLinkStats } from "../src/server/services/analytics/stats";
 import {
-	getLinkStats,
 	getManagedDomainByHostname,
 	listShortLinks,
 	resolveExactRedirect,
