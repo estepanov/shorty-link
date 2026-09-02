@@ -13,7 +13,9 @@ import {
 	isUtmDimension,
 	startOfUtcDay,
 	type UserAgentDimension,
+	UTC_DAY_MS,
 	type UtmDimension,
+	utcDaySql,
 } from "./dimensions";
 
 export type { UserAgentDimension, UtmDimension };
@@ -21,47 +23,27 @@ export type { UserAgentDimension, UtmDimension };
 type CountedValue = { value: string | null; total: number };
 type NamedValue = { value: string; total: number };
 
+type DimensionBags<T> = {
+	breakdowns: Record<UtmDimension, T>;
+	userAgents: Record<UserAgentDimension, T>;
+};
+
 type StatsPartials = {
 	window: number;
 	histogramRows: Array<{ day: number; total: number }>;
-	breakdowns: Record<UtmDimension, CountedValue[]>;
-	userAgents: Record<UserAgentDimension, CountedValue[]>;
-};
+} & DimensionBags<CountedValue[]>;
 
-function emptyUtmBreakdowns(): Record<UtmDimension, CountedValue[]> {
-	return {
-		utmSource: [],
-		utmMedium: [],
-		utmCampaign: [],
-		utmTerm: [],
-		utmContent: [],
-	};
-}
-
-function emptyUserAgents(): Record<UserAgentDimension, CountedValue[]> {
-	return {
-		browser: [],
-		os: [],
-		deviceType: [],
-	};
-}
-
-function emptyNamedUtm(): Record<UtmDimension, NamedValue[]> {
-	return {
-		utmSource: [],
-		utmMedium: [],
-		utmCampaign: [],
-		utmTerm: [],
-		utmContent: [],
-	};
-}
-
-function emptyNamedUserAgents(): Record<UserAgentDimension, NamedValue[]> {
-	return {
-		browser: [],
-		os: [],
-		deviceType: [],
-	};
+function emptyDimensionBags<T>(make: () => T): DimensionBags<T> {
+	const breakdowns = {} as Record<UtmDimension, T>;
+	const userAgents = {} as Record<UserAgentDimension, T>;
+	for (const dimension of DIMENSIONS) {
+		if (isUtmDimension(dimension)) {
+			breakdowns[dimension.key] = make();
+		} else {
+			userAgents[dimension.key] = make();
+		}
+	}
+	return { breakdowns, userAgents };
 }
 
 function fillHistogram(
@@ -76,7 +58,7 @@ function fillHistogram(
 	}
 	const histogram: Array<{ day: number; total: number }> = [];
 	for (let index = 0; index < days; index += 1) {
-		const day = windowStart + index * 24 * 60 * 60 * 1000;
+		const day = windowStart + index * UTC_DAY_MS;
 		histogram.push({ day, total: histogramMap.get(day) ?? 0 });
 	}
 	return histogram;
@@ -135,8 +117,7 @@ function mergePartials(
 	right: StatsPartials,
 	breakdownLimit: number,
 ): MergedPartials {
-	const breakdowns = emptyNamedUtm();
-	const userAgents = emptyNamedUserAgents();
+	const bags = emptyDimensionBags(() => [] as NamedValue[]);
 
 	for (const dimension of DIMENSIONS) {
 		const merged = mergeCounted(
@@ -150,25 +131,23 @@ function mergePartials(
 			dimension.empty,
 		);
 		if (isUtmDimension(dimension)) {
-			breakdowns[dimension.key] = merged;
+			bags.breakdowns[dimension.key] = merged;
 		} else {
-			userAgents[dimension.key] = merged;
+			bags.userAgents[dimension.key] = merged;
 		}
 	}
 
 	return {
 		window: left.window + right.window,
 		histogramRows: [...left.histogramRows, ...right.histogramRows],
-		breakdowns,
-		userAgents,
+		...bags,
 	};
 }
 
 function partitionDimensionRows(
 	rows: Array<{ dimension: string; value: string | null; total: number }>,
-): Pick<StatsPartials, "breakdowns" | "userAgents"> {
-	const breakdowns = emptyUtmBreakdowns();
-	const userAgents = emptyUserAgents();
+): DimensionBags<CountedValue[]> {
+	const bags = emptyDimensionBags(() => [] as CountedValue[]);
 	const byKey = new Map<string, CountedValue[]>();
 	for (const dimension of DIMENSIONS) {
 		byKey.set(dimension.key, []);
@@ -182,12 +161,12 @@ function partitionDimensionRows(
 	for (const dimension of DIMENSIONS) {
 		const values = byKey.get(dimension.key) ?? [];
 		if (isUtmDimension(dimension)) {
-			breakdowns[dimension.key] = values;
+			bags.breakdowns[dimension.key] = values;
 		} else {
-			userAgents[dimension.key] = values;
+			bags.userAgents[dimension.key] = values;
 		}
 	}
-	return { breakdowns, userAgents };
+	return bags;
 }
 
 async function getRecentEvents(db: AppDb, linkId: string, recentLimit: number) {
@@ -281,7 +260,7 @@ async function queryEventPartials(
 		linkColumn,
 		gte(redirectEvents.createdAt, windowStart),
 	);
-	const dayExpr = sql<number>`(${redirectEvents.createdAt} / 86400000) * 86400000`;
+	const dayExpr = utcDaySql(redirectEvents.createdAt);
 
 	const [[windowRow], histogramRows, dimensionResults] = await Promise.all([
 		db.select({ total: count() }).from(redirectEvents).where(windowFilter),
@@ -340,9 +319,7 @@ export async function getLinkStats(
 		1,
 		Math.min(options?.breakdownLimit ?? 10, 50),
 	);
-	const windowStart = startOfUtcDay(
-		Date.now() - (days - 1) * 24 * 60 * 60 * 1000,
-	);
+	const windowStart = startOfUtcDay(Date.now() - (days - 1) * UTC_DAY_MS);
 	const [[allTimeRow], rollups, tail, recentEvents] = await Promise.all([
 		db
 			.select({ total: linkHitCountSql(linkId) })

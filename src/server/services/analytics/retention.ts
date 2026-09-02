@@ -1,6 +1,13 @@
 export function parseRetentionDays(
-	value: string | undefined,
+	value: string | number | undefined,
 ): number | undefined {
+	if (typeof value === "number") {
+		if (!Number.isFinite(value) || value <= 0) {
+			return undefined;
+		}
+		return Math.floor(value);
+	}
+
 	if (!value) {
 		return undefined;
 	}
@@ -20,5 +27,8 @@ export function readRetentionDays(env: object): number | undefined {
 
 	const value = (env as { ANALYTICS_RAW_EVENT_RETENTION_DAYS?: unknown })
 		.ANALYTICS_RAW_EVENT_RETENTION_DAYS;
-	return typeof value === "string" ? parseRetentionDays(value) : undefined;
+	if (typeof value === "number" || typeof value === "string") {
+		return parseRetentionDays(value);
+	}
+	return undefined;
 }

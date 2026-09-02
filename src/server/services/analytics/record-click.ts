@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
+import { inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { AppDb } from "../../db/client";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../../db/redirect-event-schema-version";
-import { redirectEvents } from "../../db/schema";
+import { redirectEvents, shortLinks } from "../../db/schema";
 import { parseRedirectUserAgent } from "../user-agent";
 import { normalizeClickFields, type RecordClickInput } from "./click-fields";
 import { updateLinkHitMetadata } from "./counts";
@@ -117,11 +118,17 @@ function parseStampedClick(value: unknown): StampedClick | null {
 	const click = value as Record<string, unknown>;
 	if (
 		typeof click.linkId !== "string" ||
+		click.linkId.length === 0 ||
 		typeof click.hostname !== "string" ||
+		click.hostname.length === 0 ||
 		typeof click.slug !== "string" ||
+		click.slug.length === 0 ||
 		typeof click.targetUrl !== "string" ||
+		click.targetUrl.length === 0 ||
 		typeof click.statusCode !== "number" ||
-		!Number.isFinite(click.statusCode) ||
+		!Number.isInteger(click.statusCode) ||
+		click.statusCode < 100 ||
+		click.statusCode > 599 ||
 		typeof click.id !== "string" ||
 		click.id.length === 0 ||
 		typeof click.createdAt !== "number" ||
@@ -195,7 +202,7 @@ function toEventRow(input: StampedClick) {
 		userAgentOs: parsedUserAgent.os,
 		userAgentDeviceType: parsedUserAgent.deviceType,
 		userAgentIsBot: parsedUserAgent.isBot,
-		ipHash: input.ipHash ?? null,
+		ipHash: fields.ipHash,
 		utmSource: fields.utmSource,
 		utmMedium: fields.utmMedium,
 		utmCampaign: fields.utmCampaign,
@@ -206,9 +213,27 @@ function toEventRow(input: StampedClick) {
 	};
 }
 
+function isForeignKeyError(error: unknown) {
+	const message = error instanceof Error ? error.message : String(error);
+	return /FOREIGN KEY/i.test(message);
+}
+
+async function existingLinkIds(db: AppDb, linkIds: readonly string[]) {
+	if (linkIds.length === 0) {
+		return new Set<string>();
+	}
+
+	const rows = await db
+		.select({ id: shortLinks.id })
+		.from(shortLinks)
+		.where(inArray(shortLinks.id, [...new Set(linkIds)]));
+	return new Set(rows.map((row) => row.id));
+}
+
 /**
  * Writes click rows to `redirect_event` and recounts `short_link` hit metadata
- * from those rows so queue retries stay idempotent.
+ * from those rows so queue retries stay idempotent. Clicks for missing links
+ * are skipped so a deleted link cannot fail the rest of a batch.
  */
 export async function persistClicks(
 	db: AppDb,
@@ -218,12 +243,34 @@ export async function persistClicks(
 		return;
 	}
 
-	const rows = inputs.map(toEventRow);
+	const existing = await existingLinkIds(
+		db,
+		inputs.map((input) => input.linkId),
+	);
+	const live = inputs.filter((input) => existing.has(input.linkId));
+	if (live.length === 0) {
+		return;
+	}
+
+	const rows = live.map(toEventRow);
 	const linkIds = [...new Set(rows.map((row) => row.linkId))];
-	await db.batch([
-		db.insert(redirectEvents).values(rows).onConflictDoNothing(),
-		...linkIds.map((linkId) => updateLinkHitMetadata(db, linkId)),
-	]);
+	try {
+		await db.batch([
+			db.insert(redirectEvents).values(rows).onConflictDoNothing(),
+			...linkIds.map((linkId) => updateLinkHitMetadata(db, linkId)),
+		]);
+	} catch (error) {
+		if (live.length === 1) {
+			if (isForeignKeyError(error)) {
+				return;
+			}
+			throw error;
+		}
+
+		for (const input of live) {
+			await persistClicks(db, [input]);
+		}
+	}
 }
 
 async function writeDurableClick(
@@ -240,8 +287,8 @@ async function writeDurableClick(
 }
 
 /**
- * Records a click by writing an optional Analytics Engine data point, then
- * enqueueing when `ANALYTICS_QUEUE` is bound, otherwise writing D1 directly.
+ * Records a click by writing D1 or enqueueing first, then emitting an optional
+ * Analytics Engine data point so AE does not outrun the durable path.
  * Must run inside `waitUntil` on the redirect path.
  */
 export async function recordClick(
@@ -249,11 +296,11 @@ export async function recordClick(
 	input: RecordClickInput,
 	sinks: AnalyticsSinks = defaultAnalyticsSinks(),
 ) {
+	await writeDurableClick(db, input, sinks.queue);
+
 	if (sinks.engine) {
 		sinks.engine.writeDataPoint(toAnalyticsEngineDataPoint(input));
 	}
-
-	await writeDurableClick(db, input, sinks.queue);
 }
 
 /**

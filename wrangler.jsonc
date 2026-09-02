@@ -37,6 +37,7 @@
 	"ai": {
 		"binding": "AI"
 	}
+	// Add a comma after the `ai` object when uncommenting any optional block below.
 	// Optional analytics queue. Create the queues first, then uncomment:
 	// pnpm exec wrangler queues create shorty-link-analytics
 	// pnpm exec wrangler queues create shorty-link-analytics-dlq

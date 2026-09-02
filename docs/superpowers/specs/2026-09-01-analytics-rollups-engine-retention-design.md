@@ -27,7 +27,7 @@ Tables:
 
 - `redirect_event_daily (link_id, day, total)` — UTC midnight ms, PK `(link_id, day)`
 - `redirect_event_dimension_daily (link_id, day, dimension, value, total)` — PK `(link_id, day, dimension, value)`
-- `analytics_aggregation_state (id, last_success_at, last_event_created_at)` — single row `default` (ops breadcrumb; not a read input)
+- `analytics_aggregation_state (id, last_success_at, locked_until)` — single row `default`. `locked_until` is a lease so overlapping cron runs cannot double-add rollups. Not a stats read input.
 - `redirect_event.aggregated` — boolean, default false
 
 Dimensions match the dashboard and live in one catalog (`DIMENSIONS`): `utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`, `browser`, `os`, `deviceType`. UTM nulls are omitted. UA nulls become `Unknown`. No hourly or referrer rollups; those are not dashboard query patterns. Recent events stay a raw-event detail query.
@@ -35,9 +35,11 @@ Dimensions match the dashboard and live in one catalog (`DIMENSIONS`): `utmSourc
 `aggregateAnalytics(db, { now, retainDays? })`:
 
 1. Load raw events with `aggregated = 0`, oldest first, in chunks.
-2. Fold daily and dimension totals from the catalog.
-3. Multi-row upsert rollups (`total = total + excluded.total`), mark those rows `aggregated = 1`, write state, and recount `short_link` hit metadata for touched link IDs.
-4. If `retainDays` is a positive integer, delete raw events with `aggregated = 1` and `created_at < now - retainDays * 86400000`.
+2. Take a row lease on `analytics_aggregation_state` (`locked_until`). If another run holds the lease, return.
+3. Fold daily and dimension totals from the catalog.
+4. Multi-row upsert rollups (`total = total + excluded.total`), mark those rows `aggregated = 1`, and recount `short_link` hit metadata for touched link IDs.
+5. Release the lease (`locked_until = 0`, `last_success_at = now`).
+6. If `retainDays` is a positive integer, delete raw events with `aggregated = 1` and `created_at < now - retainDays * 86400000`.
 
 The Worker `scheduled` handler runs this. Cron is commented in `wrangler.jsonc` (same opt-in style as queues). Tests call `aggregateAnalytics` directly.
 

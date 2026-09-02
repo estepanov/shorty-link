@@ -71,6 +71,24 @@ describe("analytics queue message", () => {
 				country: 1,
 			}),
 		).toBeNull();
+		expect(
+			parseAnalyticsQueueMessage({
+				v: 1,
+				id: "x",
+				createdAt: 1,
+				...click,
+				hostname: "",
+			}),
+		).toBeNull();
+		expect(
+			parseAnalyticsQueueMessage({
+				v: 1,
+				id: "x",
+				createdAt: 1,
+				...click,
+				statusCode: 99,
+			}),
+		).toBeNull();
 	});
 });
 
@@ -303,6 +321,61 @@ describe("analytics persist and enqueue", () => {
 			.where(eq(shortLinks.id, linkId));
 
 		expect(retried).toEqual(["bad"]);
+		expect(events).toHaveLength(1);
+		expect(link?.hitCount).toBe(1);
+	});
+
+	it("persists valid clicks when another message refers to a deleted link", async () => {
+		const liveId = await saveLink(db, {
+			slug: "live",
+			targetUrl: "https://example.com/live",
+		});
+		const goneId = await saveLink(db, {
+			slug: "gone",
+			targetUrl: "https://example.com/gone",
+		});
+		await db.delete(shortLinks).where(eq(shortLinks.id, goneId));
+
+		const retried: string[] = [];
+		await consumeAnalyticsBatch(db, {
+			messages: [
+				{
+					body: toAnalyticsQueueMessage({
+						linkId: liveId,
+						hostname: "__default__",
+						slug: "live",
+						targetUrl: "https://example.com/live",
+						statusCode: 302,
+					}),
+					retry: () => {
+						retried.push("live");
+					},
+				},
+				{
+					body: toAnalyticsQueueMessage({
+						linkId: goneId,
+						hostname: "__default__",
+						slug: "gone",
+						targetUrl: "https://example.com/gone",
+						statusCode: 302,
+					}),
+					retry: () => {
+						retried.push("gone");
+					},
+				},
+			],
+		});
+
+		const events = await db
+			.select()
+			.from(redirectEvents)
+			.where(eq(redirectEvents.linkId, liveId));
+		const [link] = await db
+			.select()
+			.from(shortLinks)
+			.where(eq(shortLinks.id, liveId));
+
+		expect(retried).toEqual([]);
 		expect(events).toHaveLength(1);
 		expect(link?.hitCount).toBe(1);
 	});

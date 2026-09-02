@@ -59,7 +59,7 @@ type AnalyticsQueueMessage = {
 
 Unknown or invalid messages are `retry()`'d so Cloudflare can dead-letter them after `max_retries`. Valid messages persist; a persist failure throws so the batch retries.
 
-Idempotency: insert with `ON CONFLICT DO NOTHING` and increment hit counts only for rows that were actually inserted.
+Idempotency: insert with `ON CONFLICT DO NOTHING` and recount `hit_count` from daily rollups plus unaggregated rows. Clicks for missing `linkId`s are skipped so a deleted link cannot fail the rest of a batch.
 
 ### Consumer
 

@@ -363,7 +363,7 @@ export const analyticsAggregationState = sqliteTable(
 	{
 		id: text("id").primaryKey(),
 		lastSuccessAt: integer("last_success_at").notNull(),
-		lastEventCreatedAt: integer("last_event_created_at").notNull(),
+		lockedUntil: integer("locked_until").notNull().default(0),
 	},
 );
 

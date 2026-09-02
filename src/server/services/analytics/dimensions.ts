@@ -1,3 +1,5 @@
+import { type SQLWrapper, sql } from "drizzle-orm";
+
 export const ANALYTICS_AGGREGATION_STATE_ID = "default";
 
 export type DimensionEmptyPolicy = "omit" | "unknown";
@@ -80,8 +82,12 @@ export function dimensionValue(
 	}
 }
 
+export const UTC_DAY_MS = 86_400_000;
+
 export function startOfUtcDay(timestamp: number) {
-	const date = new Date(timestamp);
-	date.setUTCHours(0, 0, 0, 0);
-	return date.getTime();
+	return Math.trunc(timestamp / UTC_DAY_MS) * UTC_DAY_MS;
+}
+
+export function utcDaySql(column: SQLWrapper) {
+	return sql<number>`(${column} / ${sql.raw(String(UTC_DAY_MS))}) * ${sql.raw(String(UTC_DAY_MS))}`;
 }

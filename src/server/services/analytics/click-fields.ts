@@ -40,6 +40,7 @@ export const CLICK_FIELD_LIMITS = {
 	utmTerm: 256,
 	utmContent: 256,
 	targetUrl: 2048,
+	ipHash: 64,
 } as const;
 
 export function truncateStoredText(
@@ -79,5 +80,6 @@ export function normalizeClickFields(input: RecordClickInput) {
 		),
 		targetUrl:
 			truncateStoredText(input.targetUrl, CLICK_FIELD_LIMITS.targetUrl) ?? "",
+		ipHash: truncateStoredText(input.ipHash, CLICK_FIELD_LIMITS.ipHash),
 	};
 }

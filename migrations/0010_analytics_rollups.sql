@@ -24,5 +24,5 @@ CREATE INDEX `redirect_event_dimension_daily_lookup_idx` ON `redirect_event_dime
 CREATE TABLE `analytics_aggregation_state` (
 	`id` text PRIMARY KEY NOT NULL,
 	`last_success_at` integer NOT NULL,
-	`last_event_created_at` integer NOT NULL
+	`locked_until` integer NOT NULL DEFAULT 0
 );

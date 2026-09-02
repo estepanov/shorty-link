@@ -13,7 +13,11 @@ import {
 	shortLinks,
 } from "../src/server/db/schema";
 import { aggregateAnalytics } from "../src/server/services/analytics/aggregate";
-import { startOfUtcDay } from "../src/server/services/analytics/dimensions";
+import {
+	ANALYTICS_AGGREGATION_STATE_ID,
+	startOfUtcDay,
+	UTC_DAY_MS,
+} from "../src/server/services/analytics/dimensions";
 import { persistClicks } from "../src/server/services/analytics/record-click";
 import {
 	parseRetentionDays,
@@ -375,6 +379,40 @@ describe("analytics rollups and retention", () => {
 		expect(link?.hitCount).toBe(2);
 		expect(link?.lastClickAt).toBe(now);
 	});
+
+	it("does not fold events while another run holds the aggregation lease", async () => {
+		const now = Date.now();
+		const linkId = await saveLink(db, {
+			slug: "lease",
+			targetUrl: "https://example.com/lease",
+		});
+		await db.insert(redirectEvents).values({
+			id: "leased-click",
+			linkId,
+			hostname: "__default__",
+			slug: "lease",
+			targetUrl: "https://example.com/lease",
+			statusCode: 302,
+			eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+			createdAt: now,
+		});
+		await db.insert(analyticsAggregationState).values({
+			id: ANALYTICS_AGGREGATION_STATE_ID,
+			lastSuccessAt: 0,
+			lockedUntil: now + 60_000,
+		});
+
+		await aggregateAnalytics(db, { now });
+
+		const [event] = await db
+			.select()
+			.from(redirectEvents)
+			.where(eq(redirectEvents.id, "leased-click"));
+		const daily = await db.select().from(redirectEventDaily);
+
+		expect(event?.aggregated).toBe(false);
+		expect(daily).toHaveLength(0);
+	});
 });
 
 describe("analytics retention config", () => {
@@ -385,12 +423,23 @@ describe("analytics retention config", () => {
 		expect(parseRetentionDays("-1")).toBeUndefined();
 		expect(parseRetentionDays("90")).toBe(90);
 		expect(parseRetentionDays(" 14 ")).toBe(14);
+		expect(parseRetentionDays(90)).toBe(90);
+		expect(parseRetentionDays(0)).toBeUndefined();
 		expect(readRetentionDays({})).toBeUndefined();
-		expect(
-			readRetentionDays({ ANALYTICS_RAW_EVENT_RETENTION_DAYS: 90 }),
-		).toBeUndefined();
+		expect(readRetentionDays({ ANALYTICS_RAW_EVENT_RETENTION_DAYS: 90 })).toBe(
+			90,
+		);
 		expect(
 			readRetentionDays({ ANALYTICS_RAW_EVENT_RETENTION_DAYS: "30" }),
 		).toBe(30);
+	});
+});
+
+describe("utc day buckets", () => {
+	it("matches integer epoch-day math used in SQL", () => {
+		const timestamp = 1_700_000_000_123;
+		expect(startOfUtcDay(timestamp)).toBe(
+			Math.trunc(timestamp / UTC_DAY_MS) * UTC_DAY_MS,
+		);
 	});
 });

@@ -24,7 +24,6 @@ export function linkHitMetadataSet(linkId: string) {
 	return {
 		hitCount: linkHitCountSql(linkId),
 		lastClickAt: linkLastClickSql(linkId),
-		updatedAt: linkLastClickSql(linkId),
 	};
 }
 
