@@ -38,14 +38,7 @@ Shorty Link is designed to be forked and deployed to your own Cloudflare account
 
    Keep binding names such as `DB` and `AI` unchanged. The committed config is a starter config, not the maintainer's private deployment config.
 
-Optionally add analytics pipeline pieces if you want them. None are required:
-
-- `ANALYTICS_QUEUE` to enqueue redirect clicks instead of writing D1 in `waitUntil`. See [Configuration](/configuration/#analytics_queue).
-- A Cron Trigger so the aggregator builds daily rollups the dashboard can read. See [Configuration](/configuration/#analytics-aggregator-cron).
-- `ANALYTICS` to also emit each click to Workers Analytics Engine. See [Configuration](/configuration/#analytics).
-- `ANALYTICS_RAW_EVENT_RETENTION_DAYS` to drop rolled-up raw events after N days. See [Configuration](/configuration/#analytics_raw_event_retention_days).
-
-The default deploy works without a queue, cron, Analytics Engine, or retention var.
+Optionally add analytics pipeline pieces if you want them. None are required. Follow the [Analytics opt-in guide](/analytics/) to pick queue buffering, daily rollups, retention, and/or Analytics Engine. The default deploy works without any of those.
 
 5. Set the auth secret:
 

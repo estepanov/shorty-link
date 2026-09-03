@@ -50,9 +50,11 @@ Keep the binding name as `DB`; the server code expects that binding.
 
 Optional Workers AI binding used for slug suggestions. The core shortener works without AI-backed suggestions if the feature is not used.
 
+Optional analytics bindings and vars are **off** in the committed starter. Pick pieces from the [Analytics opt-in guide](/analytics/) rather than enabling everything at once.
+
 ### `ANALYTICS_QUEUE`
 
-Optional Cloudflare Queues producer binding. When present, redirect analytics are enqueued and the same Worker consumes batches into D1. When absent, `recordClick` keeps writing D1 directly inside `waitUntil`.
+Optional Cloudflare Queues producer binding. When present, redirect analytics are enqueued and the same Worker consumes batches into D1. When absent, `recordClick` keeps writing D1 directly inside `waitUntil`. See [Analytics](/analytics/#queue) for when to turn this on.
 
 Create the queue and dead-letter queue first:
 
@@ -93,7 +95,7 @@ The application still treats the binding as optional at runtime, so default depl
 
 ### `ANALYTICS`
 
-Optional Workers Analytics Engine dataset binding. When present, `recordClick` first enqueues or persists to D1, then writes one Analytics Engine data point (not awaited). The admin dashboard does not query Analytics Engine; D1 remains the source of truth.
+Optional Workers Analytics Engine dataset binding. When present, `recordClick` first enqueues or persists to D1, then writes one Analytics Engine data point (not awaited). The admin dashboard does not query Analytics Engine; D1 remains the source of truth. See [Analytics](/analytics/#analytics-engine) before enabling this.
 
 Enabling `ANALYTICS` also copies click metadata (referer, user agent, city, country, UTMs, and target URL — not `ipHash`) into a Cloudflare account–level dataset. Anyone with Analytics Engine SQL/GraphQL access on that account can query every link’s clicks. That path does not use Better Auth, link/domain scope, or `analytics.read`. Treat the binding as an explicit export of admin analytics, not a drop-in observability toggle.
 
@@ -122,7 +124,7 @@ Data-point layout for SQL/GraphQL queries:
 
 ### Analytics aggregator cron
 
-Optional Cron Trigger that runs the analytics aggregator. When enabled, the Worker `scheduled` handler folds unaggregated `redirect_event` rows into `redirect_event_daily` and `redirect_event_dimension_daily`, then marks those rows aggregated. The dashboard reads rollups plus any events that are still unaggregated, so clicks stay visible between cron runs.
+Optional Cron Trigger that runs the analytics aggregator. When enabled, the Worker `scheduled` handler folds unaggregated `redirect_event` rows into `redirect_event_daily` and `redirect_event_dimension_daily`, then marks those rows aggregated. The dashboard and link-detail all-time totals read rollups plus any events that are still unaggregated. See [Analytics](/analytics/#daily-rollups).
 
 Add this block to `wrangler.jsonc`:
 
@@ -192,7 +194,7 @@ When set to `"true"`, includes detailed error output for failed passkey authenti
 
 Optional. When set to a positive integer, the aggregator deletes raw `redirect_event` rows that have already been rolled up and are older than that many days. Unset, `0`, or a negative value keeps raw events forever.
 
-Dashboards use rollups after the first successful aggregation. Raw events remain a detail log (recent clicks). Enable a cron trigger before relying on retention; events that have not been aggregated are never deleted.
+Dashboards and link-detail all-time totals use rollups plus the unaggregated tail, so retention does not shrink those numbers. Raw events remain a detail log (recent clicks). Enable a cron trigger before relying on retention; events that have not been aggregated are never deleted. See [Analytics](/analytics/#retention).
 
 ## Local Variables
 

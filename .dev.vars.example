@@ -10,3 +10,6 @@ PASSKEY_RP_NAME=Shorty Link
 AGENT_BROWSER_AUTH_ENABLED=false
 # Generate auth secret with: openssl rand -base64 32
 AGENT_BROWSER_AUTH_SECRET=replace-with-local-agent-secret
+
+# Optional. Requires the aggregator cron in wrangler.jsonc. See docs/analytics.md.
+# ANALYTICS_RAW_EVENT_RETENTION_DAYS=90

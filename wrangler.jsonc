@@ -15,6 +15,9 @@
 		"BETTER_AUTH_ALLOWED_HOSTS": "localhost:3000,localhost:8787,*.workers.dev",
 		"BETTER_AUTH_FALLBACK_URL": "http://localhost:3000",
 		"PASSKEY_RP_NAME": "Shorty Link"
+		// Optional. Add a comma after PASSKEY_RP_NAME, then uncomment.
+		// Requires the aggregator cron. See docs/analytics.md.
+		// "ANALYTICS_RAW_EVENT_RETENTION_DAYS": "90"
 	},
 	"routes": [
 		// Self-hosters should change this to their own domain.

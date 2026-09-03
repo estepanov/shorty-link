@@ -29,7 +29,7 @@ The intended pipeline is a small set of opt-in pieces, each behind a binding so 
   - Cloudflare Workers Analytics Engine, written from the emitter in addition to D1 or the queue. The Worker binding is write-only, so the aggregator does not read AE.
 - **Consumer:** when Queues is the sink, the same Worker consumes the analytics queue, batches events, and writes them to the analytics tables. The consumer owns retry, dead-lettering, and batch sizing. A later split can move this handler to its own Worker without changing the message contract.
 - **Aggregator:** a scheduled Worker (Cron Trigger) that builds daily and dimension rollups into D1 tables that the admin dashboard reads. Raw events are kept forever unless `ANALYTICS_RAW_EVENT_RETENTION_DAYS` is a positive integer.
-- **Reader:** admin analytics views read rollup tables for dashboards and fall back to raw events only for ad-hoc detail queries.
+- **Reader:** admin all-time totals (dashboard and link detail) read rollup tables plus unaggregated events. Raw events remain the recent-click detail log.
 
 ## Responsibilities
 
@@ -65,7 +65,7 @@ The pipeline is selected by bindings, not by feature flags in code:
 - No queue binding and no Analytics Engine binding: direct D1 write in `waitUntil` (current behavior).
 - `ANALYTICS_QUEUE` producer present: redirector enqueues, the same Worker consumes and writes to D1.
 - Analytics Engine binding present: redirector also writes a data point to Analytics Engine. Admin reads still come from D1 (raw events or rollups).
-- Cron Trigger present: aggregator folds unaggregated raw D1 events into daily rollups. The dashboard reads those rollups plus any events that are still unaggregated.
+- Cron Trigger present: aggregator folds unaggregated raw D1 events into daily rollups. The dashboard and link-detail all-time totals read those rollups plus any events that are still unaggregated.
 
 Self-hosters who do not configure any of these bindings keep the current single-Worker behavior with no extra deployables.
 
