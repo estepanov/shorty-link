@@ -38,6 +38,8 @@ Shorty Link is designed to be forked and deployed to your own Cloudflare account
 
    Keep binding names such as `DB` and `AI` unchanged. The committed config is a starter config, not the maintainer's private deployment config.
 
+Optionally add analytics pipeline pieces if you want them. None are required. Follow the [Analytics opt-in guide](/analytics/) to pick queue buffering, daily rollups, retention, and/or Analytics Engine. The default deploy works without any of those.
+
 5. Set the auth secret:
 
    ```bash

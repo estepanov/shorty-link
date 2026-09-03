@@ -44,6 +44,10 @@ If a release changes `wrangler.jsonc`, compare your fork carefully. Self-hosters
 
 Do not overwrite your production values when pulling upstream changes.
 
+Optional analytics queues, Analytics Engine, and the aggregator cron are additive. If you do not add those bindings or a cron trigger, the Worker keeps writing click events to D1 during the redirect `waitUntil`. Dashboard and link-detail all-time totals already use rollups plus unaggregated events, so they stay correct with or without a cron. See the [Analytics opt-in guide](/analytics/).
+
+Migration `0010_analytics_rollups.sql` creates empty rollup tables. Totals stay on raw unaggregated rows until the aggregator has run at least once.
+
 ## Database Migration Policy
 
 After public releases begin, migrations are append-only. If you are upgrading from a tagged release, apply all later migrations in order with:

@@ -1,13 +1,10 @@
 import {
 	and,
-	asc,
 	count,
 	desc,
 	eq,
 	gt,
-	gte,
 	inArray,
-	isNotNull,
 	isNull,
 	or,
 	sql,
@@ -37,6 +34,7 @@ import {
 	shortLinks,
 	user,
 } from "../db/schema";
+import { countTrackedRedirects } from "./analytics/counts";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export type ScopeFilter = {
@@ -221,39 +219,6 @@ export function buildRedirectTarget(
 	return destination.toString();
 }
 
-const ANALYTICS_SAFE_QUERY_KEYS = new Set([
-	"utm_source",
-	"utm_medium",
-	"utm_campaign",
-	"utm_term",
-	"utm_content",
-]);
-
-export function buildAnalyticsTarget(
-	targetUrl: string,
-	requestUrl: string,
-	preserveQueryParams: boolean,
-) {
-	const destination = new URL(normalizeTargetUrl(targetUrl));
-
-	if (!preserveQueryParams) {
-		return destination.toString();
-	}
-
-	const incoming = new URL(requestUrl);
-
-	for (const [key, value] of incoming.searchParams.entries()) {
-		if (
-			ANALYTICS_SAFE_QUERY_KEYS.has(key.toLowerCase()) &&
-			!destination.searchParams.has(key)
-		) {
-			destination.searchParams.append(key, value);
-		}
-	}
-
-	return destination.toString();
-}
-
 export async function ensureUniqueSlug(
 	db: AppDb,
 	hostname: string,
@@ -319,60 +284,67 @@ export async function getDashboardData(
 			: (eventLinkIds ?? eventHostnames);
 	const inviter = alias(user, "inviter");
 
-	const [domains, links, invites, events, counts] = await Promise.all([
-		db
-			.select()
-			.from(managedDomains)
-			.where(domainCond)
-			.orderBy(desc(managedDomains.createdAt))
-			.limit(5),
-		db
-			.select()
-			.from(shortLinks)
-			.where(linkCond)
-			.orderBy(desc(shortLinks.createdAt))
-			.limit(12),
-		db
-			.select({
-				id: adminInvites.id,
-				email: adminInvites.email,
-				token: adminInvites.token,
-				roleId: adminInvites.roleId,
-				invitedBy: adminInvites.invitedBy,
-				invitedByName: inviter.name,
-				invitedByEmail: inviter.email,
-				expiresAt: adminInvites.expiresAt,
-				acceptedAt: adminInvites.acceptedAt,
-				createdAt: adminInvites.createdAt,
-			})
-			.from(adminInvites)
-			.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
-			.where(
-				and(isNull(adminInvites.acceptedAt), gt(adminInvites.expiresAt, now())),
-			)
-			.orderBy(desc(adminInvites.createdAt))
-			.limit(5),
-		db
-			.select()
-			.from(redirectEvents)
-			.where(eventCond)
-			.orderBy(desc(redirectEvents.createdAt))
-			.limit(10),
-		Promise.all([
-			db.select({ total: count() }).from(shortLinks).where(linkCond),
-			db.select({ total: count() }).from(redirectEvents).where(eventCond),
-			db.select({ total: count() }).from(managedDomains).where(domainCond),
+	const [domains, links, invites, events, counts, redirects] =
+		await Promise.all([
 			db
-				.select({ total: count() })
+				.select()
+				.from(managedDomains)
+				.where(domainCond)
+				.orderBy(desc(managedDomains.createdAt))
+				.limit(5),
+			db
+				.select()
+				.from(shortLinks)
+				.where(linkCond)
+				.orderBy(desc(shortLinks.createdAt))
+				.limit(12),
+			db
+				.select({
+					id: adminInvites.id,
+					email: adminInvites.email,
+					token: adminInvites.token,
+					roleId: adminInvites.roleId,
+					invitedBy: adminInvites.invitedBy,
+					invitedByName: inviter.name,
+					invitedByEmail: inviter.email,
+					expiresAt: adminInvites.expiresAt,
+					acceptedAt: adminInvites.acceptedAt,
+					createdAt: adminInvites.createdAt,
+				})
 				.from(adminInvites)
+				.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
 				.where(
 					and(
 						isNull(adminInvites.acceptedAt),
 						gt(adminInvites.expiresAt, now()),
 					),
-				),
-		]),
-	]);
+				)
+				.orderBy(desc(adminInvites.createdAt))
+				.limit(5),
+			db
+				.select()
+				.from(redirectEvents)
+				.where(eventCond)
+				.orderBy(desc(redirectEvents.createdAt))
+				.limit(10),
+			Promise.all([
+				db.select({ total: count() }).from(shortLinks).where(linkCond),
+				db.select({ total: count() }).from(managedDomains).where(domainCond),
+				db
+					.select({ total: count() })
+					.from(adminInvites)
+					.where(
+						and(
+							isNull(adminInvites.acceptedAt),
+							gt(adminInvites.expiresAt, now()),
+						),
+					),
+			]),
+			countTrackedRedirects(db, {
+				eventCondition: eventCond,
+				linkCondition: linkCond,
+			}),
+		]);
 
 	return {
 		domains,
@@ -381,9 +353,9 @@ export async function getDashboardData(
 		events,
 		summary: {
 			links: Number(counts[0][0]?.total ?? 0),
-			redirects: Number(counts[1][0]?.total ?? 0),
-			domains: Number(counts[2][0]?.total ?? 0),
-			invites: Number(counts[3][0]?.total ?? 0),
+			redirects,
+			domains: Number(counts[1][0]?.total ?? 0),
+			invites: Number(counts[2][0]?.total ?? 0),
 		},
 	};
 }
@@ -778,189 +750,6 @@ export async function deleteLink(db: AppDb, id: string) {
 	await db.delete(shortLinks).where(eq(shortLinks.id, id));
 }
 
-const UTM_DIMENSIONS = [
-	"utmSource",
-	"utmMedium",
-	"utmCampaign",
-	"utmTerm",
-	"utmContent",
-] as const;
-
-export type UtmDimension = (typeof UTM_DIMENSIONS)[number];
-
-const USER_AGENT_DIMENSIONS = ["browser", "os", "deviceType"] as const;
-
-export type UserAgentDimension = (typeof USER_AGENT_DIMENSIONS)[number];
-
-function startOfUtcDay(timestamp: number) {
-	const date = new Date(timestamp);
-	date.setUTCHours(0, 0, 0, 0);
-	return date.getTime();
-}
-
-export async function getLinkStats(
-	db: AppDb,
-	linkId: string,
-	options?: { days?: number; recentLimit?: number; breakdownLimit?: number },
-) {
-	const days = Math.max(1, Math.min(options?.days ?? 30, 180));
-	const recentLimit = Math.max(1, Math.min(options?.recentLimit ?? 20, 100));
-	const breakdownLimit = Math.max(
-		1,
-		Math.min(options?.breakdownLimit ?? 10, 50),
-	);
-	const windowStart = startOfUtcDay(now() - (days - 1) * 24 * 60 * 60 * 1000);
-
-	const linkColumn = eq(redirectEvents.linkId, linkId);
-	const windowFilter = and(
-		linkColumn,
-		gte(redirectEvents.createdAt, windowStart),
-	);
-	const dayExpr = sql<number>`(${redirectEvents.createdAt} / 86400000) * 86400000`;
-
-	const totalsQuery = db
-		.select({ total: count() })
-		.from(redirectEvents)
-		.where(linkColumn);
-
-	const windowTotalsQuery = db
-		.select({ total: count() })
-		.from(redirectEvents)
-		.where(windowFilter);
-
-	const histogramQuery = db
-		.select({
-			day: dayExpr.as("day"),
-			total: count(),
-		})
-		.from(redirectEvents)
-		.where(windowFilter)
-		.groupBy(dayExpr)
-		.orderBy(dayExpr);
-
-	const columnByDimension = {
-		utmSource: redirectEvents.utmSource,
-		utmMedium: redirectEvents.utmMedium,
-		utmCampaign: redirectEvents.utmCampaign,
-		utmTerm: redirectEvents.utmTerm,
-		utmContent: redirectEvents.utmContent,
-	} as const;
-
-	const userAgentColumnByDimension = {
-		browser: redirectEvents.userAgentBrowser,
-		os: redirectEvents.userAgentOs,
-		deviceType: redirectEvents.userAgentDeviceType,
-	} as const;
-
-	const breakdownsQuery = Promise.all(
-		UTM_DIMENSIONS.map(async (dimension) => {
-			const column = columnByDimension[dimension];
-			const rows = await db
-				.select({ value: column, total: count() })
-				.from(redirectEvents)
-				.where(and(windowFilter, isNotNull(column)))
-				.groupBy(column)
-				.orderBy(desc(count()))
-				.limit(breakdownLimit);
-
-			const items = rows.map((row) => ({
-				value: row.value ?? null,
-				total: Number(row.total ?? 0),
-			}));
-
-			return [dimension, items] as const;
-		}),
-	);
-
-	const userAgentBreakdownsQuery = Promise.all(
-		USER_AGENT_DIMENSIONS.map(async (dimension) => {
-			const column = userAgentColumnByDimension[dimension];
-			const rows = await db
-				.select({ value: column, total: count() })
-				.from(redirectEvents)
-				.where(windowFilter)
-				.groupBy(column)
-				.orderBy(desc(count()), asc(column))
-				.limit(breakdownLimit);
-
-			const items = rows.map((row) => ({
-				value: row.value ?? "Unknown",
-				total: Number(row.total ?? 0),
-			}));
-
-			return [dimension, items] as const;
-		}),
-	);
-
-	const recentEventsQuery = db
-		.select({
-			id: redirectEvents.id,
-			createdAt: redirectEvents.createdAt,
-			country: redirectEvents.country,
-			referer: redirectEvents.referer,
-			utmSource: redirectEvents.utmSource,
-			utmMedium: redirectEvents.utmMedium,
-			utmCampaign: redirectEvents.utmCampaign,
-			utmTerm: redirectEvents.utmTerm,
-			utmContent: redirectEvents.utmContent,
-			userAgentBrowser: redirectEvents.userAgentBrowser,
-			userAgentOs: redirectEvents.userAgentOs,
-			userAgentDeviceType: redirectEvents.userAgentDeviceType,
-			userAgentIsBot: redirectEvents.userAgentIsBot,
-		})
-		.from(redirectEvents)
-		.where(linkColumn)
-		.orderBy(desc(redirectEvents.createdAt))
-		.limit(recentLimit);
-
-	const [
-		[totalsRow],
-		[windowRow],
-		histogramRows,
-		breakdownEntries,
-		userAgentBreakdownEntries,
-		recentEvents,
-	] = await Promise.all([
-		totalsQuery,
-		windowTotalsQuery,
-		histogramQuery,
-		breakdownsQuery,
-		userAgentBreakdownsQuery,
-		recentEventsQuery,
-	]);
-
-	const histogramMap = new Map<number, number>(
-		histogramRows.map((row) => [Number(row.day), Number(row.total)]),
-	);
-	const histogram: Array<{ day: number; total: number }> = [];
-	for (let index = 0; index < days; index += 1) {
-		const day = windowStart + index * 24 * 60 * 60 * 1000;
-		histogram.push({ day, total: histogramMap.get(day) ?? 0 });
-	}
-
-	const breakdowns = Object.fromEntries(breakdownEntries) as Record<
-		UtmDimension,
-		Array<{ value: string | null; total: number }>
-	>;
-	const userAgents = Object.fromEntries(userAgentBreakdownEntries) as Record<
-		UserAgentDimension,
-		Array<{ value: string; total: number }>
-	>;
-
-	return {
-		totals: {
-			allTime: Number(totalsRow?.total ?? 0),
-			window: Number(windowRow?.total ?? 0),
-		},
-		windowDays: days,
-		windowStart,
-		histogram,
-		breakdowns,
-		userAgents,
-		recentEvents,
-	};
-}
-
 export async function createInvite(
 	db: AppDb,
 	input: {
@@ -1171,30 +960,4 @@ export async function resolveExactRedirect(
 		.limit(1);
 
 	return exact[0] ?? null;
-}
-
-export function extractUtmParams(requestUrl: string) {
-	try {
-		const params = new URL(requestUrl).searchParams;
-		const read = (key: string) => {
-			const value = params.get(key)?.trim();
-			return value ? value.slice(0, 256) : null;
-		};
-
-		return {
-			utmSource: read("utm_source"),
-			utmMedium: read("utm_medium"),
-			utmCampaign: read("utm_campaign"),
-			utmTerm: read("utm_term"),
-			utmContent: read("utm_content"),
-		};
-	} catch {
-		return {
-			utmSource: null,
-			utmMedium: null,
-			utmCampaign: null,
-			utmTerm: null,
-			utmContent: null,
-		};
-	}
 }

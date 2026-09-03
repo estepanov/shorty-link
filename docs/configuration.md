@@ -9,7 +9,7 @@ App-owned settings:
 - `main`
 - `compatibility_date`
 - `compatibility_flags`
-- binding names such as `DB` and `AI`
+- binding names such as `DB`, `AI`, and optional `ANALYTICS_QUEUE` / `ANALYTICS`
 - `migrations_dir`
 - observability and source-map settings
 
@@ -49,6 +49,92 @@ Keep the binding name as `DB`; the server code expects that binding.
 ### `AI`
 
 Optional Workers AI binding used for slug suggestions. The core shortener works without AI-backed suggestions if the feature is not used.
+
+Optional analytics bindings and vars are **off** in the committed starter. Pick pieces from the [Analytics opt-in guide](/analytics/) rather than enabling everything at once.
+
+### `ANALYTICS_QUEUE`
+
+Optional Cloudflare Queues producer binding. When present, redirect analytics are enqueued and the same Worker consumes batches into D1. When absent, `recordClick` keeps writing D1 directly inside `waitUntil`. See [Analytics](/analytics/#queue) for when to turn this on.
+
+Create the queue and dead-letter queue first:
+
+```bash
+pnpm exec wrangler queues create shorty-link-analytics
+pnpm exec wrangler queues create shorty-link-analytics-dlq
+```
+
+Then add this block to `wrangler.jsonc`:
+
+```jsonc
+"queues": {
+  "producers": [
+    {
+      "binding": "ANALYTICS_QUEUE",
+      "queue": "shorty-link-analytics"
+    }
+  ],
+  "consumers": [
+    {
+      "queue": "shorty-link-analytics",
+      "max_batch_size": 100,
+      "max_batch_timeout": 5,
+      "max_retries": 5,
+      "dead_letter_queue": "shorty-link-analytics-dlq"
+    }
+  ]
+}
+```
+
+Keep the binding name as `ANALYTICS_QUEUE`. Queue names are operator-owned. After adding the binding, regenerate types if you want the producer on the generated `Env`:
+
+```bash
+pnpm cf-typegen
+```
+
+The application still treats the binding as optional at runtime, so default deploys without this block keep working.
+
+### `ANALYTICS`
+
+Optional Workers Analytics Engine dataset binding. When present, `recordClick` first enqueues or persists to D1, then writes one Analytics Engine data point (not awaited). The admin dashboard does not query Analytics Engine; D1 remains the source of truth. See [Analytics](/analytics/#analytics-engine) before enabling this.
+
+Enabling `ANALYTICS` also copies click metadata (referer, user agent, city, country, UTMs, and target URL — not `ipHash`) into a Cloudflare account–level dataset. Anyone with Analytics Engine SQL/GraphQL access on that account can query every link’s clicks. That path does not use Better Auth, link/domain scope, or `analytics.read`. Treat the binding as an explicit export of admin analytics, not a drop-in observability toggle.
+
+Add this block to `wrangler.jsonc`:
+
+```jsonc
+"analytics_engine_datasets": [
+  {
+    "binding": "ANALYTICS",
+    "dataset": "shorty_link_clicks"
+  }
+]
+```
+
+Keep the binding name as `ANALYTICS`. The dataset name is operator-owned. After adding the binding, regenerate types if you want the dataset on the generated `Env`:
+
+```bash
+pnpm cf-typegen
+```
+
+Data-point layout for SQL/GraphQL queries:
+
+- `index1`: link id
+- `double1`: HTTP status code
+- `blob1`–`blob13`: hostname, slug, country, city, colo, referer, user agent, `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, target URL
+
+### Analytics aggregator cron
+
+Optional Cron Trigger that runs the analytics aggregator. When enabled, the Worker `scheduled` handler folds unaggregated `redirect_event` rows into `redirect_event_daily` and `redirect_event_dimension_daily`, then marks those rows aggregated. The dashboard and link-detail all-time totals read rollups plus any events that are still unaggregated. See [Analytics](/analytics/#daily-rollups).
+
+Add this block to `wrangler.jsonc`:
+
+```jsonc
+"triggers": {
+  "crons": ["*/5 * * * *"]
+}
+```
+
+The schedule is operator-owned. The default deploy works without a cron. Overlapping invocations take a D1 row lease so additive rollup upserts cannot double-count.
 
 ## Required Secrets
 
@@ -103,6 +189,12 @@ example.com
 ### `DEBUG_AUTH_ERRORS`
 
 When set to `"true"`, includes detailed error output for failed passkey authentication in server logs. Leave unset or set to any other value in production to avoid leaking error details.
+
+### `ANALYTICS_RAW_EVENT_RETENTION_DAYS`
+
+Optional. When set to a positive integer, the aggregator deletes raw `redirect_event` rows that have already been rolled up and are older than that many days. Unset, `0`, or a negative value keeps raw events forever.
+
+Dashboards and link-detail all-time totals use rollups plus the unaggregated tail, so retention does not shrink those numbers. Raw events remain a detail log (recent clicks). Enable a cron trigger before relying on retention; events that have not been aggregated are never deleted. See [Analytics](/analytics/#retention).
 
 ## Local Variables
 
