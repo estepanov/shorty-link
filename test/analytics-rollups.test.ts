@@ -24,7 +24,7 @@ import {
 	readRetentionDays,
 } from "../src/server/services/analytics/retention";
 import { getLinkStats } from "../src/server/services/analytics/stats";
-import { saveLink } from "../src/server/services/links";
+import { getDashboardData, saveLink } from "../src/server/services/links";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 const dayMs = 24 * 60 * 60 * 1000;
@@ -378,6 +378,42 @@ describe("analytics rollups and retention", () => {
 		expect(stats.totals.allTime).toBe(2);
 		expect(link?.hitCount).toBe(2);
 		expect(link?.lastClickAt).toBe(now);
+	});
+
+	it("keeps dashboard tracked-redirect totals after retention", async () => {
+		const linkId = await saveLink(db, {
+			slug: "dash",
+			targetUrl: "https://example.com/dash",
+		});
+		const now = Date.now();
+		const oldDay = startOfUtcDay(now - 10 * dayMs);
+
+		await persistClicks(db, [
+			{
+				id: "dash-old",
+				linkId,
+				hostname: "__default__",
+				slug: "dash",
+				targetUrl: "https://example.com/dash",
+				statusCode: 302,
+				createdAt: oldDay + 1_000,
+			},
+			{
+				id: "dash-new",
+				linkId,
+				hostname: "__default__",
+				slug: "dash",
+				targetUrl: "https://example.com/dash",
+				statusCode: 302,
+				createdAt: now,
+			},
+		]);
+		await aggregateAnalytics(db, { now, retainDays: 7 });
+
+		const dashboard = await getDashboardData(db);
+		const stats = await getLinkStats(db, linkId, { days: 30 });
+		expect(stats.totals.allTime).toBe(2);
+		expect(dashboard.summary.redirects).toBe(2);
 	});
 
 	it("does not fold events while another run holds the aggregation lease", async () => {

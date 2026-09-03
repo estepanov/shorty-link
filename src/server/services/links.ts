@@ -34,6 +34,7 @@ import {
 	shortLinks,
 	user,
 } from "../db/schema";
+import { countTrackedRedirects } from "./analytics/counts";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export type ScopeFilter = {
@@ -283,60 +284,67 @@ export async function getDashboardData(
 			: (eventLinkIds ?? eventHostnames);
 	const inviter = alias(user, "inviter");
 
-	const [domains, links, invites, events, counts] = await Promise.all([
-		db
-			.select()
-			.from(managedDomains)
-			.where(domainCond)
-			.orderBy(desc(managedDomains.createdAt))
-			.limit(5),
-		db
-			.select()
-			.from(shortLinks)
-			.where(linkCond)
-			.orderBy(desc(shortLinks.createdAt))
-			.limit(12),
-		db
-			.select({
-				id: adminInvites.id,
-				email: adminInvites.email,
-				token: adminInvites.token,
-				roleId: adminInvites.roleId,
-				invitedBy: adminInvites.invitedBy,
-				invitedByName: inviter.name,
-				invitedByEmail: inviter.email,
-				expiresAt: adminInvites.expiresAt,
-				acceptedAt: adminInvites.acceptedAt,
-				createdAt: adminInvites.createdAt,
-			})
-			.from(adminInvites)
-			.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
-			.where(
-				and(isNull(adminInvites.acceptedAt), gt(adminInvites.expiresAt, now())),
-			)
-			.orderBy(desc(adminInvites.createdAt))
-			.limit(5),
-		db
-			.select()
-			.from(redirectEvents)
-			.where(eventCond)
-			.orderBy(desc(redirectEvents.createdAt))
-			.limit(10),
-		Promise.all([
-			db.select({ total: count() }).from(shortLinks).where(linkCond),
-			db.select({ total: count() }).from(redirectEvents).where(eventCond),
-			db.select({ total: count() }).from(managedDomains).where(domainCond),
+	const [domains, links, invites, events, counts, redirects] =
+		await Promise.all([
 			db
-				.select({ total: count() })
+				.select()
+				.from(managedDomains)
+				.where(domainCond)
+				.orderBy(desc(managedDomains.createdAt))
+				.limit(5),
+			db
+				.select()
+				.from(shortLinks)
+				.where(linkCond)
+				.orderBy(desc(shortLinks.createdAt))
+				.limit(12),
+			db
+				.select({
+					id: adminInvites.id,
+					email: adminInvites.email,
+					token: adminInvites.token,
+					roleId: adminInvites.roleId,
+					invitedBy: adminInvites.invitedBy,
+					invitedByName: inviter.name,
+					invitedByEmail: inviter.email,
+					expiresAt: adminInvites.expiresAt,
+					acceptedAt: adminInvites.acceptedAt,
+					createdAt: adminInvites.createdAt,
+				})
 				.from(adminInvites)
+				.leftJoin(inviter, eq(adminInvites.invitedBy, inviter.id))
 				.where(
 					and(
 						isNull(adminInvites.acceptedAt),
 						gt(adminInvites.expiresAt, now()),
 					),
-				),
-		]),
-	]);
+				)
+				.orderBy(desc(adminInvites.createdAt))
+				.limit(5),
+			db
+				.select()
+				.from(redirectEvents)
+				.where(eventCond)
+				.orderBy(desc(redirectEvents.createdAt))
+				.limit(10),
+			Promise.all([
+				db.select({ total: count() }).from(shortLinks).where(linkCond),
+				db.select({ total: count() }).from(managedDomains).where(domainCond),
+				db
+					.select({ total: count() })
+					.from(adminInvites)
+					.where(
+						and(
+							isNull(adminInvites.acceptedAt),
+							gt(adminInvites.expiresAt, now()),
+						),
+					),
+			]),
+			countTrackedRedirects(db, {
+				eventCondition: eventCond,
+				linkCondition: linkCond,
+			}),
+		]);
 
 	return {
 		domains,
@@ -345,9 +353,9 @@ export async function getDashboardData(
 		events,
 		summary: {
 			links: Number(counts[0][0]?.total ?? 0),
-			redirects: Number(counts[1][0]?.total ?? 0),
-			domains: Number(counts[2][0]?.total ?? 0),
-			invites: Number(counts[3][0]?.total ?? 0),
+			redirects,
+			domains: Number(counts[1][0]?.total ?? 0),
+			invites: Number(counts[2][0]?.total ?? 0),
 		},
 	};
 }

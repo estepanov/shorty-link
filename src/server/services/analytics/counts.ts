@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, count, eq, type SQL, sql } from "drizzle-orm";
 import type { AppDb } from "../../db/client";
 import {
 	redirectEventDaily,
@@ -32,4 +32,34 @@ export function updateLinkHitMetadata(db: AppDb, linkId: string) {
 		.update(shortLinks)
 		.set(linkHitMetadataSet(linkId))
 		.where(eq(shortLinks.id, linkId));
+}
+
+/**
+ * All-time tracked-redirect total: daily rollups plus unaggregated raw events.
+ * Matches `linkHitCountSql` / `getLinkStats.totals.allTime` so the dashboard
+ * stays correct after retention deletes rolled-up rows.
+ */
+export async function countTrackedRedirects(
+	db: AppDb,
+	options: {
+		linkCondition?: SQL;
+		eventCondition?: SQL;
+	} = {},
+) {
+	const tailFilter = options.eventCondition
+		? and(eq(redirectEvents.aggregated, false), options.eventCondition)
+		: eq(redirectEvents.aggregated, false);
+
+	const [[rollupRow], [tailRow]] = await Promise.all([
+		db
+			.select({
+				total: sql<number>`coalesce(sum(${redirectEventDaily.total}), 0)`,
+			})
+			.from(redirectEventDaily)
+			.innerJoin(shortLinks, eq(shortLinks.id, redirectEventDaily.linkId))
+			.where(options.linkCondition),
+		db.select({ total: count() }).from(redirectEvents).where(tailFilter),
+	]);
+
+	return Number(rollupRow?.total ?? 0) + Number(tailRow?.total ?? 0);
 }
