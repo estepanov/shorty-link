@@ -23,8 +23,16 @@ type SsoProviderDetail = {
 	groupRoleMappings: Array<{ group: string; roleId: string }>;
 	issuer: string;
 	jitEnabled: boolean;
+	oidcConfig?: {
+		clientId?: string;
+	} | null;
 	protocol: "oidc" | "saml";
 	providerId: string;
+	samlConfig?: {
+		idpMetadata?: {
+			metadata?: string;
+		};
+	} | null;
 };
 
 function EditSsoProvider() {
@@ -68,6 +76,7 @@ function EditSsoProvider() {
 				callbackUrl={provider.callbackUrl}
 				initialValues={{
 					allowIdpInitiated: provider.allowIdpInitiated,
+					clientId: provider.oidcConfig?.clientId ?? "",
 					defaultRoleId: provider.defaultRoleId ?? "",
 					displayName: provider.displayName,
 					domain: provider.domains.join(","),
@@ -77,6 +86,7 @@ function EditSsoProvider() {
 					groupRoleMappings: provider.groupRoleMappings
 						.map((mapping) => `${mapping.group}=${mapping.roleId}`)
 						.join("\n"),
+					idpMetadata: provider.samlConfig?.idpMetadata?.metadata ?? "",
 					issuer: provider.issuer,
 					jitEnabled: provider.jitEnabled,
 					protocol: provider.protocol,
