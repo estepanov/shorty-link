@@ -184,7 +184,8 @@ export async function applySsoAdmission(
 			};
 			try {
 				const claimed = await claimStatement.run();
-				if (claimed.meta.changes !== 1) {
+				// D1 includes the invite row and the user row updated by the trigger.
+				if (claimed.meta.changes !== 2) {
 					throw new Error("errors.ssoNotProvisioned");
 				}
 			} catch (error) {
