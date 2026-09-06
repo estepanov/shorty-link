@@ -7,10 +7,10 @@ import {
 	buildLinkScopeForCtx,
 } from "../auth/session";
 import type { AppDb } from "../db/client";
+import { getLinkStats } from "../services/analytics/stats";
 import {
 	deleteLink,
 	getLinkById,
-	getLinkStats,
 	listDomains,
 	listShortLinks,
 	saveLink,

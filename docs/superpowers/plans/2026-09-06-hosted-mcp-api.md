@@ -22,7 +22,7 @@
 ### Task 1: Schema, settings, and grants
 
 **Files:**
-- Create: `migrations/0010_hosted_mcp.sql`
+- Create: `migrations/0011_hosted_mcp.sql`
 - Create: `src/server/services/mcp-settings.ts`
 - Create: `src/server/services/mcp-grants.ts`
 - Create: `test/mcp-access.test.ts`

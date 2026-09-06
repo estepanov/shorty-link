@@ -22,7 +22,7 @@ One Worker handles redirects, the admin UI, the admin API, and authentication. O
 ### Links
 - Custom slugs, or AI-generated suggestions backed by Cloudflare Workers AI.
 - Configurable redirect status code per link: `301`, `302`, `303`, `307`, or `308`. Defaults to `302`.
-- Per-link analytics with click tracking.
+- Per-link analytics with click tracking. Queue, daily rollups, retention, and Analytics Engine are [opt-in](/analytics/).
 - Active/inactive toggling without deleting history.
 - Bulk filter, search, and pagination in the admin UI.
 

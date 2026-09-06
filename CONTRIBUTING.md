@@ -13,8 +13,11 @@ pnpm install
 Run the local app:
 
 ```bash
+pnpm db:migrate:local
 pnpm dev
 ```
+
+The default local path writes clicks straight to D1. To enable and validate the optional analytics queue, cron aggregator, or retention job, follow [Validate locally](docs/analytics.md#validate-locally).
 
 Before opening a PR:
 
