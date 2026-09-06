@@ -24,12 +24,12 @@ None of these are true for the default deployment, so the direct-write path stay
 The intended pipeline is a small set of opt-in pieces, each behind a binding so the single-Worker deployment keeps working when none are configured:
 
 - **Emitter:** the redirector calls a single `recordClick` function. The implementation is selected by which bindings are present, not by code branches in the redirect path.
-- **Event sink:** the destination for raw click events. Two supported targets:
-  - Cloudflare Queues, consumed by a small Worker that batches inserts into D1.
-  - Cloudflare Workers Analytics Engine, written directly from the emitter.
-- **Consumer:** when Queues is the sink, a queue consumer Worker batches events and writes them to the analytics tables. The consumer owns retry, dead-lettering, and batch sizing.
-- **Aggregator:** a scheduled Worker (Cron Trigger) that builds rollups (per-link, per-day, per-hour, per-referrer) into D1 tables that the admin dashboard reads. Raw events are kept only as long as the configured retention window.
-- **Reader:** admin analytics views read rollup tables for dashboards and fall back to raw events only for ad-hoc detail queries.
+- **Event sink:** D1 remains the admin source of truth. Optional extra targets:
+  - Cloudflare Queues, consumed by the same Worker that batches inserts into D1.
+  - Cloudflare Workers Analytics Engine, written from the emitter in addition to D1 or the queue. The Worker binding is write-only, so the aggregator does not read AE.
+- **Consumer:** when Queues is the sink, the same Worker consumes the analytics queue, batches events, and writes them to the analytics tables. The consumer owns retry, dead-lettering, and batch sizing. A later split can move this handler to its own Worker without changing the message contract.
+- **Aggregator:** a scheduled Worker (Cron Trigger) that builds daily and dimension rollups into D1 tables that the admin dashboard reads. Raw events are kept forever unless `ANALYTICS_RAW_EVENT_RETENTION_DAYS` is a positive integer.
+- **Reader:** admin all-time totals (dashboard and link detail) read rollup tables plus unaggregated events. Raw events remain the recent-click detail log.
 
 ## Responsibilities
 
@@ -41,15 +41,15 @@ The intended pipeline is a small set of opt-in pieces, each behind a binding so 
 
 ### Queue consumer (optional)
 
-- Receive batched messages from the analytics queue.
-- Insert into raw analytics tables in a single batched D1 statement per batch.
-- Send unrecoverable messages to a dead-letter queue.
+- Receive batched messages from the analytics queue in the same Worker `queue` handler.
+- Insert into raw analytics tables in one `redirect_event` insert per batch.
+- Send unrecoverable messages to a dead-letter queue via `retry()` after `max_retries`.
 - Stay independent of admin code, auth, and UI.
 
 ### Aggregator (optional)
 
 - Run on a Cron Trigger.
-- Read raw events since the last successful run.
+- Read raw events that are not yet marked aggregated.
 - Upsert rollup rows for the dashboard query patterns the admin actually uses.
 - Apply the configured retention policy to raw events.
 
@@ -63,8 +63,9 @@ The intended pipeline is a small set of opt-in pieces, each behind a binding so 
 The pipeline is selected by bindings, not by feature flags in code:
 
 - No queue binding and no Analytics Engine binding: direct D1 write in `waitUntil` (current behavior).
-- Queue binding present: redirector enqueues, consumer writes to D1, aggregator builds rollups.
-- Analytics Engine binding present: redirector writes events directly to Analytics Engine, aggregator reads from Analytics Engine into D1 rollups.
+- `ANALYTICS_QUEUE` producer present: redirector enqueues, the same Worker consumes and writes to D1.
+- Analytics Engine binding present: redirector also writes a data point to Analytics Engine. Admin reads still come from D1 (raw events or rollups).
+- Cron Trigger present: aggregator folds unaggregated raw D1 events into daily rollups. The dashboard and link-detail all-time totals read those rollups plus any events that are still unaggregated.
 
 Self-hosters who do not configure any of these bindings keep the current single-Worker behavior with no extra deployables.
 
@@ -85,10 +86,10 @@ The split should happen in stages and remain reversible at each step.
 
 1. **Done:** Extract `recordClick` into `src/server/services/analytics/record-click.ts` with a stable `RecordClickInput` contract. The only implementation today is still the direct D1 write inside `waitUntil`.
 2. **Done:** Persist `event_schema_version` on each `redirect_event` row (`REDIRECT_EVENT_SCHEMA_VERSION` in `src/server/db/redirect-event-schema-version.ts`) so future queue consumers can branch on the stored shape.
-3. Add a Queues-backed implementation of `recordClick` plus a consumer Worker that writes the same rows the direct path writes. Select by binding presence.
-4. Add the rollup tables and an aggregator Cron Trigger. Switch admin dashboard reads to the rollups.
-5. Add an Analytics Engine implementation of `recordClick` as a second optional sink.
-6. Document a retention policy for raw events once rollups are authoritative for dashboards.
+3. **Done:** Add a Queues-backed implementation of `recordClick` plus a same-Worker `queue` consumer that writes the same rows the direct path writes. Select by `ANALYTICS_QUEUE` binding presence. Default deploys without a queue keep the direct D1 write.
+4. **Done:** Add rollup tables (`redirect_event_daily`, `redirect_event_dimension_daily`, `analytics_aggregation_state`) and an aggregator Cron Trigger. `getLinkStats` reads rollups plus unaggregated raw events.
+5. **Done:** Add an Analytics Engine implementation of `recordClick` as a second optional emit sink. AE writes are extra; D1 remains the admin source of truth.
+6. **Done:** Document a retention policy for raw events (`ANALYTICS_RAW_EVENT_RETENTION_DAYS`) once rollups are authoritative for dashboards.
 
 Each stage preserves the redirect contract: the response is never blocked on analytics, and the redirector never requires the consumer or aggregator to be deployed.
 

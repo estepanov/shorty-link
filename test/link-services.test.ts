@@ -6,9 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 import { REDIRECT_EVENT_SCHEMA_VERSION } from "../src/server/db/redirect-event-schema-version";
 import { redirectEvents, schema, shortLinks } from "../src/server/db/schema";
+import { startOfUtcDay } from "../src/server/services/analytics/dimensions";
 import { recordClick } from "../src/server/services/analytics/record-click";
+import { getLinkStats } from "../src/server/services/analytics/stats";
 import {
-	getLinkStats,
 	getManagedDomainByHostname,
 	listShortLinks,
 	resolveExactRedirect,
@@ -18,12 +19,6 @@ import {
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 const dayMs = 24 * 60 * 60 * 1000;
-
-function startOfUtcDay(timestamp: number) {
-	const date = new Date(timestamp);
-	date.setUTCHours(0, 0, 0, 0);
-	return date.getTime();
-}
 
 describe("link services", () => {
 	let proxy: Awaited<ReturnType<typeof getPlatformProxy>> | null = null;

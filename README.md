@@ -63,7 +63,9 @@ Run the app:
 pnpm dev
 ```
 
-Open `http://localhost:3000/admin`, create the first admin, and register a passkey.
+Open `/admin` on the Vite origin (port 3000, host `localhost`). Create the first admin and register a passkey. Add that host and port to `BETTER_AUTH_ALLOWED_HOSTS` in `.dev.vars` if Better Auth rejects the origin.
+
+Optional analytics (queue, cron rollups, retention, Analytics Engine) stay off until you uncomment them. Unit tests cover the logic. Live local enablement is in [Validate locally](docs/analytics.md#validate-locally).
 
 ## Self-Hosting
 

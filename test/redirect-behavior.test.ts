@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
 	buildAnalyticsTarget,
-	buildRedirectTarget,
 	extractUtmParams,
+} from "../src/server/services/analytics/target";
+import {
+	buildRedirectTarget,
 	normalizeHostname,
 	normalizeSlug,
 	normalizeTargetUrl,

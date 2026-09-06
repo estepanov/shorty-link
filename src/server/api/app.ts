@@ -39,22 +39,24 @@ import { createDb } from "../db/client";
 import { DEFAULT_HOSTNAME, SYSTEM_ROLE_ADMIN, user } from "../db/schema";
 import { getLogger, serializeError } from "../logging";
 import { recordClick } from "../services/analytics/record-click";
+import { getLinkStats } from "../services/analytics/stats";
+import {
+	buildAnalyticsTarget,
+	extractUtmParams,
+} from "../services/analytics/target";
 import {
 	appendDomainToRoleScopeIfScoped,
 	appendLinkToRoleScopeIfScoped,
-	buildAnalyticsTarget,
 	buildInviteUrl,
 	buildRedirectTarget,
 	createInvite,
 	deleteDomain,
 	deleteLink,
-	extractUtmParams,
 	getBootstrapState,
 	getDashboardData,
 	getDomainById,
 	getInviteByToken,
 	getLinkById,
-	getLinkStats,
 	getManagedDomainByHostname,
 	listDomains,
 	listShortLinks,
