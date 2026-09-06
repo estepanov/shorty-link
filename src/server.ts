@@ -117,8 +117,11 @@ async function handleAuthRequest(request: Request, ctx: RequestContext) {
 	authLog.debug("auth handler invoked", ctx);
 
 	try {
-		const auth = createAuth(request);
-		const response = await auth.handler(request);
+		const headers = new Headers(request.headers);
+		headers.delete("x-shorty-sso-admin");
+		const sanitized = new Request(request, { headers });
+		const auth = await createAuth(sanitized);
+		const response = await auth.handler(sanitized);
 		const status = response.status;
 		const fields = { ...ctx, status };
 

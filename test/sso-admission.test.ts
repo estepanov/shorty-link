@@ -133,7 +133,7 @@ describe("sso admission", () => {
 			},
 		});
 		expect(decision.ok).toBe(true);
-		if (decision.ok) {
+		if (decision.ok && decision.action === "sign_in") {
 			expect(decision.roleId).toBe("engineer");
 			expect(decision.roleChanged).toBe(true);
 		}
@@ -158,7 +158,7 @@ describe("sso admission", () => {
 			},
 		});
 		expect(mappedOwner.ok).toBe(true);
-		if (mappedOwner.ok) {
+		if (mappedOwner.ok && mappedOwner.action === "sign_in") {
 			expect(mappedOwner.roleId).toBe(SYSTEM_ROLE_ADMIN);
 			expect(mappedOwner.roleChanged).toBe(false);
 		}
@@ -181,7 +181,7 @@ describe("sso admission", () => {
 			},
 		});
 		expect(owner.ok).toBe(true);
-		if (owner.ok) {
+		if (owner.ok && owner.action === "sign_in") {
 			expect(owner.roleId).toBe(SYSTEM_ROLE_OWNER);
 			expect(owner.roleChanged).toBe(false);
 		}

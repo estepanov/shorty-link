@@ -8,9 +8,9 @@ import { getPlatformProxy } from "wrangler";
 import { parsePermissions } from "../src/lib/permissions";
 import {
 	roles,
-	schema,
 	SYSTEM_ROLE_ADMIN,
 	SYSTEM_ROLE_OWNER,
+	schema,
 } from "../src/server/db/schema";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
@@ -35,7 +35,10 @@ describe("sso schema migration", () => {
 	});
 
 	it("grants sso permissions to system roles only", async () => {
-		const db = drizzle((proxy?.env as { DB: D1Database }).DB, { schema });
+		if (!proxy) {
+			throw new Error("missing wrangler proxy");
+		}
+		const db = drizzle((proxy.env as { DB: D1Database }).DB, { schema });
 		const rows = await db
 			.select({
 				id: roles.id,

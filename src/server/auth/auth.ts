@@ -3,6 +3,7 @@ import { apiKey } from "@better-auth/api-key";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { i18n } from "@better-auth/i18n";
 import { passkey } from "@better-auth/passkey";
+import { type OIDCConfig, type SAMLConfig, sso } from "@better-auth/sso";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -11,21 +12,59 @@ import { eq } from "drizzle-orm";
 import { type Permission, parsePermissions } from "@/lib/permissions";
 
 import { createDb } from "../db/client";
-import { apiKey as apiKeyTable, roles, schema, user } from "../db/schema";
+import {
+	apiKey as apiKeyTable,
+	passkey as passkeyTable,
+	roles,
+	SYSTEM_ROLE_ADMIN,
+	schema,
+	user,
+} from "../db/schema";
+import {
+	applySsoAdmission,
+	assertPasskeyAllowed,
+	extractIdpGroups,
+	loadDefaultSsoProviders,
+	loadSsoSettingsView,
+	SSO_ADMIN_HEADER,
+} from "../services/sso";
 import {
 	completePasskeyRegistrationUser,
+	readOnboardingContext,
 	resolvePasskeyRegistrationUser,
 } from "./onboarding";
 import { getAuthSecret } from "./secret";
 import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
 
 const APIKEY_CREATE_PERMISSION: Permission = "apikeys.manage";
+const SSO_ADMIN_PATHS = new Set([
+	"/sso/register",
+	"/sso/update-provider",
+	"/sso/delete-provider",
+]);
 
 function resolveHookHeaders(context: {
 	headers?: HeadersInit;
 	request?: Request;
 }) {
 	return new Headers(context.headers ?? context.request?.headers);
+}
+
+function credentialIdToString(value: unknown) {
+	if (typeof value === "string" && value) {
+		return value;
+	}
+	if (value instanceof Uint8Array) {
+		let binary = "";
+		for (const byte of value) {
+			binary += String.fromCharCode(byte);
+		}
+		return btoa(binary)
+			.replace(/\+/g, "-")
+			.replace(/\//g, "_")
+			.replace(/=+$/g, "");
+	}
+	return null;
 }
 
 async function userHasPermission(
@@ -69,10 +108,10 @@ function fallbackUrl(request?: Request) {
 		}
 	}
 
-	return "http://localhost:3000";
+	return "[REDACTED]";
 }
 
-export function createAuth(request?: Request) {
+export async function createAuth(request?: Request) {
 	const db = createDb();
 	const allowedHosts = splitTrustedHosts(runtimeEnv.BETTER_AUTH_ALLOWED_HOSTS);
 	const configuredFallback = runtimeEnv.BETTER_AUTH_FALLBACK_URL ?? null;
@@ -89,6 +128,7 @@ export function createAuth(request?: Request) {
 
 	const origin = trustedRequestOrigin ?? fallbackUrl(request);
 	const fallback = configuredFallback ?? origin;
+	const defaultSSO = await loadDefaultSsoProviders(request);
 
 	return betterAuth({
 		appName: "Shorty Link",
@@ -114,6 +154,12 @@ export function createAuth(request?: Request) {
 			provider: "sqlite",
 			schema,
 		}),
+		account: {
+			accountLinking: {
+				enabled: true,
+				trustedProviders: defaultSSO.map((provider) => provider.providerId),
+			},
+		},
 		emailAndPassword: {
 			enabled: false,
 		},
@@ -124,6 +170,12 @@ export function createAuth(request?: Request) {
 					required: false,
 					defaultValue: "en",
 				},
+				roleId: {
+					type: "string",
+					required: false,
+					defaultValue: SYSTEM_ROLE_ADMIN,
+					input: false,
+				},
 			},
 			changeEmail: {
 				enabled: false,
@@ -131,14 +183,22 @@ export function createAuth(request?: Request) {
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
+				const headers = resolveHookHeaders(ctx);
+				if (SSO_ADMIN_PATHS.has(ctx.path)) {
+					if (headers.get(SSO_ADMIN_HEADER) !== "1") {
+						throw new APIError("FORBIDDEN", {
+							message: "errors.permissionDenied",
+						});
+					}
+					return;
+				}
 				if (ctx.path !== "/api-key/create") {
 					return;
 				}
-				const headers = resolveHookHeaders(ctx);
 				const authRequest =
 					ctx.request ??
 					new Request(`${origin}/api/auth/api-key/create`, { headers });
-				const session = await createAuth(authRequest).api.getSession({
+				const session = await (await createAuth(authRequest)).api.getSession({
 					headers,
 				});
 				if (!session) {
@@ -168,18 +228,41 @@ export function createAuth(request?: Request) {
 					requireSession: false,
 					resolveUser: async ({ context }) =>
 						resolvePasskeyRegistrationUser(db, context ?? undefined, request),
-					afterVerification: async ({ context, user }) => ({
-						userId: await completePasskeyRegistrationUser(
-							db,
-							context ?? undefined,
-							user.id,
-							request,
-						),
-					}),
+					afterVerification: async ({ context, user: passkeyUser }) => {
+						if (context) {
+							const parsed = await readOnboardingContext(context, request);
+							await assertPasskeyAllowed(db, parsed.email, parsed.type);
+						}
+						return {
+							userId: await completePasskeyRegistrationUser(
+								db,
+								context ?? undefined,
+								passkeyUser.id,
+								request,
+							),
+						};
+					},
 					extensions: { credProps: true },
 				},
 				authentication: {
 					extensions: { credProps: true },
+					afterVerification: async ({ verification }) => {
+						const credentialID = credentialIdToString(
+							verification.authenticationInfo?.credentialID,
+						);
+						if (!credentialID) {
+							return;
+						}
+						const rows = await db
+							.select({ email: user.email })
+							.from(passkeyTable)
+							.innerJoin(user, eq(passkeyTable.userId, user.id))
+							.where(eq(passkeyTable.credentialID, credentialID))
+							.limit(1);
+						if (rows[0]) {
+							await assertPasskeyAllowed(db, rows[0].email);
+						}
+					},
 				},
 			}),
 			apiKey({
@@ -215,8 +298,8 @@ export function createAuth(request?: Request) {
 						.from(user)
 						.where(eq(user.id, keys[0].referenceId))
 						.limit(1);
-					const u = rows[0];
-					if (!u || u.isActive === false) {
+					const apiUser = rows[0];
+					if (!apiUser || apiUser.isActive === false) {
 						return false;
 					}
 					return true;
@@ -235,10 +318,52 @@ export function createAuth(request?: Request) {
 				localeCookie: "shorty_locale",
 				userLocaleField: "locale",
 			}),
+			sso({
+				disableImplicitSignUp: true,
+				domainVerification: { enabled: false },
+				organizationProvisioning: { disabled: true },
+				provisionUserOnEveryLogin: true,
+				defaultSSO: defaultSSO.map((provider) => ({
+					domain: provider.domain,
+					providerId: provider.providerId,
+					oidcConfig: provider.oidcConfig as OIDCConfig | undefined,
+					samlConfig: provider.samlConfig as SAMLConfig | undefined,
+				})),
+				resolveUser: async (input) => {
+					const settings = await loadSsoSettingsView(db, input.providerId);
+					const claim = settings?.groupClaim ?? "groups";
+					const groups =
+						input.protocol === "oidc"
+							? extractIdpGroups(
+									{
+										...input.verifiedIdTokenClaims,
+										...input.providerClaims,
+									},
+									claim,
+								)
+							: extractIdpGroups(input.providerAttributes, claim);
+					try {
+						const { userId } = await applySsoAdmission(db, {
+							email: input.providerUser.email,
+							emailVerified: input.providerUser.emailVerified,
+							providerId: input.providerId,
+							groups,
+							name: input.providerUser.name || input.providerUser.email,
+						});
+						return { action: "link", userId, profile: "preserve" };
+					} catch (error) {
+						const message =
+							error instanceof Error
+								? error.message
+								: "errors.ssoNotProvisioned";
+						return { action: "reject", code: message, message };
+					}
+				},
+			}),
 			tanstackStartCookies(),
 		],
 	});
 }
 
-export type Auth = ReturnType<typeof createAuth>;
+export type Auth = Awaited<ReturnType<typeof createAuth>>;
 export type AuthSession = Awaited<ReturnType<Auth["api"]["getSession"]>>;

@@ -54,6 +54,7 @@ const mocks = vi.hoisted(() => {
 		getSession,
 		i18n: vi.fn(() => ({ id: "i18n-plugin" })),
 		passkey: vi.fn(() => ({ id: "passkey-plugin" })),
+		sso: vi.fn(() => ({ id: "sso-plugin" })),
 		tanstackStartCookies: vi.fn(() => ({ id: "tanstack-start-cookies" })),
 	};
 });
@@ -74,6 +75,10 @@ vi.mock("@better-auth/passkey", () => ({
 	passkey: mocks.passkey,
 }));
 
+vi.mock("@better-auth/sso", () => ({
+	sso: mocks.sso,
+}));
+
 vi.mock("better-auth", () => ({
 	betterAuth: mocks.betterAuth,
 }));
@@ -89,7 +94,17 @@ vi.mock("better-auth/tanstack-start", () => ({
 
 vi.mock("../src/server/auth/onboarding", () => ({
 	completePasskeyRegistrationUser: vi.fn(),
+	readOnboardingContext: vi.fn(),
 	resolvePasskeyRegistrationUser: vi.fn(),
+}));
+
+vi.mock("../src/server/services/sso", () => ({
+	SSO_ADMIN_HEADER: "x-shorty-sso-admin",
+	applySsoAdmission: vi.fn(),
+	assertPasskeyAllowed: vi.fn(),
+	extractIdpGroups: vi.fn(() => []),
+	loadDefaultSsoProviders: vi.fn(async () => []),
+	loadSsoSettingsView: vi.fn(),
 }));
 
 vi.mock("../src/server/auth/secret", () => ({
@@ -113,7 +128,7 @@ describe("api key auth hook", () => {
 					: null,
 		);
 
-		createAuth(new Request("http://localhost:3000/api/auth/session"));
+		await createAuth(new Request("https://shorty.test/api/auth/session"));
 
 		const options = mocks.betterAuth.mock.calls[0]?.[0] as {
 			hooks: {
@@ -132,7 +147,7 @@ describe("api key auth hook", () => {
 					cookie: "better-auth.session_token=session-token",
 				}),
 				path: "/api-key/create",
-				request: new Request("http://localhost:3000/api/auth/api-key/create", {
+				request: new Request("https://shorty.test/api/auth/api-key/create", {
 					method: "POST",
 				}),
 			}),
@@ -143,8 +158,10 @@ describe("api key auth hook", () => {
 		});
 		const firstCall = mocks.getSession.mock.calls[0];
 		expect(firstCall).toBeDefined();
-		expect((firstCall![0] as { headers: Headers }).headers.get("cookie")).toBe(
-			"better-auth.session_token=session-token",
-		);
+		expect(
+			(firstCall?.[0] as { headers: Headers } | undefined)?.headers.get(
+				"cookie",
+			),
+		).toBe("better-auth.session_token=session-token");
 	});
 });

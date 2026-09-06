@@ -40,7 +40,7 @@ export type AuthContext = {
 };
 
 export async function getSession(request: Request) {
-	return createAuth(request).api.getSession({
+	return (await createAuth(request)).api.getSession({
 		headers: request.headers,
 	});
 }
