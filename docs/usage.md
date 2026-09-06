@@ -107,7 +107,7 @@ curl -X PATCH https://links.example.com/api/admin/links/<id> \
 
 ## Connect Claude or ChatGPT
 
-The hosted MCP server is off until an admin enables it.
+The hosted MCP server is off until an admin enables it. Full operator notes are on the [MCP](/mcp/) page.
 
 1. Open **Access → MCP** and turn **MCP server enabled** on.
 2. Copy the connector URL (`https://your-host/mcp`).

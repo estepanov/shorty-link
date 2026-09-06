@@ -37,7 +37,7 @@ One Worker handles redirects, the admin UI, the admin API, and authentication. O
 - Session management with revoke-current and revoke-other-sessions.
 - API keys with optional expiry for programmatic access (`x-api-key` or `Authorization`).
 - Role-aware admin UI for users, invites, and permissions.
-- Hosted MCP API with passkey OAuth for Claude and ChatGPT, permission-aware tools, admin enable/disable controls, and user grant revoke.
+- [Hosted MCP](/mcp/) with passkey OAuth for Claude and ChatGPT, permission-aware tools, admin enable/disable controls, and user grant revoke.
 
 ### Admin API
 - Full REST surface under `/api/admin/*` for links, domains, users, invites, sessions, API keys, and MCP settings.

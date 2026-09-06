@@ -386,12 +386,16 @@ export const messages = {
 		"errors.mcpGrantMissing": "That MCP authorization was not found.",
 		"mcp.settingsTitle": "Hosted MCP",
 		"mcp.settingsDescription":
-			"Enable the hosted MCP API so Claude and ChatGPT can connect with passkey OAuth. Tools follow each user's role and scopes.",
+			"The MCP server is off until you enable it. Claude and ChatGPT then connect with passkey OAuth. Tools follow each user's role and scopes.",
+		"mcp.settingsHint":
+			"No extra Cloudflare bindings are required. Save after changing the toggle, then paste the connector URL into Claude or ChatGPT.",
 		"mcp.serverEnabled": "MCP server enabled",
 		"mcp.saved": "MCP settings saved.",
 		"mcp.connectorUrl": "Connector URL",
 		"mcp.discoveryUrl": "Protected resource metadata",
 		"mcp.userAccess": "Allow MCP access",
+		"mcp.userAccessHint":
+			"Turning this off blocks MCP for this user and revokes their MCP tokens.",
 		"mcp.grantsTitle": "MCP authorizations",
 		"mcp.grantsDescription":
 			"Revoke access you granted to Claude, ChatGPT, or other MCP clients.",
@@ -824,12 +828,16 @@ export const messages = {
 		"errors.mcpGrantMissing": "No se encontro esa autorizacion MCP.",
 		"mcp.settingsTitle": "MCP alojado",
 		"mcp.settingsDescription":
-			"Activa la API MCP alojada para que Claude y ChatGPT se conecten con OAuth de passkey. Las herramientas respetan el rol y el alcance de cada usuario.",
+			"El servidor MCP esta desactivado hasta que lo actives. Claude y ChatGPT se conectan entonces con OAuth de passkey. Las herramientas respetan el rol y el alcance de cada usuario.",
+		"mcp.settingsHint":
+			"No se necesitan bindings extra de Cloudflare. Guarda despues de cambiar el interruptor y pega la URL del conector en Claude o ChatGPT.",
 		"mcp.serverEnabled": "Servidor MCP activado",
 		"mcp.saved": "Configuracion MCP guardada.",
 		"mcp.connectorUrl": "URL del conector",
 		"mcp.discoveryUrl": "Metadatos del recurso protegido",
 		"mcp.userAccess": "Permitir acceso MCP",
+		"mcp.userAccessHint":
+			"Desactivar esto bloquea MCP para este usuario y revoca sus tokens MCP.",
 		"mcp.grantsTitle": "Autorizaciones MCP",
 		"mcp.grantsDescription":
 			"Revoca el acceso que diste a Claude, ChatGPT u otros clientes MCP.",

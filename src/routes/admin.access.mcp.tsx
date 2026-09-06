@@ -156,13 +156,18 @@ function McpSettingsForm({
 		>
 			<form.Field name="enabled">
 				{(field) => (
-					<ToggleTile
-						checked={field.state.value}
-						onCheckedChange={field.handleChange}
-						tone="green"
-					>
-						{t("mcp.serverEnabled")}
-					</ToggleTile>
+					<div className="grid gap-2">
+						<ToggleTile
+							checked={field.state.value}
+							onCheckedChange={field.handleChange}
+							tone="green"
+						>
+							{t("mcp.serverEnabled")}
+						</ToggleTile>
+						<p className="text-sm text-muted-foreground">
+							{t("mcp.settingsHint")}
+						</p>
+					</div>
 				)}
 			</form.Field>
 			<FormFooter>

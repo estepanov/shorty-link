@@ -287,13 +287,18 @@ function EditUserForm({
 			{canManageMcp ? (
 				<form.Field name="mcpAccessEnabled">
 					{(field) => (
-						<ToggleTile
-							checked={field.state.value}
-							onCheckedChange={field.handleChange}
-							tone="green"
-						>
-							{t("mcp.userAccess")}
-						</ToggleTile>
+						<div className="grid gap-2">
+							<ToggleTile
+								checked={field.state.value}
+								onCheckedChange={field.handleChange}
+								tone="green"
+							>
+								{t("mcp.userAccess")}
+							</ToggleTile>
+							<p className="text-sm text-muted-foreground">
+								{t("mcp.userAccessHint")}
+							</p>
+						</div>
 					)}
 				</form.Field>
 			) : null}

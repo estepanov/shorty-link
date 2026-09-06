@@ -58,7 +58,7 @@ pnpm db:migrate:remote
 
 Fresh installs apply the same migration history from the beginning.
 
-`0011_hosted_mcp.sql` adds OAuth tables for the hosted MCP API, `user.mcp_access_enabled`, the `mcp.enabled` setting (default off), and the `mcp.manage` permission on system roles. After upgrading, enable the MCP server from **Access → MCP** if you want Claude or ChatGPT to connect.
+`0011_hosted_mcp.sql` adds OAuth tables for the hosted MCP API, `user.mcp_access_enabled`, the `mcp.enabled` setting (default off), and the `mcp.manage` permission on system roles. After upgrading, enable the MCP server from **Access → MCP** if you want Claude or ChatGPT to connect. See [MCP](/mcp/).
 
 ## Rollback Expectations
 
