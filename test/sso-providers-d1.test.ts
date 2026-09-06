@@ -10,17 +10,17 @@ import {
 	ssoProviderSettings,
 	user,
 } from "../src/server/db/schema";
+import { readConfigJson } from "../src/server/services/sso-provider-config";
 import {
 	createSsoProvider,
 	deleteSsoProvider,
 	updateSsoProvider,
 } from "../src/server/services/sso-providers";
-import { readConfigJson } from "../src/server/services/sso-provider-config";
 import { deleteUser } from "../src/server/services/users";
 import {
 	createSsoProviderD1Fixture,
-	oidcProviderInput as oidcInput,
 	SSO_TEST_ORIGIN as ORIGIN,
+	oidcProviderInput as oidcInput,
 	SSO_TEST_REQUEST as REQUEST,
 } from "./sso-provider-d1-fixture";
 

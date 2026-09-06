@@ -7,14 +7,14 @@ import { inArray } from "drizzle-orm";
 
 import type {
 	SsoAdminProvider,
-	SsoOidcReadConfig,
 	SsoOidcProviderPatch,
 	SsoOidcProviderWrite,
+	SsoOidcReadConfig,
 	SsoProviderPatch,
 	SsoProviderWrite,
-	SsoSamlReadConfig,
 	SsoSamlProviderPatch,
 	SsoSamlProviderWrite,
+	SsoSamlReadConfig,
 } from "@/lib/sso-types";
 import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "@/lib/sso-types";
 import {

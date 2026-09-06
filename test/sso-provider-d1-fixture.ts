@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { getPlatformProxy } from "wrangler";
 
 import type { SsoOidcProviderWrite } from "../src/lib/sso-types";
-import { schema, SYSTEM_ROLE_OWNER, user } from "../src/server/db/schema";
+import { SYSTEM_ROLE_OWNER, schema, user } from "../src/server/db/schema";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 export const SSO_TEST_ORIGIN = "http://localhost:8787";

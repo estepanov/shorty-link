@@ -41,7 +41,7 @@ function createAdmissionCoordinator(db: AppDb) {
 			return null;
 		}
 		const state = states.get(key);
-		if (!state || state.status !== "prepared") {
+		if (state?.status !== "prepared") {
 			return null;
 		}
 		const prepared = state.prepared;
@@ -58,7 +58,7 @@ function createAdmissionCoordinator(db: AppDb) {
 			return null;
 		}
 		const state = states.get(activeKey);
-		if (!state || state.status !== "prepared") {
+		if (state?.status !== "prepared") {
 			return null;
 		}
 		return state.prepared.email === email.trim().toLowerCase()
