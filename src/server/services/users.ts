@@ -19,6 +19,7 @@ import {
 	roles,
 	SYSTEM_ROLE_OWNER,
 	session,
+	ssoProvider,
 	user,
 } from "../db/schema";
 import { escapeLikePattern, likeEscaped } from "./utils";
@@ -120,6 +121,14 @@ export async function toggleUserActive(
 
 export async function deleteUser(db: AppDb, userId: string) {
 	await assertOwnerSurvives(db, { excludeUserId: userId });
+	const ownedProviders = await db
+		.select({ id: ssoProvider.id })
+		.from(ssoProvider)
+		.where(eq(ssoProvider.userId, userId))
+		.limit(1);
+	if (ownedProviders[0]) {
+		throw new Error("errors.userOwnsSsoProvider");
+	}
 	await db.delete(user).where(eq(user.id, userId));
 }
 

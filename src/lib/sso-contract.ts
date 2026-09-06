@@ -16,9 +16,11 @@ export const ssoOidcConfigBody = t.Object({
 });
 
 export const ssoSamlConfigBody = t.Object({
+	cert: t.Optional(t.Union([t.String(), t.Array(t.String())])),
 	entryPoint: t.Optional(t.String()),
 	idpMetadata: t.Optional(
 		t.Object({
+			cert: t.Optional(t.Union([t.String(), t.Array(t.String())])),
 			entityID: t.Optional(t.String()),
 			metadata: t.Optional(t.String()),
 		}),
@@ -30,6 +32,7 @@ export const ssoSamlConfigBody = t.Object({
 			name: t.Optional(t.String({ minLength: 1 })),
 		}),
 	),
+	privateKey: t.Optional(t.String()),
 });
 
 export const ssoProviderBody = t.Object({

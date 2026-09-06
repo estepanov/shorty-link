@@ -28,13 +28,14 @@ function EditSsoProvider() {
 		if (!session) {
 			return;
 		}
-		void unwrap<SsoProviderRead>(
-			getTreaty().admin["sso-providers"]({ providerId }).get(),
-		).then(setProvider, (nextError: unknown) => {
-			setError(
-				nextError instanceof Error ? nextError.message : "errors.unknown",
-			);
-		});
+		void unwrap(getTreaty().admin["sso-providers"]({ providerId }).get()).then(
+			setProvider,
+			(nextError: unknown) => {
+				setError(
+					nextError instanceof Error ? nextError.message : "errors.unknown",
+				);
+			},
+		);
 	}, [providerId, session?.user.id]);
 
 	if (isPending || isAuthPending || !provider) {

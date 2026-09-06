@@ -22,8 +22,8 @@ export const getTreaty = createIsomorphicFn()
 			}).api,
 	);
 
-type EdenResponse = {
-	data: unknown;
+type EdenResponse<TData> = {
+	data: TData | null | undefined | Response;
 	error: unknown;
 };
 
@@ -47,9 +47,9 @@ function getErrorMessage(error: unknown) {
 	return "errors.unknown";
 }
 
-export async function unwrap<T>(
-	response: Promise<EdenResponse> | EdenResponse,
-) {
+export async function unwrap<TData>(
+	response: Promise<EdenResponse<TData>> | EdenResponse<TData>,
+): Promise<TData> {
 	const resolved = await response;
 
 	if (resolved.error) {
@@ -60,5 +60,5 @@ export async function unwrap<T>(
 		throw new Error(await resolved.data.text().catch(() => "errors.unknown"));
 	}
 
-	return resolved.data as T;
+	return resolved.data as TData;
 }

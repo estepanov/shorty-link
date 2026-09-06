@@ -31,7 +31,6 @@ import {
 	type ssoProvider,
 	type ssoProviderSettings,
 } from "../db/schema";
-import { now } from "./links";
 import {
 	normalizeProtocol,
 	parseGroupRoleMappings,
@@ -100,6 +99,20 @@ function nestedConfig(
 		: null;
 }
 
+function hasCertificate(value: unknown) {
+	if (typeof value === "string") {
+		return value.trim().length > 0;
+	}
+	return (
+		Array.isArray(value) &&
+		value.length > 0 &&
+		value.every(
+			(certificate) =>
+				typeof certificate === "string" && certificate.trim().length > 0,
+		)
+	);
+}
+
 function assertOidcEndpoints(
 	config: Record<string, unknown>,
 	trustedOrigin: string,
@@ -135,7 +148,8 @@ function assertSamlConfig(config: Record<string, unknown>) {
 	}
 	if (
 		!isUsableHttpUrl(config.entryPoint) ||
-		!configString(idpMetadata, "entityID")?.trim()
+		!configString(idpMetadata, "entityID")?.trim() ||
+		!hasCertificate(idpMetadata?.cert ?? config.cert)
 	) {
 		throw new Error("errors.ssoConfigurationInvalid");
 	}
@@ -345,7 +359,9 @@ export async function buildOidcJson(
 	const current = parseConfigRecord(currentJson);
 	const clientId = input.clientId ?? configString(current, "clientId") ?? "";
 	const clientSecret =
-		input.clientSecret ?? configString(current, "clientSecret") ?? "";
+		(input.clientSecret?.trim() ? input.clientSecret : undefined) ??
+		configString(current, "clientSecret") ??
+		"";
 	if (!clientId.trim() || !clientSecret.trim()) {
 		throw new Error("errors.ssoConfigurationInvalid");
 	}
@@ -454,7 +470,7 @@ export function toAdminProvider(
 export function settingsInsertValues(
 	input: ReturnType<typeof settingsFromWrite>,
 ) {
-	const timestamp = now();
+	const timestamp = Date.now();
 	return {
 		allowIdpInitiated: input.allowIdpInitiated,
 		createdAt: timestamp,

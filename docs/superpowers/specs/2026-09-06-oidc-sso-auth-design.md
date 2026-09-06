@@ -182,7 +182,12 @@ SAML SP metadata: GET /api/admin/sso-providers/:providerId/sp-metadata
 | `group_role_mappings` | text not null default `[]` | JSON `[{ "group": "eng", "roleId": "..." }]` |
 | `created_at` / `updated_at` | integer | Unix seconds |
 
-Deleting a provider deletes the settings row. Do not cascade-delete users or `account` rows.
+Deleting a provider deletes its settings and linked SSO `account` rows atomically,
+but never deletes users. Removing the linked accounts is intentional: a later
+provider created with the same public provider ID may represent a different
+identity authority, so stale subject identifiers must not authenticate users
+against that replacement provider. Users explicitly relink on their next
+successful sign-in.
 
 ### User / account
 

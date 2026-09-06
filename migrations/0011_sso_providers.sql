@@ -65,7 +65,7 @@ CREATE TABLE `ssoProvider` (
 	`userId` text NOT NULL,
 	`providerId` text NOT NULL,
 	`organizationId` text,
-	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE restrict
 );
 CREATE UNIQUE INDEX `ssoProvider_providerId_unique` ON `ssoProvider` (`providerId`);
 CREATE INDEX `ssoProvider_userId_idx` ON `ssoProvider` (`userId`);

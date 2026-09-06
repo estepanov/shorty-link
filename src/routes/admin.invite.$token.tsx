@@ -20,7 +20,7 @@ import {
 	SelectValue,
 } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
-import { getTreaty } from "@/lib/eden";
+import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, defaultLocale, supportedLocales } from "@/lib/i18n";
 import { mapSsoErrorCode, parseSsoCallbackError } from "@/lib/sso-errors";
 
@@ -53,7 +53,7 @@ function Invite() {
 			setError(null);
 			try {
 				const api = getTreaty();
-				const { context } = await unwrap<{ context: string }>(
+				const { context } = await unwrap(
 					await api.onboarding.invite.post({
 						...value,
 						token,
@@ -91,14 +91,7 @@ function Invite() {
 		}
 
 		const api = getTreaty();
-		void unwrap<{
-			email: string;
-			sso?: {
-				displayName: string | null;
-				enforced: boolean;
-				providerId: string | null;
-			};
-		}>(api.invites({ token }).get()).then(
+		void unwrap(api.invites({ token }).get()).then(
 			(invite) => {
 				setEmail(invite.email);
 				setSso(invite.sso ?? null);
@@ -233,21 +226,4 @@ function Invite() {
 			</main>
 		</AppShell>
 	);
-}
-
-async function unwrap<T>(
-	response:
-		| Promise<{ data: unknown; error: unknown }>
-		| { data: unknown; error: unknown },
-) {
-	const resolved = await response;
-	if (resolved.error) {
-		throw new Error("errors.unknown");
-	}
-
-	if (resolved.data instanceof Response) {
-		throw new Error(await resolved.data.text().catch(() => "errors.unknown"));
-	}
-
-	return resolved.data as T;
 }

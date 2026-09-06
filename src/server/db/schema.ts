@@ -338,7 +338,7 @@ export const ssoProvider = sqliteTable(
 		samlConfig: text("samlConfig"),
 		userId: text("userId")
 			.notNull()
-			.references(() => user.id, { onDelete: "cascade" }),
+			.references(() => user.id, { onDelete: "restrict" }),
 		providerId: text("providerId").notNull().unique(),
 		organizationId: text("organizationId"),
 	},

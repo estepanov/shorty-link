@@ -15,20 +15,11 @@ import {
 } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
 import { getTreaty, unwrap } from "@/lib/eden";
+import type { SsoAdminProvider } from "@/lib/sso-types";
 
 export const Route = createFileRoute("/admin/access/sso")({
 	component: SsoTab,
 });
-
-type SsoProviderRow = {
-	providerId: string;
-	displayName: string;
-	protocol: "oidc" | "saml";
-	domains: string[];
-	enabled: boolean;
-	enforceSso: boolean;
-	jitEnabled: boolean;
-};
 
 function SsoTab() {
 	const location = useLocation();
@@ -37,15 +28,13 @@ function SsoTab() {
 	const isListRoute =
 		location.pathname === "/admin/access/sso" ||
 		location.pathname === "/admin/access/sso/";
-	const [providers, setProviders] = useState<SsoProviderRow[] | null>(null);
+	const [providers, setProviders] = useState<SsoAdminProvider[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	async function refresh() {
 		setError(null);
 		try {
-			const next = await unwrap<SsoProviderRow[]>(
-				await getTreaty().admin["sso-providers"].get(),
-			);
+			const next = await unwrap(await getTreaty().admin["sso-providers"].get());
 			setProviders(next);
 		} catch (nextError) {
 			setError(

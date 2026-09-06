@@ -1,6 +1,7 @@
 import type {
 	DBAdapter,
 	DBAdapterInstance,
+	DBTransactionAdapter,
 } from "@better-auth/core/db/adapter";
 
 import { decryptSsoConfigJson, encryptSsoConfigJson } from "./sso-secrets";
@@ -23,23 +24,34 @@ async function mapSsoConfigs<T>(
 		return row;
 	}
 	const record = row as Record<string, unknown>;
-	return Object.assign({}, row, {
-		oidcConfig: await mapConfigField(record.oidcConfig, transform),
-		samlConfig: await mapConfigField(record.samlConfig, transform),
-	});
+	if (!("oidcConfig" in record) && !("samlConfig" in record)) {
+		return row;
+	}
+	const mapped = { ...record };
+	if ("oidcConfig" in record) {
+		mapped.oidcConfig = await mapConfigField(record.oidcConfig, transform);
+	}
+	if ("samlConfig" in record) {
+		mapped.samlConfig = await mapConfigField(record.samlConfig, transform);
+	}
+	return mapped as T;
 }
 
-function wrapAdapter(adapter: DBAdapter, secret: string): DBAdapter {
+function wrapTransactionAdapter(
+	adapter: DBTransactionAdapter,
+	secret: string,
+): DBTransactionAdapter {
 	const encrypt = (json: string) => encryptSsoConfigJson(json, secret);
 	const decrypt = (json: string) => decryptSsoConfigJson(json, secret);
 	const create: DBAdapter["create"] = async (args) => {
 		if (args.model !== "ssoProvider") {
 			return adapter.create(args);
 		}
-		return adapter.create({
+		const row = await adapter.create({
 			...args,
 			data: await mapSsoConfigs(args.data, encrypt),
 		});
+		return mapSsoConfigs(row, decrypt);
 	};
 	const findMany = async <T>(
 		args: Parameters<DBAdapter["findMany"]>[0],
@@ -63,18 +75,56 @@ function wrapAdapter(adapter: DBAdapter, secret: string): DBAdapter {
 		if (args.model !== "ssoProvider") {
 			return adapter.update(args);
 		}
-		return adapter.update({
+		const row = await adapter.update({
 			...args,
 			update: await mapSsoConfigs(args.update, encrypt),
 		});
+		return mapSsoConfigs(row, decrypt);
+	};
+	const updateMany: DBAdapter["updateMany"] = async (args) =>
+		adapter.updateMany(
+			args.model === "ssoProvider"
+				? {
+						...args,
+						update: await mapSsoConfigs(args.update, encrypt),
+					}
+				: args,
+		);
+	const consumeOne: DBAdapter["consumeOne"] = async (args) => {
+		const row = await adapter.consumeOne(args);
+		return args.model === "ssoProvider" ? mapSsoConfigs(row, decrypt) : row;
+	};
+	const incrementOne: DBAdapter["incrementOne"] = async (args) => {
+		const row = await adapter.incrementOne(
+			args.model === "ssoProvider" && args.set
+				? {
+						...args,
+						set: await mapSsoConfigs(args.set, encrypt),
+					}
+				: args,
+		);
+		return args.model === "ssoProvider" ? mapSsoConfigs(row, decrypt) : row;
 	};
 
 	return {
 		...adapter,
+		consumeOne,
 		create,
 		findMany,
 		findOne,
+		incrementOne,
 		update,
+		updateMany,
+	};
+}
+
+function wrapAdapter(adapter: DBAdapter, secret: string): DBAdapter {
+	return {
+		...wrapTransactionAdapter(adapter, secret),
+		transaction: (callback) =>
+			adapter.transaction((transactionAdapter) =>
+				callback(wrapTransactionAdapter(transactionAdapter, secret)),
+			),
 	};
 }
 

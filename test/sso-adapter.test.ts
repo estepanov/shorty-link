@@ -53,7 +53,8 @@ function createMemoryAdapterFactory(store: Record<string, unknown>[]) {
 			async consumeOne<T>() {
 				return (store.shift() as T | undefined) ?? null;
 			},
-			async incrementOne<T>() {
+			async incrementOne<T>({ set }: { set?: Record<string, unknown> }) {
+				store[0] = { ...store[0], ...set };
 				return (store[0] as T | undefined) ?? null;
 			},
 			async transaction<R>(callback: (trx: DBAdapter) => Promise<R>) {
@@ -76,7 +77,7 @@ describe("sso adapter crypto", () => {
 		const store: Record<string, unknown>[] = [];
 		const adapter = createAdapter(store);
 
-		await adapter.create({
+		const created = await adapter.create<{ oidcConfig: string }>({
 			data: {
 				oidcConfig: JSON.stringify({
 					clientId: "public-id",
@@ -86,6 +87,7 @@ describe("sso adapter crypto", () => {
 			model: "ssoProvider",
 		});
 
+		expect(JSON.parse(created.oidcConfig).clientSecret).toBe("super-secret");
 		expect(JSON.parse(String(store[0]?.oidcConfig)).clientSecret).toContain(
 			SSO_SECRET_PREFIX,
 		);
@@ -124,5 +126,65 @@ describe("sso adapter crypto", () => {
 			adapter.findOne({ model: "ssoProvider", where: [] }),
 		).rejects.toThrow(/errors\.ssoSecretDecryptFailed/);
 		expect(await decryptSsoConfigJson(encrypted, SECRET)).toContain("once");
+	});
+
+	it("preserves the crypto boundary for bulk, row-returning, and transaction methods", async () => {
+		const store: Record<string, unknown>[] = [];
+		const adapter = createAdapter(store);
+		const oidcConfig = JSON.stringify({ clientSecret: "transaction-secret" });
+		const samlConfig = JSON.stringify({ privateKey: "transaction-key" });
+
+		await adapter.transaction(async (transaction) => {
+			await transaction.create({
+				data: { oidcConfig },
+				model: "ssoProvider",
+			});
+			expect(String(store[0]?.oidcConfig)).toContain(SSO_SECRET_PREFIX);
+
+			const updated = await transaction.update<{ samlConfig: string }>({
+				model: "ssoProvider",
+				update: { samlConfig },
+				where: [],
+			});
+			expect(JSON.parse(updated?.samlConfig ?? "{}").privateKey).toBe(
+				"transaction-key",
+			);
+			expect(String(store[0]?.samlConfig)).toContain(SSO_SECRET_PREFIX);
+
+			await transaction.updateMany({
+				model: "ssoProvider",
+				update: { oidcConfig },
+				where: [],
+			});
+			expect(String(store[0]?.oidcConfig)).toContain(SSO_SECRET_PREFIX);
+
+			const incremented = await transaction.incrementOne<{
+				samlConfig: string;
+			}>({
+				increment: {},
+				model: "ssoProvider",
+				set: { samlConfig },
+				where: [],
+			});
+			expect(JSON.parse(incremented?.samlConfig ?? "{}").privateKey).toBe(
+				"transaction-key",
+			);
+
+			const consumed = await transaction.consumeOne<{
+				oidcConfig: string;
+				samlConfig: string;
+			}>({
+				model: "ssoProvider",
+				where: [],
+			});
+			expect(JSON.parse(consumed?.oidcConfig ?? "{}").clientSecret).toBe(
+				"transaction-secret",
+			);
+			expect(JSON.parse(consumed?.samlConfig ?? "{}").privateKey).toBe(
+				"transaction-key",
+			);
+		});
+
+		expect(store).toHaveLength(0);
 	});
 });

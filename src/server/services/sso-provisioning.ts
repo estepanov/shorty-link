@@ -8,7 +8,6 @@ import {
 	ssoProviderSettings,
 	user,
 } from "../db/schema";
-import { now } from "./links";
 import {
 	extractIdpGroups,
 	parseGroupRoleMappings,
@@ -36,7 +35,7 @@ export async function prepareSsoAdmission(
 	input: SsoAdmissionInput,
 ): Promise<PreparedSsoAdmission> {
 	const email = input.email.trim().toLowerCase();
-	const admissionTime = now();
+	const admissionTime = Date.now();
 	const settingsQuery = db
 		.select({
 			domain: ssoProvider.domain,
@@ -155,7 +154,7 @@ export async function applySsoAdmission(
 			return { userId: decision.userId };
 		}
 		case "invite": {
-			const acceptedAt = now();
+			const acceptedAt = Date.now();
 			const claimId = crypto.randomUUID();
 			const claimStatement = db.$client
 				.prepare(`

@@ -24,6 +24,8 @@ import {
 	deleteSsoProvider,
 	updateSsoProvider,
 } from "../src/server/services/sso-providers";
+import { readConfigJson } from "../src/server/services/sso-provider-config";
+import { deleteUser } from "../src/server/services/users";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 const ORIGIN = "http://localhost:8787";
@@ -355,7 +357,7 @@ describe("D1 SSO provider persistence", () => {
 		).toHaveLength(0);
 	});
 
-	it("accepts valid SAML metadata or manual entryPoint plus entityID", async () => {
+	it("accepts valid SAML metadata or a verifiable manual configuration", async () => {
 		await createSsoProvider(
 			db,
 			{
@@ -379,6 +381,7 @@ describe("D1 SSO provider persistence", () => {
 				protocol: "saml",
 				providerId: "manual-saml",
 				samlConfig: {
+					cert: "manual-idp-signing-certificate",
 					entryPoint: "https://idp.example.test/sso",
 					idpMetadata: { entityID: "https://idp.example.test" },
 				},
@@ -388,6 +391,29 @@ describe("D1 SSO provider persistence", () => {
 			REQUEST,
 		);
 		expect(await db.select().from(ssoProvider)).toHaveLength(2);
+	});
+
+	it("rejects manual SAML configuration without a signing certificate", async () => {
+		await expect(
+			createSsoProvider(
+				db,
+				{
+					displayName: "Unsigned Manual SAML",
+					domain: "manual.test",
+					issuer: "https://shorty.test/saml/manual",
+					protocol: "saml",
+					providerId: "unsigned-manual-saml",
+					samlConfig: {
+						entryPoint: "https://idp.example.test/sso",
+						idpMetadata: { entityID: "https://idp.example.test" },
+					},
+				},
+				"owner",
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoConfigurationInvalid");
+		expect(await db.select().from(ssoProvider)).toHaveLength(0);
 	});
 
 	it("persists secure SAML attribute defaults and configurable mappings", async () => {
@@ -468,7 +494,7 @@ describe("D1 SSO provider persistence", () => {
 					providerId: "incomplete-manual",
 					samlConfig: {
 						entryPoint: "https://idp.example.test/sso",
-						idpMetadata: {},
+						idpMetadata: { entityID: "https://idp.example.test" },
 					},
 				},
 				"owner",
@@ -514,6 +540,16 @@ describe("D1 SSO provider persistence", () => {
 			updatedAt: timestamp,
 			userId: "owner",
 		});
+
+		await expect(
+			updateSsoProvider(db, "workforce", { clientSecret: "" }, ORIGIN, REQUEST),
+		).resolves.toMatchObject({ hasClientSecret: true });
+		const [blankSecretProvider] = await db.select().from(ssoProvider);
+		expect(
+			JSON.parse(
+				(await readConfigJson(blankSecretProvider.oidcConfig, REQUEST)) ?? "{}",
+			).clientSecret,
+		).toBe("client-secret");
 
 		const rotated = await updateSsoProvider(
 			db,
@@ -689,6 +725,33 @@ describe("D1 SSO provider persistence", () => {
 		expect(await db.select({ id: account.id }).from(account)).toEqual([
 			{ id: "replacement-account" },
 		]);
+	});
+
+	it("prevents user deletion from bypassing SSO provider deletion policy", async () => {
+		const timestamp = new Date();
+		await db.insert(user).values({
+			createdAt: timestamp,
+			email: "manager@acme.test",
+			emailVerified: true,
+			id: "manager",
+			image: null,
+			isActive: true,
+			locale: "en",
+			name: "Manager",
+			roleId: SYSTEM_ROLE_ADMIN,
+			updatedAt: timestamp,
+		});
+		await createSsoProvider(db, oidcInput(), "manager", ORIGIN, REQUEST);
+
+		await expect(deleteUser(db, "manager")).rejects.toThrow(
+			"errors.userOwnsSsoProvider",
+		);
+		expect(
+			await db.select({ providerId: ssoProvider.providerId }).from(ssoProvider),
+		).toEqual([{ providerId: "workforce" }]);
+		expect(
+			await db.select({ id: user.id }).from(user).where(eq(user.id, "manager")),
+		).toEqual([{ id: "manager" }]);
 	});
 
 	it("rolls back both provider rows when an atomic settings update fails", async () => {

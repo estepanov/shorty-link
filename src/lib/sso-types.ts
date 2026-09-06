@@ -45,7 +45,7 @@ export type SsoOidcReadConfig = SsoOidcWriteConfig & {
 	tokenEndpointAuthentication?: string;
 };
 
-export type SsoSamlReadConfig = SsoSamlWriteConfig & {
+export type SsoSamlReadConfig = Omit<SsoSamlWriteConfig, "privateKey"> & {
 	allowIdpInitiated?: boolean;
 	callbackUrl?: string;
 	issuer?: string;

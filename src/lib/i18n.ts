@@ -368,6 +368,8 @@ export const messages = {
 		"users.emailVerified": "Email verified",
 		"pages.editUser": "Edit user",
 		"errors.userMissing": "User not found.",
+		"errors.userOwnsSsoProvider":
+			"Transfer or delete this user's SSO providers before deleting the user.",
 		"table.slug": "Slug",
 		"table.host": "Host",
 		"table.target": "Target",
@@ -845,6 +847,8 @@ export const messages = {
 		"users.emailVerified": "Email verificado",
 		"pages.editUser": "Editar usuario",
 		"errors.userMissing": "Usuario no encontrado.",
+		"errors.userOwnsSsoProvider":
+			"Transfiere o elimina los proveedores SSO de este usuario antes de eliminarlo.",
 		"table.slug": "Slug",
 		"table.host": "Host",
 		"table.target": "Destino",
