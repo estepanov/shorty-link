@@ -28,7 +28,13 @@ function Invite() {
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
 	const [email, setEmail] = useState<string | null>(null);
+	const [sso, setSso] = useState<{
+		displayName: string | null;
+		enforced: boolean;
+		providerId: string | null;
+	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [busy, setBusy] = useState(false);
 	const t = createTranslator(defaultLocale);
 	const form = useForm({
 		defaultValues: {
@@ -77,8 +83,18 @@ function Invite() {
 		}
 
 		const api = getTreaty();
-		void unwrap<{ email: string }>(api.invites({ token }).get()).then(
-			(invite) => setEmail(invite.email),
+		void unwrap<{
+			email: string;
+			sso?: {
+				displayName: string | null;
+				enforced: boolean;
+				providerId: string | null;
+			};
+		}>(api.invites({ token }).get()).then(
+			(invite) => {
+				setEmail(invite.email);
+				setSso(invite.sso ?? null);
+			},
 			() => setError("errors.inviteMissing"),
 		);
 	}, [session, token]);
@@ -114,43 +130,67 @@ function Invite() {
 							void form.handleSubmit();
 						}}
 					>
-						<form.Field name="name">
-							{(field) => (
-								<FieldLabel>
-									{t("forms.name")}
-									<Input
-										onChange={(event) => field.handleChange(event.target.value)}
-										required
-										value={field.state.value}
-									/>
-								</FieldLabel>
-							)}
-						</form.Field>
-						<form.Field name="locale">
-							{(field) => (
-								<FieldLabel>
-									{t("forms.locale")}
-									<Select
-										onValueChange={field.handleChange}
-										value={field.state.value}
-									>
-										<SelectTrigger>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{supportedLocales.map((option) => (
-												<SelectItem key={option} value={option}>
-													{option.toUpperCase()}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</FieldLabel>
-							)}
-						</form.Field>
-						<Button disabled={!email} type="submit">
-							{t("auth.addPasskey")}
-						</Button>
+						{sso?.enforced && sso.providerId ? null : (
+							<>
+								<form.Field name="name">
+									{(field) => (
+										<FieldLabel>
+											{t("forms.name")}
+											<Input
+												onChange={(event) =>
+													field.handleChange(event.target.value)
+												}
+												required
+												value={field.state.value}
+											/>
+										</FieldLabel>
+									)}
+								</form.Field>
+								<form.Field name="locale">
+									{(field) => (
+										<FieldLabel>
+											{t("forms.locale")}
+											<Select
+												onValueChange={field.handleChange}
+												value={field.state.value}
+											>
+												<SelectTrigger>
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													{supportedLocales.map((option) => (
+														<SelectItem key={option} value={option}>
+															{option.toUpperCase()}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</FieldLabel>
+									)}
+								</form.Field>
+							</>
+						)}
+						{sso?.enforced && sso.providerId ? (
+							<Button
+								disabled={busy || !email}
+								onClick={() => {
+									setBusy(true);
+									void authClient.signIn.sso({
+										callbackURL: "/admin",
+										email: email ?? undefined,
+										loginHint: email ?? undefined,
+										providerId: sso.providerId ?? "",
+									});
+								}}
+								type="button"
+							>
+								{t("sso.signInWith")} {sso.displayName ?? sso.providerId}
+							</Button>
+						) : (
+							<Button disabled={!email} type="submit">
+								{t("auth.addPasskey")}
+							</Button>
+						)}
 					</form>
 					{error ? (
 						<div className="mt-4">

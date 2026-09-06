@@ -274,11 +274,76 @@ function mapPasskeyError(raw: unknown): string {
 	return "errors.passkeyVerifyFailed";
 }
 
+type PublicSsoCatalog = {
+	hasEnforcedDomain: boolean;
+	providers: Array<{
+		displayName: string;
+		domains: string[];
+		enforceSso: boolean;
+		providerId: string;
+	}>;
+};
+
 function PasskeyLogin() {
 	const router = useRouter();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [email, setEmail] = useState("");
+	const [catalog, setCatalog] = useState<PublicSsoCatalog | null>(null);
 	const t = createTranslator(defaultLocale);
+
+	useEffect(() => {
+		void unwrap<PublicSsoCatalog>(
+			getTreaty().admin["sso-providers"].public.get(),
+		).then(setCatalog, () =>
+			setCatalog({ hasEnforcedDomain: false, providers: [] }),
+		);
+	}, []);
+
+	const normalizedEmail = email.trim().toLowerCase();
+	const emailDomain = normalizedEmail.includes("@")
+		? normalizedEmail.slice(normalizedEmail.lastIndexOf("@") + 1)
+		: "";
+	const enforced =
+		Boolean(emailDomain) &&
+		Boolean(
+			catalog?.providers.some(
+				(provider) =>
+					provider.enforceSso && provider.domains.includes(emailDomain),
+			),
+		);
+	const visibleProviders =
+		catalog?.providers.filter((provider) => {
+			if (!emailDomain) {
+				return !catalog.hasEnforcedDomain || !provider.enforceSso;
+			}
+			if (enforced) {
+				return provider.domains.includes(emailDomain);
+			}
+			return true;
+		}) ?? [];
+
+	async function signInSso(providerId: string) {
+		setBusy(true);
+		setError(null);
+		try {
+			const result = await authClient.signIn.sso({
+				providerId,
+				callbackURL: "/admin",
+				email: normalizedEmail || undefined,
+				loginHint: normalizedEmail || undefined,
+			});
+			if (result.error) {
+				setError(result.error.message ?? "errors.ssoCancelled");
+			}
+		} catch (nextError) {
+			setError(
+				nextError instanceof Error ? nextError.message : "errors.unknown",
+			);
+		} finally {
+			setBusy(false);
+		}
+	}
 
 	async function signIn() {
 		setBusy(true);
@@ -308,24 +373,60 @@ function PasskeyLogin() {
 				{t("auth.signIn")}
 			</h1>
 			<p className="mt-4 text-muted-foreground">{t("auth.loginHint")}</p>
-			<Button className="mt-6" disabled={busy} onClick={signIn} type="button">
-				{busy ? t("auth.waiting") : t("auth.signIn")}
-			</Button>
+			{catalog?.hasEnforcedDomain ? (
+				<div className="mt-6 grid gap-2">
+					<FieldLabel>
+						{t("sso.workEmail")}
+						<Input
+							autoComplete="email"
+							onChange={(event) => setEmail(event.target.value)}
+							type="email"
+							value={email}
+						/>
+					</FieldLabel>
+				</div>
+			) : null}
+			{enforced ? null : (
+				<Button className="mt-6" disabled={busy} onClick={signIn} type="button">
+					{busy ? t("auth.waiting") : t("auth.signIn")}
+				</Button>
+			)}
+			{visibleProviders.length ? (
+				<div className="mt-4 grid gap-2">
+					{visibleProviders.map((provider) => (
+						<Button
+							disabled={busy}
+							key={provider.providerId}
+							onClick={() => {
+								void signInSso(provider.providerId);
+							}}
+							tone="secondary"
+							type="button"
+						>
+							{t("sso.signInWith")} {provider.displayName}
+						</Button>
+					))}
+				</div>
+			) : null}
 			{error ? (
 				<div className="mt-4">
 					<Notice tone="error">
 						<p className="font-bold">{t(error)}</p>
-						<p className="mt-1">{t("auth.passkeyRemediation")}</p>
-						<div className="mt-3">
-							<Button
-								disabled={busy}
-								onClick={signIn}
-								tone="secondary"
-								type="button"
-							>
-								{t("auth.tryAgain")}
-							</Button>
-						</div>
+						{enforced ? null : (
+							<>
+								<p className="mt-1">{t("auth.passkeyRemediation")}</p>
+								<div className="mt-3">
+									<Button
+										disabled={busy}
+										onClick={signIn}
+										tone="secondary"
+										type="button"
+									>
+										{t("auth.tryAgain")}
+									</Button>
+								</div>
+							</>
+						)}
 					</Notice>
 				</div>
 			) : null}
