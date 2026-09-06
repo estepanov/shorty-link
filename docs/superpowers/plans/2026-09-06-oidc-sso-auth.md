@@ -1,0 +1,72 @@
+# OIDC / SAML SSO Implementation Plan
+
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Add admin-configured OIDC and SAML SSO on Better Auth 1.7, with encrypted D1 secrets, IdP-initiated flows, group-to-role mapping, and SSO-enforced domains.
+
+**Architecture:** `@better-auth/sso` owns protocol and callbacks. Shorty owns `/api/admin/sso-providers`, `sso_provider_settings`, AES-GCM encryption of secret JSON fields, `resolveSsoAdmission`, and passkey enforcement.
+
+**Tech Stack:** Better Auth 1.7.x, `@better-auth/sso`, Elysia, Drizzle/D1, TanStack Form, Eden, Vitest.
+
+## Global Constraints
+
+- One Worker. No `apps/admin` split.
+- Password login and signup stay disabled.
+- Bootstrap stays passkey-only.
+- Admin writes under `/api/admin/*` with CSRF.
+- Use TanStack Form and Eden.
+- After code changes: `pnpm format:fix`.
+- Do not grant `system_owner` via JIT or group mapping.
+
+---
+
+### Task 1: Secrets, admission, enforcement
+
+**Files:**
+- Create: `src/server/auth/sso-secrets.ts`
+- Create: `src/server/services/sso.ts`
+- Test: `test/sso-secrets.test.ts`, `test/sso-admission.test.ts`
+
+**Interfaces:**
+- Produces: `encryptSsoConfigJson`, `decryptSsoConfigJson`, `resolveSsoAdmission`, `isSsoEnforcedForEmail`, `emailDomain`
+
+- [ ] Write failing tests, then implement helpers described in the spec.
+
+### Task 2: Schema, permissions, migration
+
+**Files:**
+- Modify: `src/lib/permissions.ts`, `src/server/db/schema.ts`
+- Create: `migrations/0010_sso_providers.sql`
+
+- [ ] Add `sso.read|write|delete`, `ssoProvider`, `ssoProviderSettings`, `account.issuer` backfill, system-role permission JSON update.
+
+### Task 3: Better Auth 1.7 + plugin wiring
+
+**Files:**
+- Modify: `package.json` / lockfile
+- Modify: `src/server/auth/auth.ts`, `src/lib/auth-client.ts`, `src/server.ts`
+
+- [ ] Upgrade packages together to 1.7.2. Set `account.identityStrategy: "provider-id"`. Add `sso()` and `ssoClient()`. Block raw SSO admin paths. Reject enforced-domain passkeys except bootstrap.
+
+### Task 4: Admin API
+
+**Files:**
+- Modify: `src/server/api/app.ts`
+- Test: `test/admin-api-wrappers.test.ts` (extend)
+
+- [ ] CRUD + public catalog + SP metadata. Encrypt on write. Redact on read.
+
+### Task 5: Admin and login UI
+
+**Files:**
+- Modify: `src/routes/admin.access.tsx`, `src/routes/admin.tsx`, `src/routes/admin.invite.$token.tsx`, `src/lib/i18n.ts`
+- Create: `src/routes/admin.access.sso.tsx`, `src/routes/admin.access.sso.new.tsx`, `src/routes/admin.access.sso.$providerId.tsx`
+
+- [ ] Access → SSO tab. Login/invite SSO buttons and email-first enforcement.
+
+### Task 6: Docs and verify
+
+**Files:**
+- Modify: `docs/overview.md`, `docs/usage.md`, `docs/self-hosting.md`, `docs/admin-api.md`, `docs/upgrading.md`, `docs/configuration.md`
+
+- [ ] Document operator setup. `pnpm docs:generate`. `pnpm verify`.
