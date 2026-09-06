@@ -53,6 +53,7 @@ const mocks = vi.hoisted(() => {
 		createDb,
 		getSession,
 		i18n: vi.fn(() => ({ id: "i18n-plugin" })),
+		mcp: vi.fn(() => ({ id: "mcp-plugin" })),
 		passkey: vi.fn(() => ({ id: "passkey-plugin" })),
 		tanstackStartCookies: vi.fn(() => ({ id: "tanstack-start-cookies" })),
 	};
@@ -85,6 +86,10 @@ vi.mock("better-auth/api", () => ({
 
 vi.mock("better-auth/tanstack-start", () => ({
 	tanstackStartCookies: mocks.tanstackStartCookies,
+}));
+
+vi.mock("better-auth/plugins", () => ({
+	mcp: mocks.mcp,
 }));
 
 vi.mock("../src/server/auth/onboarding", () => ({
