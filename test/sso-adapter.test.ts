@@ -88,6 +88,32 @@ describe("sso adapter crypto", () => {
 		});
 	});
 
+	it("wraps a Better Auth adapter factory so createAuth can initialize", async () => {
+		const factory = (options: { secret: string }) => ({
+			create: async (args: {
+				data: Record<string, unknown>;
+				model: string;
+			}) => ({ ...args.data, secret: options.secret }),
+			findMany: async () => [],
+			findOne: async () => null,
+			update: async (args: {
+				model: string;
+				update: Record<string, unknown>;
+			}) => args.update,
+		});
+		const wrapped = withSsoConfigCrypto(factory, SECRET);
+		const adapter = wrapped({ secret: "from-options" });
+		const created = (await adapter.create({
+			data: {
+				oidcConfig: JSON.stringify({ clientSecret: "super-secret" }),
+			},
+			model: "ssoProvider",
+		})) as { oidcConfig: string };
+		expect(JSON.parse(created.oidcConfig).clientSecret).toContain(
+			SSO_SECRET_PREFIX,
+		);
+	});
+
 	it("throws when stored secrets cannot be decrypted", async () => {
 		const encrypted = await encryptSsoConfigJson(
 			JSON.stringify({ clientSecret: "once" }),

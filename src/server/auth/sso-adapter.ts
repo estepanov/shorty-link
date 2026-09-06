@@ -34,13 +34,9 @@ async function mapSsoConfigs(
 	};
 }
 
-export function withSsoConfigCrypto<T extends object>(
-	adapter: T,
-	secret: string,
-): T {
+function wrapAdapter<T extends object>(adapter: T, secret: string): T {
 	const encrypt = (json: string) => encryptSsoConfigJson(json, secret);
 	const decrypt = (json: string) => decryptSsoConfigJson(json, secret);
-
 	const next = adapter as T & AdapterLike;
 	return {
 		...next,
@@ -77,4 +73,15 @@ export function withSsoConfigCrypto<T extends object>(
 			});
 		},
 	} as T;
+}
+
+export function withSsoConfigCrypto<T>(adapterOrFactory: T, secret: string): T {
+	if (typeof adapterOrFactory === "function") {
+		const factory = adapterOrFactory as (options: unknown) => object;
+		return ((options: unknown) => wrapAdapter(factory(options), secret)) as T;
+	}
+	if (adapterOrFactory && typeof adapterOrFactory === "object") {
+		return wrapAdapter(adapterOrFactory, secret);
+	}
+	return adapterOrFactory;
 }
