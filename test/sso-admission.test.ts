@@ -108,6 +108,47 @@ describe("sso admission", () => {
 		});
 	});
 
+	it("rejects existing users and invites outside the provider domain allowlist", () => {
+		const existingUser = resolveSsoAdmission({
+			email: "user@other.com",
+			emailVerified: true,
+			providerId: "okta",
+			groups: [],
+			existingUser: {
+				id: "u1",
+				email: "user@other.com",
+				isActive: true,
+				roleId: SYSTEM_ROLE_ADMIN,
+			},
+			pendingInvite: null,
+			settings,
+		});
+		expect(existingUser).toEqual({
+			error: "errors.ssoNotProvisioned",
+			ok: false,
+		});
+
+		const invitedUser = resolveSsoAdmission({
+			email: "new@other.com",
+			emailVerified: true,
+			providerId: "okta",
+			groups: [],
+			existingUser: null,
+			pendingInvite: {
+				email: "new@other.com",
+				roleId: SYSTEM_ROLE_ADMIN,
+				invitedBy: "owner",
+				expiresAt: Date.now() + 60_000,
+				token: "invite-token",
+			},
+			settings,
+		});
+		expect(invitedUser).toEqual({
+			error: "errors.ssoNotProvisioned",
+			ok: false,
+		});
+	});
+
 	it("maps the first matching IdP group onto a non-owner role", () => {
 		const decision = resolveSsoAdmission({
 			email: "user@acme.com",

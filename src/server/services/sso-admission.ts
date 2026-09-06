@@ -131,6 +131,10 @@ export function resolveSsoAdmission(
 		return fail("errors.ssoEmailUnverified");
 	}
 
+	if (!domainMatches(email, settings.domains)) {
+		return fail("errors.ssoNotProvisioned");
+	}
+
 	if (input.existingUser && input.existingUser.isActive === false) {
 		return fail("errors.ssoUserDisabled");
 	}
@@ -175,7 +179,7 @@ export function resolveSsoAdmission(
 		if (settings.defaultRoleId === SYSTEM_ROLE_OWNER) {
 			return fail("errors.ssoOwnerRoleForbidden");
 		}
-		if (!settings.defaultRoleId || !domainMatches(email, settings.domains)) {
+		if (!settings.defaultRoleId) {
 			return fail("errors.ssoNotProvisioned");
 		}
 		const mapped = applyRoleMapping(
