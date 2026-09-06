@@ -30,18 +30,10 @@ type AdmissionState =
 	| { status: "consumed" };
 
 function createAdmissionCoordinator(db: AppDb) {
-	const states = new Map<string, AdmissionState>();
-	let activeKey: string | null = null;
-	const keyFor = (providerId: string, email: string) =>
-		`${providerId}\0${email.trim().toLowerCase()}`;
+	let state: AdmissionState = { status: "empty" };
 
 	const match = (providerId: string, email?: string) => {
-		const key = email === undefined ? activeKey : keyFor(providerId, email);
-		if (!key) {
-			return null;
-		}
-		const state = states.get(key);
-		if (state?.status !== "prepared") {
+		if (state.status !== "prepared") {
 			return null;
 		}
 		const prepared = state.prepared;
@@ -54,11 +46,7 @@ function createAdmissionCoordinator(db: AppDb) {
 		return prepared;
 	};
 	const matchEmail = (email: string) => {
-		if (!activeKey) {
-			return null;
-		}
-		const state = states.get(activeKey);
-		if (state?.status !== "prepared") {
+		if (state.status !== "prepared") {
 			return null;
 		}
 		return state.prepared.email === email.trim().toLowerCase()
@@ -74,12 +62,14 @@ function createAdmissionCoordinator(db: AppDb) {
 			if (!providerId) {
 				throw new Error("errors.ssoNotProvisioned");
 			}
-			const key = keyFor(providerId, email);
-			const existingState = states.get(key);
-			if (existingState?.status === "prepared") {
+			if (
+				state.status === "prepared" &&
+				state.prepared.providerId === providerId &&
+				state.prepared.email === email.trim().toLowerCase()
+			) {
 				return;
 			}
-			if (existingState || (activeKey !== null && activeKey !== key)) {
+			if (state.status !== "empty") {
 				throw new Error("errors.ssoNotProvisioned");
 			}
 			const prepared = await prepareSsoAdmission(db, {
@@ -95,8 +85,7 @@ function createAdmissionCoordinator(db: AppDb) {
 			if (isNewUser !== isNewUserDecision) {
 				throw new Error("errors.ssoNotProvisioned");
 			}
-			activeKey = key;
-			states.set(key, { prepared, status: "prepared" });
+			state = { prepared, status: "prepared" };
 		},
 		match,
 		matchEmail,
@@ -105,8 +94,7 @@ function createAdmissionCoordinator(db: AppDb) {
 			if (!prepared) {
 				throw new Error("errors.ssoNotProvisioned");
 			}
-			const key = keyFor(providerId, email);
-			states.set(key, { status: "consumed" });
+			state = { status: "consumed" };
 			return prepared;
 		},
 	};

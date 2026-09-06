@@ -1,40 +1,142 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-function migrationStatements(sql: string) {
+type SqlLexerState =
+	| "backtick"
+	| "block-comment"
+	| "bracket"
+	| "double-quote"
+	| "line-comment"
+	| "normal"
+	| "single-quote";
+
+export function migrationStatements(sql: string) {
 	const statements: string[] = [];
-	let buffer: string[] = [];
+	let statementStart = 0;
+	let lexerState: SqlLexerState = "normal";
+	let token = "";
+	let leadingTokens: string[] = [];
 	let inTrigger = false;
 	let triggerCaseDepth = 0;
+	let triggerEndSeen = false;
 
-	for (const line of sql.split("\n")) {
-		const trimmed = line.trim();
-		if (/^CREATE\s+TRIGGER\b/i.test(trimmed)) {
-			inTrigger = true;
-			triggerCaseDepth = 0;
+	const commitToken = () => {
+		if (!token) {
+			return;
 		}
-		buffer.push(line);
-		const closesTrigger =
-			inTrigger && triggerCaseDepth === 0 && /^END;$/i.test(trimmed);
-		if (inTrigger) {
-			const caseStarts = trimmed.match(/\bCASE\b/gi)?.length ?? 0;
-			const caseEnds = trimmed.match(/\bEND\b/gi)?.length ?? 0;
-			triggerCaseDepth = Math.max(0, triggerCaseDepth + caseStarts - caseEnds);
+		const keyword = token.toUpperCase();
+		if (leadingTokens.length < 3) {
+			leadingTokens.push(keyword);
+			inTrigger =
+				leadingTokens[0] === "CREATE" &&
+				(leadingTokens[1] === "TRIGGER" ||
+					(["TEMP", "TEMPORARY"].includes(leadingTokens[1] ?? "") &&
+						leadingTokens[2] === "TRIGGER"));
 		}
-		if (closesTrigger || (!inTrigger && trimmed.endsWith(";"))) {
-			const statement = buffer.join("\n").trim();
-			if (statement) {
-				statements.push(statement);
+		if (inTrigger && keyword === "CASE") {
+			triggerCaseDepth += 1;
+		} else if (inTrigger && keyword === "END") {
+			if (triggerCaseDepth > 0) {
+				triggerCaseDepth -= 1;
+			} else {
+				triggerEndSeen = true;
 			}
-			buffer = [];
-			inTrigger = false;
+		}
+		token = "";
+	};
+
+	const emitStatement = (end: number) => {
+		const statement = sql.slice(statementStart, end).trim();
+		if (statement) {
+			statements.push(statement);
+		}
+		statementStart = end;
+		leadingTokens = [];
+		inTrigger = false;
+		triggerCaseDepth = 0;
+		triggerEndSeen = false;
+	};
+
+	for (let index = 0; index < sql.length; index += 1) {
+		const character = sql[index];
+		const next = sql[index + 1];
+		switch (lexerState) {
+			case "normal":
+				if (character === "-" && next === "-") {
+					commitToken();
+					lexerState = "line-comment";
+					index += 1;
+				} else if (character === "/" && next === "*") {
+					commitToken();
+					lexerState = "block-comment";
+					index += 1;
+				} else if (character === "'") {
+					commitToken();
+					lexerState = "single-quote";
+				} else if (character === '"') {
+					commitToken();
+					lexerState = "double-quote";
+				} else if (character === "`") {
+					commitToken();
+					lexerState = "backtick";
+				} else if (character === "[") {
+					commitToken();
+					lexerState = "bracket";
+				} else if (/\w/.test(character)) {
+					token += character;
+				} else {
+					commitToken();
+					if (character === ";" && (!inTrigger || triggerEndSeen)) {
+						emitStatement(index + 1);
+					}
+				}
+				break;
+			case "single-quote":
+				if (character === "'" && next === "'") {
+					index += 1;
+				} else if (character === "'") {
+					lexerState = "normal";
+				}
+				break;
+			case "double-quote":
+				if (character === '"' && next === '"') {
+					index += 1;
+				} else if (character === '"') {
+					lexerState = "normal";
+				}
+				break;
+			case "backtick":
+				if (character === "`" && next === "`") {
+					index += 1;
+				} else if (character === "`") {
+					lexerState = "normal";
+				}
+				break;
+			case "bracket":
+				if (character === "]") {
+					lexerState = "normal";
+				}
+				break;
+			case "line-comment":
+				if (character === "\n") {
+					lexerState = "normal";
+				}
+				break;
+			case "block-comment":
+				if (character === "*" && next === "/") {
+					lexerState = "normal";
+					index += 1;
+				}
+				break;
+			default: {
+				const _exhaustive: never = lexerState;
+				throw new Error(`Unknown SQL lexer state: ${_exhaustive}`);
+			}
 		}
 	}
 
-	const trailing = buffer.join("\n").trim();
-	if (trailing) {
-		statements.push(trailing);
-	}
+	commitToken();
+	emitStatement(sql.length);
 	return statements;
 }
 
