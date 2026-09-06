@@ -35,6 +35,7 @@
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.3",
+		"@better-auth/core": "1.7.3",
 		"@better-auth/drizzle-adapter": "^1.7.3",
 		"@better-auth/i18n": "^1.7.3",
 		"@better-auth/passkey": "^1.7.3",

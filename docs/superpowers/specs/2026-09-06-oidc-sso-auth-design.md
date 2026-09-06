@@ -295,7 +295,7 @@ Better Auth `/sso/register`, `/sso/update-provider`, and `/sso/delete-provider` 
 ## Security
 
 - CSRF on admin writes.
-- `trustedOrigins` is Shorty hosts only. OIDC discovery runs on admin write with an issuer-origin allowlist; hydrated endpoints are stored for login.
+- OIDC discovery runs on admin write from the configured issuer origin. Cross-origin discovered or manual endpoints must be HTTP(S) on hosts Better Auth classifies as publicly routable; same-origin internal IdPs remain supported. Hydrated endpoints are stored, and runtime trust adds only the selected provider's origins for its sign-in or callback request.
 - Redirect URIs must stay inside `trustedOrigins`.
 - Reserved provider ids: `credential`, `passkey`, `apikey`, and built-in social ids.
 - Secret redaction on every admin read DTO. No secrets in logs, OpenAPI examples, or Server-Timing.

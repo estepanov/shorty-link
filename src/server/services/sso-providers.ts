@@ -17,6 +17,10 @@ import type {
 	SsoProviderWrite,
 } from "@/lib/sso-types";
 import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "@/lib/sso-types";
+import {
+	isOidcDiscoveryEndpointAllowed,
+	isOidcEndpointAllowed,
+} from "../auth/oidc-endpoint-security";
 import { getEncryptionSecret } from "../auth/secret";
 import {
 	decryptSsoConfigJson,
@@ -98,14 +102,18 @@ function configString(
 	return typeof value === "string" ? value : undefined;
 }
 
-function assertOidcEndpoints(config: Record<string, unknown>) {
+function assertOidcEndpoints(
+	config: Record<string, unknown>,
+	trustedOrigin: string,
+) {
 	if (
 		!isUsableHttpUrl(config.issuer) ||
-		!isUsableHttpUrl(config.authorizationEndpoint) ||
-		!isUsableHttpUrl(config.tokenEndpoint) ||
-		!isUsableHttpUrl(config.jwksEndpoint) ||
+		!isOidcDiscoveryEndpointAllowed(config.discoveryEndpoint, trustedOrigin) ||
+		!isOidcEndpointAllowed(config.authorizationEndpoint, trustedOrigin) ||
+		!isOidcEndpointAllowed(config.tokenEndpoint, trustedOrigin) ||
+		!isOidcEndpointAllowed(config.jwksEndpoint, trustedOrigin) ||
 		(config.userInfoEndpoint !== undefined &&
-			!isUsableHttpUrl(config.userInfoEndpoint))
+			!isOidcEndpointAllowed(config.userInfoEndpoint, trustedOrigin))
 	) {
 		throw new Error("errors.ssoConfigurationInvalid");
 	}
@@ -224,6 +232,10 @@ async function hydrateOidcConfig(
 ) {
 	const allowIdpInitiated = input.allowIdpInitiated ?? false;
 	const existing = input.oidcConfig;
+	const issuerOrigin = originFromAbsoluteUrl(issuer);
+	if (!issuerOrigin) {
+		throw new Error("errors.ssoConfigurationInvalid");
+	}
 	if (existing?.skipDiscovery) {
 		const config = {
 			allowIdpInitiated,
@@ -240,11 +252,16 @@ async function hydrateOidcConfig(
 			tokenEndpoint: existing.tokenEndpoint,
 			userInfoEndpoint: existing.userInfoEndpoint,
 		};
-		assertOidcEndpoints(config);
+		assertOidcEndpoints(config, issuerOrigin);
 		return config;
 	}
 
-	const issuerOrigin = originFromAbsoluteUrl(issuer);
+	const discoveryEndpoint =
+		existing?.discoveryEndpoint ??
+		`${issuer.replace(/\/$/, "")}/.well-known/openid-configuration`;
+	if (!isOidcDiscoveryEndpointAllowed(discoveryEndpoint, issuerOrigin)) {
+		throw new Error("errors.ssoConfigurationInvalid");
+	}
 	let hydrated: Awaited<ReturnType<typeof discoverOIDCConfig>>;
 	try {
 		hydrated = await discoverOIDCConfig({
@@ -255,7 +272,7 @@ async function hydrateOidcConfig(
 				tokenEndpoint: existing?.tokenEndpoint,
 				userInfoEndpoint: existing?.userInfoEndpoint,
 			},
-			isTrustedOrigin: (url) => originFromAbsoluteUrl(url) === issuerOrigin,
+			isTrustedOrigin: (url) => isOidcEndpointAllowed(url, issuerOrigin),
 			issuer,
 		});
 	} catch {
@@ -274,7 +291,7 @@ async function hydrateOidcConfig(
 		tokenEndpointAuthentication: hydrated.tokenEndpointAuthentication,
 		userInfoEndpoint: hydrated.userInfoEndpoint,
 	};
-	assertOidcEndpoints(config);
+	assertOidcEndpoints(config, issuerOrigin);
 	return config;
 }
 
@@ -507,12 +524,9 @@ function toAdminProvider(
 	};
 }
 
-async function upsertSettings(
-	db: AppDb,
-	input: ReturnType<typeof settingsFromWrite>,
-) {
+function settingsInsertValues(input: ReturnType<typeof settingsFromWrite>) {
 	const timestamp = now();
-	const values = {
+	return {
 		allowIdpInitiated: input.allowIdpInitiated,
 		createdAt: timestamp,
 		defaultRoleId: input.defaultRoleId,
@@ -526,30 +540,6 @@ async function upsertSettings(
 		providerId: input.providerId,
 		updatedAt: timestamp,
 	};
-	const existing = await db
-		.select({ providerId: ssoProviderSettings.providerId })
-		.from(ssoProviderSettings)
-		.where(eq(ssoProviderSettings.providerId, input.providerId))
-		.limit(1);
-	if (existing[0]) {
-		await db
-			.update(ssoProviderSettings)
-			.set({
-				allowIdpInitiated: values.allowIdpInitiated,
-				defaultRoleId: values.defaultRoleId,
-				displayName: values.displayName,
-				enabled: values.enabled,
-				enforceSso: values.enforceSso,
-				groupClaim: values.groupClaim,
-				groupRoleMappings: values.groupRoleMappings,
-				jitEnabled: values.jitEnabled,
-				protocol: values.protocol,
-				updatedAt: timestamp,
-			})
-			.where(eq(ssoProviderSettings.providerId, input.providerId));
-		return;
-	}
-	await db.insert(ssoProviderSettings).values(values);
 }
 
 export async function listPublicSsoProviders(
@@ -676,7 +666,7 @@ export async function createSsoProvider(
 				)
 			: null;
 
-	await db.insert(ssoProvider).values({
+	const providerInsert = db.insert(ssoProvider).values({
 		domain: input.domain,
 		id: nanoid(),
 		issuer: input.issuer,
@@ -686,13 +676,10 @@ export async function createSsoProvider(
 		samlConfig: samlJson,
 		userId: actorUserId,
 	});
-
-	try {
-		await upsertSettings(db, settings);
-	} catch (error) {
-		await db.delete(ssoProvider).where(eq(ssoProvider.providerId, providerId));
-		throw error;
-	}
+	const settingsInsert = db
+		.insert(ssoProviderSettings)
+		.values(settingsInsertValues(settings));
+	await db.batch([providerInsert, settingsInsert]);
 
 	return getAdminSsoProvider(db, providerId, origin, request);
 }
@@ -736,6 +723,26 @@ export async function updateSsoProvider(
 		throw new Error("errors.ssoProtocolImmutable");
 	}
 	const issuer = input.issuer ?? current.issuer;
+	if (
+		protocol === "oidc" &&
+		input.issuer !== undefined &&
+		input.issuer.trim() !==
+			externalIdentityAuthority(
+				protocol,
+				row.provider.issuer,
+				currentOidc,
+				currentSaml,
+			)
+	) {
+		const linkedAccounts = await db
+			.select({ id: account.id })
+			.from(account)
+			.where(eq(account.providerId, providerId))
+			.limit(1);
+		if (linkedAccounts[0]) {
+			throw new Error("errors.ssoIdentityBoundaryImmutable");
+		}
+	}
 	const settings = settingsFromWrite(providerId, protocol, input, current);
 	await assertRoleReferences(db, settings);
 	const nextOidc =

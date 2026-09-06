@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPlatformProxy } from "wrangler";
 
 import {
@@ -87,6 +87,7 @@ describe("D1 SSO provider persistence", () => {
 	});
 
 	afterEach(async () => {
+		vi.unstubAllGlobals();
 		await proxy?.dispose();
 		proxy = null;
 	});
@@ -248,6 +249,110 @@ describe("D1 SSO provider persistence", () => {
 			),
 		).rejects.toThrow("errors.ssoConfigurationInvalid");
 		expect(await db.select().from(ssoProvider)).toHaveLength(0);
+	});
+
+	it("accepts publicly routable OIDC endpoints across multiple origins", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () =>
+				Response.json({
+					authorization_endpoint: "https://accounts.example.com/authorize",
+					issuer: "https://issuer.example.com",
+					jwks_uri: "https://keys.example.net/jwks",
+					token_endpoint: "https://tokens.example.org/token",
+					userinfo_endpoint: "https://profile.example.dev/userinfo",
+				}),
+			),
+		);
+
+		const created = await createSsoProvider(
+			db,
+			oidcInput({
+				issuer: "https://issuer.example.com",
+				oidcConfig: { skipDiscovery: false },
+			}),
+			"owner",
+			ORIGIN,
+			REQUEST,
+		);
+
+		expect(created.oidcConfig).toMatchObject({
+			authorizationEndpoint: "https://accounts.example.com/authorize",
+			jwksEndpoint: "https://keys.example.net/jwks",
+			tokenEndpoint: "https://tokens.example.org/token",
+			userInfoEndpoint: "https://profile.example.dev/userinfo",
+		});
+	});
+
+	it("rejects discovered OIDC endpoints on a private cross-origin host", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () =>
+				Response.json({
+					authorization_endpoint: "https://accounts.example.com/authorize",
+					issuer: "https://issuer.example.com",
+					jwks_uri: "https://keys.example.net/jwks",
+					token_endpoint: "http://10.0.0.8/token",
+				}),
+			),
+		);
+
+		await expect(
+			createSsoProvider(
+				db,
+				oidcInput({
+					issuer: "https://issuer.example.com",
+					oidcConfig: { skipDiscovery: false },
+				}),
+				"owner",
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoDiscoveryFailed");
+		expect(await db.select().from(ssoProvider)).toHaveLength(0);
+	});
+
+	it("allows same-origin internal OIDC endpoints but rejects private cross-origin manual endpoints", async () => {
+		await createSsoProvider(
+			db,
+			oidcInput({
+				issuer: "http://10.0.0.8",
+				oidcConfig: {
+					authorizationEndpoint: "http://10.0.0.8/authorize",
+					jwksEndpoint: "http://10.0.0.8/jwks",
+					skipDiscovery: true,
+					tokenEndpoint: "http://10.0.0.8/token",
+				},
+				providerId: "internal",
+			}),
+			"owner",
+			ORIGIN,
+			REQUEST,
+		);
+
+		await expect(
+			createSsoProvider(
+				db,
+				oidcInput({
+					oidcConfig: {
+						authorizationEndpoint: "https://accounts.example.com/authorize",
+						jwksEndpoint: "https://keys.example.net/jwks",
+						skipDiscovery: true,
+						tokenEndpoint: "http://192.168.1.10/token",
+					},
+					providerId: "private-cross-origin",
+				}),
+				"owner",
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoConfigurationInvalid");
+		expect(
+			await db
+				.select()
+				.from(ssoProvider)
+				.where(eq(ssoProvider.providerId, "private-cross-origin")),
+		).toHaveLength(0);
 	});
 
 	it("accepts valid SAML metadata or manual entryPoint plus entityID", async () => {
@@ -625,6 +730,33 @@ describe("D1 SSO provider persistence", () => {
 				.from(ssoProviderSettings)
 				.where(eq(ssoProviderSettings.providerId, "workforce")),
 		).toEqual([settingsBefore]);
+	});
+
+	it("does not leave an orphan provider when atomic settings creation fails", async () => {
+		await database
+			.prepare(`
+				CREATE TRIGGER fail_sso_settings_insert
+				BEFORE INSERT ON sso_provider_settings
+				BEGIN
+					SELECT RAISE(FAIL, 'injected settings insert failure');
+				END
+			`)
+			.run();
+		await database
+			.prepare(`
+				CREATE TRIGGER fail_provider_compensation_delete
+				BEFORE DELETE ON ssoProvider
+				BEGIN
+					SELECT RAISE(FAIL, 'compensation delete must not run');
+				END
+			`)
+			.run();
+
+		await expect(
+			createSsoProvider(db, oidcInput(), "owner", ORIGIN, REQUEST),
+		).rejects.toThrow("injected settings insert failure");
+		expect(await db.select().from(ssoProvider)).toHaveLength(0);
+		expect(await db.select().from(ssoProviderSettings)).toHaveLength(0);
 	});
 
 	it("returns deterministic missing and concurrent-update conflicts without mixed state", async () => {
