@@ -93,7 +93,10 @@ describe("sso adapter crypto", () => {
 			create: async (args: {
 				data: Record<string, unknown>;
 				model: string;
-			}) => ({ ...args.data, secret: options.secret }),
+			}): Promise<Record<string, unknown>> => ({
+				...args.data,
+				secret: options.secret,
+			}),
 			findMany: async () => [],
 			findOne: async () => null,
 			update: async (args: {
