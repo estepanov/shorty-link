@@ -3,7 +3,7 @@
 	"info": {
 		"title": "Shorty Link API",
 		"description": "Development documentation",
-		"version": "0.1.0"
+		"version": "0.2.0"
 	},
 	"paths": {
 		"/api/health": {
@@ -1663,6 +1663,393 @@
 				"operationId": "deleteApiAdminRolesById",
 				"tags": ["Roles"],
 				"summary": "Delete role",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sso-providers/public": {
+			"get": {
+				"operationId": "getApiAdminSso-providersPublic",
+				"tags": ["SSO"],
+				"summary": "List enabled SSO providers for sign-in",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sso-providers": {
+			"get": {
+				"operationId": "getApiAdminSso-providers",
+				"tags": ["SSO"],
+				"summary": "List SSO providers",
+				"responses": { "200": {} }
+			},
+			"post": {
+				"parameters": [],
+				"operationId": "postApiAdminSso-providers",
+				"tags": ["SSO"],
+				"summary": "Register SSO provider",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": [
+									"displayName",
+									"domain",
+									"issuer",
+									"protocol",
+									"providerId"
+								],
+								"properties": {
+									"allowIdpInitiated": { "type": "boolean" },
+									"clientId": { "type": "string" },
+									"clientSecret": { "type": "string" },
+									"defaultRoleId": {
+										"anyOf": [{ "type": "string" }, { "type": "null" }]
+									},
+									"displayName": { "minLength": 1, "type": "string" },
+									"domain": { "minLength": 1, "type": "string" },
+									"enabled": { "type": "boolean" },
+									"enforceSso": { "type": "boolean" },
+									"groupClaim": { "type": "string" },
+									"groupRoleMappings": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": ["group", "roleId"],
+											"properties": {
+												"group": { "minLength": 1, "type": "string" },
+												"roleId": { "minLength": 1, "type": "string" }
+											}
+										}
+									},
+									"issuer": { "minLength": 1, "type": "string" },
+									"jitEnabled": { "type": "boolean" },
+									"oidcConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									},
+									"protocol": {
+										"anyOf": [
+											{ "const": "oidc", "type": "string" },
+											{ "const": "saml", "type": "string" }
+										]
+									},
+									"providerId": { "minLength": 1, "type": "string" },
+									"samlConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									}
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"required": [
+									"displayName",
+									"domain",
+									"issuer",
+									"protocol",
+									"providerId"
+								],
+								"properties": {
+									"allowIdpInitiated": { "type": "boolean" },
+									"clientId": { "type": "string" },
+									"clientSecret": { "type": "string" },
+									"defaultRoleId": {
+										"anyOf": [{ "type": "string" }, { "type": "null" }]
+									},
+									"displayName": { "minLength": 1, "type": "string" },
+									"domain": { "minLength": 1, "type": "string" },
+									"enabled": { "type": "boolean" },
+									"enforceSso": { "type": "boolean" },
+									"groupClaim": { "type": "string" },
+									"groupRoleMappings": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": ["group", "roleId"],
+											"properties": {
+												"group": { "minLength": 1, "type": "string" },
+												"roleId": { "minLength": 1, "type": "string" }
+											}
+										}
+									},
+									"issuer": { "minLength": 1, "type": "string" },
+									"jitEnabled": { "type": "boolean" },
+									"oidcConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									},
+									"protocol": {
+										"anyOf": [
+											{ "const": "oidc", "type": "string" },
+											{ "const": "saml", "type": "string" }
+										]
+									},
+									"providerId": { "minLength": 1, "type": "string" },
+									"samlConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									}
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"required": [
+									"displayName",
+									"domain",
+									"issuer",
+									"protocol",
+									"providerId"
+								],
+								"properties": {
+									"allowIdpInitiated": { "type": "boolean" },
+									"clientId": { "type": "string" },
+									"clientSecret": { "type": "string" },
+									"defaultRoleId": {
+										"anyOf": [{ "type": "string" }, { "type": "null" }]
+									},
+									"displayName": { "minLength": 1, "type": "string" },
+									"domain": { "minLength": 1, "type": "string" },
+									"enabled": { "type": "boolean" },
+									"enforceSso": { "type": "boolean" },
+									"groupClaim": { "type": "string" },
+									"groupRoleMappings": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": ["group", "roleId"],
+											"properties": {
+												"group": { "minLength": 1, "type": "string" },
+												"roleId": { "minLength": 1, "type": "string" }
+											}
+										}
+									},
+									"issuer": { "minLength": 1, "type": "string" },
+									"jitEnabled": { "type": "boolean" },
+									"oidcConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									},
+									"protocol": {
+										"anyOf": [
+											{ "const": "oidc", "type": "string" },
+											{ "const": "saml", "type": "string" }
+										]
+									},
+									"providerId": { "minLength": 1, "type": "string" },
+									"samlConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sso-providers/{providerId}/sp-metadata": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "providerId",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminSso-providersByProviderIdSp-metadata",
+				"tags": ["SSO"],
+				"summary": "Get SAML SP metadata",
+				"responses": { "200": {} }
+			}
+		},
+		"/api/admin/sso-providers/{providerId}": {
+			"get": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "providerId",
+						"required": true
+					}
+				],
+				"operationId": "getApiAdminSso-providersByProviderId",
+				"tags": ["SSO"],
+				"summary": "Get SSO provider",
+				"responses": { "200": {} }
+			},
+			"patch": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "providerId",
+						"required": true
+					}
+				],
+				"operationId": "patchApiAdminSso-providersByProviderId",
+				"tags": ["SSO"],
+				"summary": "Update SSO provider",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"allowIdpInitiated": { "type": "boolean" },
+									"clientId": { "type": "string" },
+									"clientSecret": { "type": "string" },
+									"defaultRoleId": {
+										"anyOf": [{ "type": "string" }, { "type": "null" }]
+									},
+									"displayName": { "minLength": 1, "type": "string" },
+									"domain": { "minLength": 1, "type": "string" },
+									"enabled": { "type": "boolean" },
+									"enforceSso": { "type": "boolean" },
+									"groupClaim": { "type": "string" },
+									"groupRoleMappings": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": ["group", "roleId"],
+											"properties": {
+												"group": { "minLength": 1, "type": "string" },
+												"roleId": { "minLength": 1, "type": "string" }
+											}
+										}
+									},
+									"issuer": { "minLength": 1, "type": "string" },
+									"jitEnabled": { "type": "boolean" },
+									"oidcConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									},
+									"protocol": {
+										"anyOf": [
+											{ "const": "oidc", "type": "string" },
+											{ "const": "saml", "type": "string" }
+										]
+									},
+									"samlConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									}
+								}
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"allowIdpInitiated": { "type": "boolean" },
+									"clientId": { "type": "string" },
+									"clientSecret": { "type": "string" },
+									"defaultRoleId": {
+										"anyOf": [{ "type": "string" }, { "type": "null" }]
+									},
+									"displayName": { "minLength": 1, "type": "string" },
+									"domain": { "minLength": 1, "type": "string" },
+									"enabled": { "type": "boolean" },
+									"enforceSso": { "type": "boolean" },
+									"groupClaim": { "type": "string" },
+									"groupRoleMappings": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": ["group", "roleId"],
+											"properties": {
+												"group": { "minLength": 1, "type": "string" },
+												"roleId": { "minLength": 1, "type": "string" }
+											}
+										}
+									},
+									"issuer": { "minLength": 1, "type": "string" },
+									"jitEnabled": { "type": "boolean" },
+									"oidcConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									},
+									"protocol": {
+										"anyOf": [
+											{ "const": "oidc", "type": "string" },
+											{ "const": "saml", "type": "string" }
+										]
+									},
+									"samlConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									}
+								}
+							}
+						},
+						"text/plain": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"allowIdpInitiated": { "type": "boolean" },
+									"clientId": { "type": "string" },
+									"clientSecret": { "type": "string" },
+									"defaultRoleId": {
+										"anyOf": [{ "type": "string" }, { "type": "null" }]
+									},
+									"displayName": { "minLength": 1, "type": "string" },
+									"domain": { "minLength": 1, "type": "string" },
+									"enabled": { "type": "boolean" },
+									"enforceSso": { "type": "boolean" },
+									"groupClaim": { "type": "string" },
+									"groupRoleMappings": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": ["group", "roleId"],
+											"properties": {
+												"group": { "minLength": 1, "type": "string" },
+												"roleId": { "minLength": 1, "type": "string" }
+											}
+										}
+									},
+									"issuer": { "minLength": 1, "type": "string" },
+									"jitEnabled": { "type": "boolean" },
+									"oidcConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									},
+									"protocol": {
+										"anyOf": [
+											{ "const": "oidc", "type": "string" },
+											{ "const": "saml", "type": "string" }
+										]
+									},
+									"samlConfig": {
+										"type": "object",
+										"patternProperties": { "^(.*)$": {} }
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": { "200": {} }
+			},
+			"delete": {
+				"parameters": [
+					{
+						"schema": { "type": "string", "minLength": 1 },
+						"in": "path",
+						"name": "providerId",
+						"required": true
+					}
+				],
+				"operationId": "deleteApiAdminSso-providersByProviderId",
+				"tags": ["SSO"],
+				"summary": "Delete SSO provider",
 				"responses": { "200": {} }
 			}
 		},
