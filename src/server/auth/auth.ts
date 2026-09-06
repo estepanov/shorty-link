@@ -3,7 +3,6 @@ import { apiKey } from "@better-auth/api-key";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { i18n } from "@better-auth/i18n";
 import { passkey } from "@better-auth/passkey";
-import { sso } from "@better-auth/sso";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -20,14 +19,9 @@ import {
 	schema,
 	user,
 } from "../db/schema";
-import { extractIdpGroups } from "../services/sso-admission";
 import {
-	applySsoAdmission,
 	assertPasskeyAllowed,
 	loadOidcProviderTrustedOrigins,
-	loadSsoSettingsView,
-	type PreparedSsoAdmission,
-	prepareSsoAdmission,
 } from "../services/sso-providers";
 import {
 	completePasskeyRegistrationUser,
@@ -37,6 +31,13 @@ import {
 import { getAuthSecret } from "./secret";
 import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
 import { withSsoConfigCrypto } from "./sso-adapter";
+import { createSsoIntegration } from "./sso-integration";
+import {
+	hasTrustedShortyCallbacks,
+	hasTrustedShortySource,
+	oidcProviderIdForTrustedOrigins,
+	type SsoInitiationBody,
+} from "./sso-request-security";
 
 const APIKEY_CREATE_PERMISSION: Permission = "apikeys.manage";
 const SSO_ADMIN_PATHS = new Set([
@@ -44,94 +45,7 @@ const SSO_ADMIN_PATHS = new Set([
 	"/sso/update-provider",
 	"/sso/delete-provider",
 ]);
-const OIDC_CALLBACK_PATH = /^\/api\/auth\/sso\/callback\/([a-z0-9][a-z0-9-]*)$/;
-const OIDC_INITIATION_PATH = "/api/auth/sign-in/sso";
 const SSO_INITIATION_HOOK_PATH = "/sign-in/sso";
-
-type OidcInitiationBody = {
-	callbackURL?: unknown;
-	errorCallbackURL?: unknown;
-	newUserCallbackURL?: unknown;
-	providerId?: unknown;
-	providerType?: unknown;
-};
-
-function isShortyCallback(value: unknown, shortyOrigin: string) {
-	if (typeof value !== "string" || !value) {
-		return false;
-	}
-	try {
-		return new URL(value, shortyOrigin).origin === shortyOrigin;
-	} catch {
-		return false;
-	}
-}
-
-function hasTrustedShortySource(request: Request, shortyOrigin: string) {
-	const source =
-		request.headers.get("origin") ?? request.headers.get("referer");
-	if (!source) {
-		return request.headers.get("sec-fetch-site") !== "cross-site";
-	}
-	try {
-		return new URL(source).origin === shortyOrigin;
-	} catch {
-		return false;
-	}
-}
-
-function hasTrustedShortyCallbacks(
-	body: OidcInitiationBody,
-	shortyOrigin: string,
-) {
-	return (
-		isShortyCallback(body.callbackURL, shortyOrigin) &&
-		(body.errorCallbackURL === undefined ||
-			isShortyCallback(body.errorCallbackURL, shortyOrigin)) &&
-		(body.newUserCallbackURL === undefined ||
-			isShortyCallback(body.newUserCallbackURL, shortyOrigin))
-	);
-}
-
-async function oidcProviderIdForTrustedOrigins(
-	request: Request,
-	shortyOrigin: string,
-) {
-	const pathname = new URL(request.url).pathname;
-	const callbackMatch = OIDC_CALLBACK_PATH.exec(pathname);
-	if (callbackMatch && request.method === "GET") {
-		return callbackMatch[1] ?? null;
-	}
-	if (pathname !== OIDC_INITIATION_PATH || request.method !== "POST") {
-		return null;
-	}
-	if (!hasTrustedShortySource(request, shortyOrigin)) {
-		return null;
-	}
-
-	let body: OidcInitiationBody;
-	try {
-		body = (await request.clone().json()) as OidcInitiationBody;
-	} catch {
-		return null;
-	}
-	if (
-		!body ||
-		typeof body !== "object" ||
-		Array.isArray(body) ||
-		!hasTrustedShortyCallbacks(body, shortyOrigin)
-	) {
-		return null;
-	}
-	if (
-		(body.providerType !== undefined && body.providerType !== "oidc") ||
-		typeof body.providerId !== "string" ||
-		!OIDC_CALLBACK_PATH.test(`/api/auth/sso/callback/${body.providerId}`)
-	) {
-		return null;
-	}
-	return body.providerId;
-}
 
 function resolveHookHeaders(context: {
 	headers?: HeadersInit;
@@ -201,9 +115,14 @@ function fallbackUrl(request?: Request) {
 	return "[REDACTED]";
 }
 
-export function createAuth(request?: Request) {
+export function createAuth(
+	request?: Request,
+	options: { allowSamlIdpInitiated?: boolean } = {},
+) {
 	const db = createDb();
-	let preparedSsoAdmission: PreparedSsoAdmission | null = null;
+	const ssoIntegration = createSsoIntegration(db, {
+		allowSamlIdpInitiated: options.allowSamlIdpInitiated === true,
+	});
 	const allowedHosts = splitTrustedHosts(runtimeEnv.BETTER_AUTH_ALLOWED_HOSTS);
 	const configuredFallback = runtimeEnv.BETTER_AUTH_FALLBACK_URL ?? null;
 	const trustedRequestOrigin = request
@@ -308,85 +227,17 @@ export function createAuth(request?: Request) {
 			changeEmail: {
 				enabled: false,
 			},
-			validateUserInfo: async ({ user: providerUser, source }) => {
-				if (source.method !== "sso-oidc" && source.method !== "sso-saml") {
-					return;
-				}
-				const providerId = source.sso?.providerId;
-				const email =
-					typeof providerUser.email === "string" ? providerUser.email : "";
-				const emailVerified = providerUser.emailVerified === true;
-				if (!providerId) {
-					return {
-						error: "errors.ssoNotProvisioned",
-						errorDescription: "errors.ssoNotProvisioned",
-					};
-				}
-				const settings = await loadSsoSettingsView(db, providerId);
-				const groups = extractIdpGroups(
-					source.sso?.profile,
-					settings?.groupClaim ?? "groups",
-				);
-				try {
-					const prepared = await prepareSsoAdmission(db, {
-						email,
-						emailVerified,
-						groups,
-						providerId,
-					});
-					const isNewUser = source.action === "create-user";
-					const isNewUserDecision =
-						prepared.decision.action === "invite" ||
-						prepared.decision.action === "jit";
-					if (isNewUser !== isNewUserDecision) {
-						throw new Error("errors.ssoNotProvisioned");
-					}
-					preparedSsoAdmission = prepared;
-				} catch (error) {
-					const message =
-						error instanceof Error ? error.message : "errors.ssoNotProvisioned";
-					return { error: message, errorDescription: message };
-				}
-			},
+			validateUserInfo: ssoIntegration.validateUserInfo,
 		},
 		databaseHooks: {
 			account: {
 				create: {
-					before: async (newAccount) => {
-						const prepared = preparedSsoAdmission;
-						if (!prepared || newAccount.providerId !== prepared.providerId) {
-							return;
-						}
-						return {
-							data: {
-								issuer: `local:${prepared.providerId}`,
-							},
-						};
-					},
+					before: ssoIntegration.accountCreateBefore,
 				},
 			},
 			user: {
 				create: {
-					before: async (newUser) => {
-						const prepared = preparedSsoAdmission;
-						if (
-							!prepared ||
-							newUser.email.trim().toLowerCase() !== prepared.email ||
-							prepared.decision.action === "sign_in"
-						) {
-							return;
-						}
-						return {
-							data: {
-								invitedBy:
-									prepared.decision.action === "invite"
-										? prepared.decision.invitedBy
-										: null,
-								isActive: prepared.decision.action === "jit",
-								roleId: prepared.decision.roleId,
-							},
-						};
-					},
+					before: ssoIntegration.userCreateBefore,
 				},
 			},
 		},
@@ -400,7 +251,7 @@ export function createAuth(request?: Request) {
 							message: "Untrusted SSO initiation origin",
 						});
 					}
-					const body = ctx.body as OidcInitiationBody;
+					const body = ctx.body as SsoInitiationBody;
 					if (
 						body?.callbackURL !== undefined &&
 						!hasTrustedShortyCallbacks(body, requestOrigin)
@@ -541,29 +392,9 @@ export function createAuth(request?: Request) {
 				localeCookie: "shorty_locale",
 				userLocaleField: "locale",
 			}),
-			sso({
-				disableImplicitSignUp: false,
-				domainVerification: { enabled: false },
-				organizationProvisioning: { disabled: true },
-				provisionUserOnEveryLogin: true,
-				saml: {
-					allowIdpInitiated: true,
-				},
-				trustEmailVerified: true,
-				provisionUser: async ({ provider, user: authenticatedUser }) => {
-					const prepared = preparedSsoAdmission;
-					if (
-						!prepared ||
-						prepared.providerId !== provider.providerId ||
-						prepared.email !== authenticatedUser.email.trim().toLowerCase()
-					) {
-						throw new Error("errors.ssoNotProvisioned");
-					}
-					await applySsoAdmission(db, prepared, authenticatedUser.id);
-				},
-			}),
+			ssoIntegration.ssoPlugin,
 			tanstackStartCookies(),
-		],
+		] as const,
 	});
 }
 

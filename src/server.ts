@@ -1,7 +1,7 @@
 import handler from "@tanstack/react-start/server-entry";
 import { app } from "./server/api/app";
 import { createAuth } from "./server/auth/auth";
-import { validateSamlAcsRequest } from "./server/auth/saml-acs-gate";
+import { allowsSamlIdpInitiatedForRequest } from "./server/auth/saml-acs-policy";
 import { createDb } from "./server/db/client";
 import { getLogger, serializeError } from "./server/logging";
 import { aggregateAnalytics } from "./server/services/analytics/aggregate";
@@ -124,24 +124,11 @@ async function handleAuthRequest(request: Request, ctx: RequestContext) {
 	authLog.debug("auth handler invoked", ctx);
 
 	try {
-		const samlAcsGate = await validateSamlAcsRequest(request, createDb());
-		if (!samlAcsGate.allowed) {
-			authLog.warn("SAML ACS request rejected", {
-				...ctx,
-				reason: samlAcsGate.reason,
-			});
-			return applySecurityHeaders(
-				request,
-				Response.json(
-					{
-						code: "SAML_ACS_REQUEST_REJECTED",
-						message: "Invalid SAML ACS request",
-					},
-					{ status: samlAcsGate.status },
-				),
-			);
-		}
-		const auth = createAuth(request);
+		const allowSamlIdpInitiated = await allowsSamlIdpInitiatedForRequest(
+			request,
+			createDb(),
+		);
+		const auth = createAuth(request, { allowSamlIdpInitiated });
 		const response = await auth.handler(request);
 		const status = response.status;
 		const fields = { ...ctx, status };

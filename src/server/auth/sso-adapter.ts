@@ -1,13 +1,9 @@
+import type {
+	DBAdapter,
+	DBAdapterInstance,
+} from "@better-auth/core/db/adapter";
+
 import { decryptSsoConfigJson, encryptSsoConfigJson } from "./sso-secrets";
-
-type AdapterRecord = Record<string, unknown>;
-
-type AdapterLike = {
-	create: (args: { data: AdapterRecord; model: string }) => Promise<unknown>;
-	findMany: (args: { model: string } & AdapterRecord) => Promise<unknown[]>;
-	findOne: (args: { model: string } & AdapterRecord) => Promise<unknown>;
-	update: (args: { model: string; update: AdapterRecord }) => Promise<unknown>;
-};
 
 async function mapConfigField(
 	value: unknown,
@@ -19,69 +15,72 @@ async function mapConfigField(
 	return transform(value);
 }
 
-async function mapSsoConfigs(
-	row: unknown,
+async function mapSsoConfigs<T>(
+	row: T,
 	transform: (json: string) => Promise<string>,
-) {
+): Promise<T> {
 	if (!row || typeof row !== "object") {
 		return row;
 	}
-	const record = row as AdapterRecord;
-	return {
-		...record,
+	const record = row as Record<string, unknown>;
+	return Object.assign({}, row, {
 		oidcConfig: await mapConfigField(record.oidcConfig, transform),
 		samlConfig: await mapConfigField(record.samlConfig, transform),
+	});
+}
+
+function wrapAdapter(adapter: DBAdapter, secret: string): DBAdapter {
+	const encrypt = (json: string) => encryptSsoConfigJson(json, secret);
+	const decrypt = (json: string) => decryptSsoConfigJson(json, secret);
+	const create: DBAdapter["create"] = async (args) => {
+		if (args.model !== "ssoProvider") {
+			return adapter.create(args);
+		}
+		return adapter.create({
+			...args,
+			data: await mapSsoConfigs(args.data, encrypt),
+		});
+	};
+	const findMany = async <T>(
+		args: Parameters<DBAdapter["findMany"]>[0],
+	): Promise<T[]> => {
+		const rows = await adapter.findMany<T>(args);
+		if (args.model !== "ssoProvider") {
+			return rows;
+		}
+		return Promise.all(rows.map((row) => mapSsoConfigs(row, decrypt)));
+	};
+	const findOne = async <T>(
+		args: Parameters<DBAdapter["findOne"]>[0],
+	): Promise<T | null> => {
+		const row = await adapter.findOne<T>(args);
+		if (args.model !== "ssoProvider") {
+			return row;
+		}
+		return mapSsoConfigs(row, decrypt);
+	};
+	const update: DBAdapter["update"] = async (args) => {
+		if (args.model !== "ssoProvider") {
+			return adapter.update(args);
+		}
+		return adapter.update({
+			...args,
+			update: await mapSsoConfigs(args.update, encrypt),
+		});
+	};
+
+	return {
+		...adapter,
+		create,
+		findMany,
+		findOne,
+		update,
 	};
 }
 
-function wrapAdapter<T extends object>(adapter: T, secret: string): T {
-	const encrypt = (json: string) => encryptSsoConfigJson(json, secret);
-	const decrypt = (json: string) => decryptSsoConfigJson(json, secret);
-	const next = adapter as T & AdapterLike;
-	return {
-		...next,
-		async create(args: { data: AdapterRecord; model: string }) {
-			if (args.model !== "ssoProvider") {
-				return next.create(args);
-			}
-			return next.create({
-				...args,
-				data: (await mapSsoConfigs(args.data, encrypt)) as AdapterRecord,
-			});
-		},
-		async findMany(args: { model: string } & AdapterRecord) {
-			const rows = await next.findMany(args);
-			if (args.model !== "ssoProvider") {
-				return rows;
-			}
-			return Promise.all(rows.map((row) => mapSsoConfigs(row, decrypt)));
-		},
-		async findOne(args: { model: string } & AdapterRecord) {
-			const row = await next.findOne(args);
-			if (args.model !== "ssoProvider") {
-				return row;
-			}
-			return mapSsoConfigs(row, decrypt);
-		},
-		async update(args: { model: string; update: AdapterRecord }) {
-			if (args.model !== "ssoProvider") {
-				return next.update(args);
-			}
-			return next.update({
-				...args,
-				update: (await mapSsoConfigs(args.update, encrypt)) as AdapterRecord,
-			});
-		},
-	} as T;
-}
-
-export function withSsoConfigCrypto<T>(adapterOrFactory: T, secret: string): T {
-	if (typeof adapterOrFactory === "function") {
-		const factory = adapterOrFactory as (options: unknown) => object;
-		return ((options: unknown) => wrapAdapter(factory(options), secret)) as T;
-	}
-	if (adapterOrFactory && typeof adapterOrFactory === "object") {
-		return wrapAdapter(adapterOrFactory, secret);
-	}
-	return adapterOrFactory;
+export function withSsoConfigCrypto(
+	adapterFactory: DBAdapterInstance,
+	secret: string,
+): DBAdapterInstance {
+	return (options) => wrapAdapter(adapterFactory(options), secret);
 }

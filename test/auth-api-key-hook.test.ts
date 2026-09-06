@@ -108,15 +108,9 @@ vi.mock("../src/server/auth/onboarding", () => ({
 	resolvePasskeyRegistrationUser: vi.fn(),
 }));
 
-vi.mock("../src/server/services/sso-admission", () => ({
-	extractIdpGroups: vi.fn(() => []),
-}));
-
 vi.mock("../src/server/services/sso-providers", () => ({
-	applySsoAdmission: vi.fn(),
 	assertPasskeyAllowed: vi.fn(),
 	loadOidcProviderTrustedOrigins: mocks.loadOidcProviderTrustedOrigins,
-	loadSsoSettingsView: vi.fn(),
 }));
 
 vi.mock("../src/server/auth/secret", () => ({

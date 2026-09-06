@@ -19,11 +19,3 @@ export function getAuthSecret(request?: Request) {
 
 	throw new Error("BETTER_AUTH_SECRET is required outside local development");
 }
-
-export function getEncryptionSecret(request?: Request) {
-	try {
-		return getAuthSecret(request);
-	} catch {
-		return LOCAL_DEVELOPMENT_SECRET;
-	}
-}

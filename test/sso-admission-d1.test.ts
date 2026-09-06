@@ -98,7 +98,7 @@ describe("D1 SSO admission persistence", () => {
 		const prepared = await prepareSsoAdmission(db, {
 			email: "member@acme.test",
 			emailVerified: true,
-			groups: [],
+			profile: { groups: [] },
 			providerId: "workforce",
 		});
 		const timestamp = new Date();
@@ -151,7 +151,7 @@ describe("D1 SSO admission persistence", () => {
 		const prepared = await prepareSsoAdmission(db, {
 			email: "member@acme.test",
 			emailVerified: true,
-			groups: [],
+			profile: { groups: [] },
 			providerId: "workforce",
 		});
 		const timestamp = new Date();
@@ -208,7 +208,7 @@ describe("D1 SSO admission persistence", () => {
 		const prepared = await prepareSsoAdmission(db, {
 			email: "member@acme.test",
 			emailVerified: true,
-			groups: [],
+			profile: { groups: [] },
 			providerId: "workforce",
 		});
 		const timestamp = new Date();
@@ -294,7 +294,7 @@ describe("D1 SSO admission persistence", () => {
 		const prepared = await prepareSsoAdmission(db, {
 			email: "member@acme.test",
 			emailVerified: true,
-			groups: [],
+			profile: { groups: [] },
 			providerId: "workforce",
 		});
 
@@ -329,7 +329,7 @@ describe("D1 SSO admission persistence", () => {
 		const prepared = await prepareSsoAdmission(db, {
 			email: "new@acme.test",
 			emailVerified: true,
-			groups: ["eng"],
+			profile: { groups: ["eng"] },
 			providerId: "workforce",
 		});
 

@@ -1,4 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import type {
+	DBAdapter,
+	DBAdapterInstance,
+} from "@better-auth/core/db/adapter";
+import type { BetterAuthOptions } from "better-auth";
+import { describe, expect, it } from "vitest";
 
 import { withSsoConfigCrypto } from "../src/server/auth/sso-adapter";
 import {
@@ -9,41 +14,67 @@ import {
 
 const SECRET = "test-better-auth-secret-for-sso";
 
-type FakeAdapter = {
-	create: (args: {
-		data: Record<string, unknown>;
-		model: string;
-	}) => Promise<unknown>;
-	findMany: (args: { model: string }) => Promise<unknown[]>;
-	findOne: (args: { model: string }) => Promise<unknown>;
-	update: (args: {
-		model: string;
-		update: Record<string, unknown>;
-	}) => Promise<unknown>;
-};
+function createMemoryAdapterFactory(store: Record<string, unknown>[]) {
+	const factory: DBAdapterInstance = () => {
+		const adapter: DBAdapter = {
+			id: "sso-crypto-test",
+			async count() {
+				return store.length;
+			},
+			async create<T extends Record<string, unknown>, R = T>({
+				data,
+			}: {
+				data: Omit<T, "id">;
+			}) {
+				const row = { ...data };
+				store.push(row);
+				return row as R;
+			},
+			async delete() {},
+			async deleteMany() {
+				return 0;
+			},
+			async findMany<T>() {
+				return store as T[];
+			},
+			async findOne<T>() {
+				return (store[0] as T | undefined) ?? null;
+			},
+			async update<T>({ update }: { update: Record<string, unknown> }) {
+				store[0] = { ...store[0], ...update };
+				return store[0] as T;
+			},
+			async updateMany({ update }) {
+				for (const [index, row] of store.entries()) {
+					store[index] = { ...row, ...update };
+				}
+				return store.length;
+			},
+			async consumeOne<T>() {
+				return (store.shift() as T | undefined) ?? null;
+			},
+			async incrementOne<T>() {
+				return (store[0] as T | undefined) ?? null;
+			},
+			async transaction<R>(callback: (trx: DBAdapter) => Promise<R>) {
+				return callback(adapter);
+			},
+		};
+		return adapter;
+	};
+	return factory;
+}
+
+function createAdapter(store: Record<string, unknown>[], secret = SECRET) {
+	const factory = createMemoryAdapterFactory(store);
+	const options = { database: factory } satisfies BetterAuthOptions;
+	return withSsoConfigCrypto(factory, secret)(options);
+}
 
 describe("sso adapter crypto", () => {
 	it("encrypts configs on write and decrypts them on read", async () => {
 		const store: Record<string, unknown>[] = [];
-		const adapter = withSsoConfigCrypto<FakeAdapter>(
-			{
-				async create({ data }) {
-					store.push(data);
-					return data;
-				},
-				async findMany() {
-					return store;
-				},
-				async findOne() {
-					return store[0] ?? null;
-				},
-				async update({ update }) {
-					store[0] = { ...store[0], ...update };
-					return store[0];
-				},
-			},
-			SECRET,
-		);
+		const adapter = createAdapter(store);
 
 		await adapter.create({
 			data: {
@@ -55,66 +86,31 @@ describe("sso adapter crypto", () => {
 			model: "ssoProvider",
 		});
 
-		const stored = store[0]?.oidcConfig;
-		expect(typeof stored).toBe("string");
-		expect(JSON.parse(String(stored)).clientSecret).toContain(
+		expect(JSON.parse(String(store[0]?.oidcConfig)).clientSecret).toContain(
 			SSO_SECRET_PREFIX,
 		);
-
-		const loaded = (await adapter.findOne({
+		const loaded = await adapter.findOne<{ oidcConfig: string }>({
 			model: "ssoProvider",
-		})) as { oidcConfig: string };
-		expect(JSON.parse(loaded.oidcConfig).clientSecret).toBe("super-secret");
+			where: [],
+		});
+		expect(JSON.parse(loaded?.oidcConfig ?? "{}").clientSecret).toBe(
+			"super-secret",
+		);
 	});
 
-	it("leaves non-provider models untouched", async () => {
-		const create = vi.fn(async (args: unknown) => args);
-		const adapter = withSsoConfigCrypto<FakeAdapter>(
-			{
-				create,
-				findMany: async () => [],
-				findOne: async () => null,
-				update: async (args) => args,
-			},
-			SECRET,
-		);
+	it("leaves non-provider models untouched and delegates full capabilities", async () => {
+		const store: Record<string, unknown>[] = [];
+		const adapter = createAdapter(store);
+		const plain = JSON.stringify({ clientSecret: "plain" });
+
 		await adapter.create({
-			data: { oidcConfig: JSON.stringify({ clientSecret: "plain" }) },
+			data: { oidcConfig: plain },
 			model: "user",
 		});
-		expect(create).toHaveBeenCalledWith({
-			data: { oidcConfig: JSON.stringify({ clientSecret: "plain" }) },
-			model: "user",
-		});
-	});
 
-	it("wraps a Better Auth adapter factory so createAuth can initialize", async () => {
-		const factory = (options: { secret: string }) => ({
-			create: async (args: {
-				data: Record<string, unknown>;
-				model: string;
-			}): Promise<Record<string, unknown>> => ({
-				...args.data,
-				secret: options.secret,
-			}),
-			findMany: async () => [],
-			findOne: async () => null,
-			update: async (args: {
-				model: string;
-				update: Record<string, unknown>;
-			}) => args.update,
-		});
-		const wrapped = withSsoConfigCrypto(factory, SECRET);
-		const adapter = wrapped({ secret: "from-options" });
-		const created = (await adapter.create({
-			data: {
-				oidcConfig: JSON.stringify({ clientSecret: "super-secret" }),
-			},
-			model: "ssoProvider",
-		})) as { oidcConfig: string };
-		expect(JSON.parse(created.oidcConfig).clientSecret).toContain(
-			SSO_SECRET_PREFIX,
-		);
+		expect(store[0]?.oidcConfig).toBe(plain);
+		expect(await adapter.count({ model: "user" })).toBe(1);
+		expect(adapter.id).toBe("sso-crypto-test");
 	});
 
 	it("throws when stored secrets cannot be decrypted", async () => {
@@ -122,18 +118,11 @@ describe("sso adapter crypto", () => {
 			JSON.stringify({ clientSecret: "once" }),
 			SECRET,
 		);
-		const adapter = withSsoConfigCrypto<FakeAdapter>(
-			{
-				create: async (args) => args,
-				findMany: async () => [{ oidcConfig: encrypted }],
-				findOne: async () => ({ oidcConfig: encrypted }),
-				update: async (args) => args,
-			},
-			"wrong-secret",
-		);
-		await expect(adapter.findOne({ model: "ssoProvider" })).rejects.toThrow(
-			/errors\.ssoSecretDecryptFailed/,
-		);
+		const adapter = createAdapter([{ oidcConfig: encrypted }], "wrong-secret");
+
+		await expect(
+			adapter.findOne({ model: "ssoProvider", where: [] }),
+		).rejects.toThrow(/errors\.ssoSecretDecryptFailed/);
 		expect(await decryptSsoConfigJson(encrypted, SECRET)).toContain("once");
 	});
 });
