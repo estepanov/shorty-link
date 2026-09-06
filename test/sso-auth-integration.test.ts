@@ -24,7 +24,7 @@ type ProviderProfile = {
 	emailVerified: boolean;
 };
 
-let APP_ORIGIN = "";
+const APP_ORIGIN = "http://localhost:8787";
 const PROVIDER_ID = "integration-oidc";
 const runtimeEnv = env as unknown as Record<string, unknown>;
 
@@ -186,17 +186,27 @@ async function completeOidcFlow() {
 			method: "POST",
 		}),
 	);
-	const body = (await start.json()) as { url: string };
+	const body = (await start.json()) as {
+		code?: string;
+		message?: string;
+		url?: string;
+	};
+	if (!body.url) {
+		throw new Error(
+			`Missing authorization URL (${start.status} ${body.code ?? body.message ?? "unknown"})`,
+		);
+	}
 	const authorization = await fetch(body.url, { redirect: "manual" });
 	const callbackUrl = authorization.headers.get("location");
 	if (!callbackUrl) {
 		throw new Error("Missing provider callback");
 	}
-	return createAuth(new Request(callbackUrl)).handler(
+	const callback = await createAuth(new Request(callbackUrl)).handler(
 		new Request(callbackUrl, {
 			headers: { cookie: stateCookie(start) },
 		}),
 	);
+	return callback;
 }
 
 describe("Better Auth SSO on D1", () => {
@@ -204,6 +214,7 @@ describe("Better Auth SSO on D1", () => {
 	let providerServer: Server | null = null;
 	let proxy: Awaited<ReturnType<typeof getPlatformProxy>> | null = null;
 	let profile: ProviderProfile;
+	let providerIssuer: string;
 
 	beforeEach(async () => {
 		proxy = await getPlatformProxy({
@@ -216,14 +227,14 @@ describe("Better Auth SSO on D1", () => {
 		db = drizzle(database, { schema });
 		const provider = await createProvider();
 		providerServer = provider.server;
+		providerIssuer = provider.issuer;
 		profile = provider.profile;
-		APP_ORIGIN = provider.issuer;
 		Object.assign(runtimeEnv, {
 			BETTER_AUTH_ALLOWED_HOSTS: new URL(APP_ORIGIN).host,
 			BETTER_AUTH_FALLBACK_URL: APP_ORIGIN,
 			BETTER_AUTH_SECRET: "integration-better-auth-secret-32-bytes",
 			DB: database,
-			PASSKEY_RP_ID: "127.0.0.1",
+			PASSKEY_RP_ID: new URL(APP_ORIGIN).hostname,
 		});
 
 		const timestamp = new Date();
@@ -316,6 +327,28 @@ describe("Better Auth SSO on D1", () => {
 		expect(linkedAccount).toMatchObject({
 			issuer: `local:${PROVIDER_ID}`,
 			providerId: PROVIDER_ID,
+		});
+	});
+
+	it("does not trust the persisted provider origin as a callback target", async () => {
+		const response = await createAuth(
+			new Request(`${APP_ORIGIN}/api/auth/sign-in/sso`),
+		).handler(
+			new Request(`${APP_ORIGIN}/api/auth/sign-in/sso`, {
+				body: JSON.stringify({
+					callbackURL: `${providerIssuer}/steal`,
+					providerId: PROVIDER_ID,
+				}),
+				headers: {
+					"content-type": "application/json",
+					origin: APP_ORIGIN,
+				},
+				method: "POST",
+			}),
+		);
+		expect(response.status).toBe(403);
+		expect(await response.json()).toMatchObject({
+			message: "Untrusted SSO callback URL",
 		});
 	});
 

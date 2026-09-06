@@ -3,7 +3,10 @@ import { mkdirSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
-
+import {
+	MAX_SAML_RESPONSE_BASE64_BYTES,
+	validateSamlAcsRequest,
+} from "../src/server/auth/saml-acs-gate";
 import { createDb } from "../src/server/db/client";
 import {
 	SYSTEM_ROLE_OWNER,
@@ -11,10 +14,6 @@ import {
 	ssoProviderSettings,
 	user,
 } from "../src/server/db/schema";
-import {
-	MAX_SAML_RESPONSE_BASE64_BYTES,
-	validateSamlAcsRequest,
-} from "../src/server/auth/saml-acs-gate";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 const ORIGIN = "http://localhost:8787";

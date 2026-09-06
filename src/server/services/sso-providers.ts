@@ -10,13 +10,13 @@ import {
 	isSsoEnforcedForEmail,
 	type SsoPublicCatalog,
 } from "@/lib/sso-catalog";
-import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "@/lib/sso-types";
 import type {
 	SsoAdminProvider,
 	SsoProviderPatch,
 	SsoProviderRead,
 	SsoProviderWrite,
 } from "@/lib/sso-types";
+import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "@/lib/sso-types";
 import { getEncryptionSecret } from "../auth/secret";
 import {
 	decryptSsoConfigJson,
@@ -285,6 +285,61 @@ function parseConfigRecord(
 		return null;
 	}
 	return parsed as Record<string, unknown>;
+}
+
+const OIDC_TRUSTED_URL_KEYS = [
+	"authorizationEndpoint",
+	"discoveryEndpoint",
+	"issuer",
+	"jwksEndpoint",
+	"tokenEndpoint",
+	"userInfoEndpoint",
+] as const;
+
+export async function loadOidcProviderTrustedOrigins(
+	db: AppDb,
+	providerId: string,
+) {
+	const rows = await db
+		.select({
+			issuer: ssoProvider.issuer,
+			oidcConfig: ssoProvider.oidcConfig,
+		})
+		.from(ssoProvider)
+		.innerJoin(
+			ssoProviderSettings,
+			eq(ssoProvider.providerId, ssoProviderSettings.providerId),
+		)
+		.where(
+			and(
+				eq(ssoProvider.providerId, providerId),
+				eq(ssoProviderSettings.enabled, true),
+				eq(ssoProviderSettings.protocol, "oidc"),
+			),
+		)
+		.limit(1);
+	const row = rows[0];
+	if (!row) {
+		return [];
+	}
+
+	let config: Record<string, unknown> | null;
+	try {
+		config = parseConfigRecord(row.oidcConfig);
+	} catch {
+		return [];
+	}
+	if (!config) {
+		return [];
+	}
+	const endpointOrigins = OIDC_TRUSTED_URL_KEYS.map((key) =>
+		originFromAbsoluteUrl(
+			key === "issuer"
+				? configString(config, key) || row.issuer
+				: configString(config, key),
+		),
+	).filter((origin): origin is string => origin !== null);
+	return [...new Set(endpointOrigins)];
 }
 
 async function buildOidcJson(

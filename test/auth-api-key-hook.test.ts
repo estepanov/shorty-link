@@ -12,6 +12,12 @@ const mocks = vi.hoisted(() => {
 	}
 
 	const getSession = vi.fn();
+	const loadOidcProviderTrustedOrigins = vi.fn(
+		async (_db: unknown, providerId: string) =>
+			providerId === "workforce"
+				? ["https://idp.example.test", "https://tokens.example.test"]
+				: [],
+	);
 	const betterAuth = vi.fn((options: Record<string, unknown>) => ({
 		api: {
 			getSession,
@@ -43,6 +49,7 @@ const mocks = vi.hoisted(() => {
 		createAuthMiddleware: vi.fn(
 			(
 				handler: (context: {
+					body?: Record<string, unknown>;
 					context?: Record<string, unknown>;
 					headers?: HeadersInit;
 					path: string;
@@ -53,6 +60,7 @@ const mocks = vi.hoisted(() => {
 		createDb,
 		getSession,
 		i18n: vi.fn(() => ({ id: "i18n-plugin" })),
+		loadOidcProviderTrustedOrigins,
 		passkey: vi.fn(() => ({ id: "passkey-plugin" })),
 		sso: vi.fn((_options: Record<string, unknown>) => ({
 			id: "sso-plugin",
@@ -107,6 +115,7 @@ vi.mock("../src/server/services/sso-admission", () => ({
 vi.mock("../src/server/services/sso-providers", () => ({
 	applySsoAdmission: vi.fn(),
 	assertPasskeyAllowed: vi.fn(),
+	loadOidcProviderTrustedOrigins: mocks.loadOidcProviderTrustedOrigins,
 	loadSsoSettingsView: vi.fn(),
 }));
 
@@ -186,20 +195,150 @@ describe("api key auth hook", () => {
 		).rejects.toMatchObject({ status: "FORBIDDEN" });
 	});
 
-	it("keeps trustedOrigins limited to Shorty hosts", async () => {
+	it("adds persisted OIDC origins for validated initiation and provider callbacks", async () => {
 		createAuth(new Request("http://localhost:8787/api/auth/session"));
 		const options = mocks.betterAuth.mock.calls.at(-1)?.[0] as {
-			trustedOrigins: (request?: Request) => string[];
+			trustedOrigins: (request?: Request) => Promise<string[]>;
 		};
-		const origins = options.trustedOrigins(
+		const initiationOrigins = await options.trustedOrigins(
 			new Request("http://localhost:8787/api/auth/sign-in/sso", {
-				body: JSON.stringify({ issuer: "https://evil.example" }),
-				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					callbackURL: "/admin",
+					errorCallbackURL: "/api/auth/error",
+					issuer: "https://evil.example",
+					providerId: "workforce",
+					tokenEndpoint: "https://evil.example/token",
+				}),
+				headers: {
+					"content-type": "application/json",
+					origin: "http://localhost:8787",
+				},
 				method: "POST",
 			}),
 		);
-		expect(origins).toContain("http://localhost:8787");
-		expect(origins).not.toContain("https://evil.example");
+		expect(initiationOrigins).toEqual([
+			"http://localhost:8787",
+			"https://idp.example.test",
+			"https://tokens.example.test",
+		]);
+		expect(initiationOrigins).not.toContain("https://evil.example");
+
+		const callbackOrigins = await options.trustedOrigins(
+			new Request(
+				"http://localhost:8787/api/auth/sso/callback/workforce?code=code&state=state",
+			),
+		);
+		expect(callbackOrigins).toContain("https://idp.example.test");
+	});
+
+	it("does not let provider origins authorize malicious callbacks or request sources", async () => {
+		mocks.loadOidcProviderTrustedOrigins.mockClear();
+		createAuth(new Request("http://localhost:8787/api/auth/session"));
+		const options = mocks.betterAuth.mock.calls.at(-1)?.[0] as {
+			hooks: {
+				before: (context: {
+					body?: Record<string, unknown>;
+					path: string;
+					request?: Request;
+				}) => Promise<unknown>;
+			};
+			trustedOrigins: (request?: Request) => Promise<string[]>;
+		};
+		const maliciousCallbackRequest = new Request(
+			"http://localhost:8787/api/auth/sign-in/sso",
+			{
+				body: JSON.stringify({
+					callbackURL: "https://idp.example.test/steal",
+					providerId: "workforce",
+				}),
+				headers: {
+					"content-type": "application/json",
+					origin: "http://localhost:8787",
+				},
+				method: "POST",
+			},
+		);
+		const maliciousSourceRequest = new Request(
+			"http://localhost:8787/api/auth/sign-in/sso",
+			{
+				body: JSON.stringify({
+					callbackURL: "/admin",
+					providerId: "workforce",
+				}),
+				headers: {
+					"content-type": "application/json",
+					origin: "https://idp.example.test",
+				},
+				method: "POST",
+			},
+		);
+		await expect(
+			options.trustedOrigins(maliciousCallbackRequest),
+		).resolves.toEqual(["http://localhost:8787"]);
+		await expect(
+			options.trustedOrigins(maliciousSourceRequest),
+		).resolves.toEqual(["http://localhost:8787"]);
+		await expect(
+			options.hooks.before({
+				body: {
+					callbackURL: "https://idp.example.test/steal",
+					providerId: "workforce",
+				},
+				path: "/sign-in/sso",
+				request: maliciousCallbackRequest,
+			}),
+		).rejects.toMatchObject({ status: "FORBIDDEN" });
+		await expect(
+			options.hooks.before({
+				body: {
+					callbackURL: "/admin",
+					providerId: "workforce",
+				},
+				path: "/sign-in/sso",
+				request: maliciousSourceRequest,
+			}),
+		).rejects.toMatchObject({ status: "FORBIDDEN" });
+		expect(mocks.loadOidcProviderTrustedOrigins).not.toHaveBeenCalled();
+	});
+
+	it("fails closed for missing providers and unrelated or SAML callback paths", async () => {
+		mocks.loadOidcProviderTrustedOrigins.mockClear();
+		createAuth(new Request("http://localhost:8787/api/auth/session"));
+		const options = mocks.betterAuth.mock.calls.at(-1)?.[0] as {
+			trustedOrigins: (request?: Request) => Promise<string[]>;
+		};
+		const missingProviderOrigins = await options.trustedOrigins(
+			new Request("http://localhost:8787/api/auth/sign-in/sso", {
+				body: JSON.stringify({ callbackURL: "/admin" }),
+				headers: {
+					"content-type": "application/json",
+					origin: "http://localhost:8787",
+				},
+				method: "POST",
+			}),
+		);
+		const unknownProviderOrigins = await options.trustedOrigins(
+			new Request(
+				"http://localhost:8787/api/auth/sso/callback/missing?code=code",
+			),
+		);
+		const unrelatedOrigins = await options.trustedOrigins(
+			new Request("http://localhost:8787/api/auth/session"),
+		);
+		const samlOrigins = await options.trustedOrigins(
+			new Request(
+				"http://localhost:8787/api/auth/sso/saml2/sp/acs/workforce?RelayState=https://idp.example.test",
+			),
+		);
+		expect(missingProviderOrigins).toEqual(["http://localhost:8787"]);
+		expect(unknownProviderOrigins).toEqual(["http://localhost:8787"]);
+		expect(unrelatedOrigins).toEqual(["http://localhost:8787"]);
+		expect(samlOrigins).toEqual(["http://localhost:8787"]);
+		expect(mocks.loadOidcProviderTrustedOrigins).toHaveBeenCalledTimes(1);
+		expect(mocks.loadOidcProviderTrustedOrigins).toHaveBeenCalledWith(
+			expect.anything(),
+			"missing",
+		);
 	});
 
 	it("enables the plugin capability for gated IdP-initiated SAML", async () => {

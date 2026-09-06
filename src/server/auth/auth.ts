@@ -24,6 +24,7 @@ import { extractIdpGroups } from "../services/sso-admission";
 import {
 	applySsoAdmission,
 	assertPasskeyAllowed,
+	loadOidcProviderTrustedOrigins,
 	loadSsoSettingsView,
 	type PreparedSsoAdmission,
 	prepareSsoAdmission,
@@ -43,6 +44,94 @@ const SSO_ADMIN_PATHS = new Set([
 	"/sso/update-provider",
 	"/sso/delete-provider",
 ]);
+const OIDC_CALLBACK_PATH = /^\/api\/auth\/sso\/callback\/([a-z0-9][a-z0-9-]*)$/;
+const OIDC_INITIATION_PATH = "/api/auth/sign-in/sso";
+const SSO_INITIATION_HOOK_PATH = "/sign-in/sso";
+
+type OidcInitiationBody = {
+	callbackURL?: unknown;
+	errorCallbackURL?: unknown;
+	newUserCallbackURL?: unknown;
+	providerId?: unknown;
+	providerType?: unknown;
+};
+
+function isShortyCallback(value: unknown, shortyOrigin: string) {
+	if (typeof value !== "string" || !value) {
+		return false;
+	}
+	try {
+		return new URL(value, shortyOrigin).origin === shortyOrigin;
+	} catch {
+		return false;
+	}
+}
+
+function hasTrustedShortySource(request: Request, shortyOrigin: string) {
+	const source =
+		request.headers.get("origin") ?? request.headers.get("referer");
+	if (!source) {
+		return request.headers.get("sec-fetch-site") !== "cross-site";
+	}
+	try {
+		return new URL(source).origin === shortyOrigin;
+	} catch {
+		return false;
+	}
+}
+
+function hasTrustedShortyCallbacks(
+	body: OidcInitiationBody,
+	shortyOrigin: string,
+) {
+	return (
+		isShortyCallback(body.callbackURL, shortyOrigin) &&
+		(body.errorCallbackURL === undefined ||
+			isShortyCallback(body.errorCallbackURL, shortyOrigin)) &&
+		(body.newUserCallbackURL === undefined ||
+			isShortyCallback(body.newUserCallbackURL, shortyOrigin))
+	);
+}
+
+async function oidcProviderIdForTrustedOrigins(
+	request: Request,
+	shortyOrigin: string,
+) {
+	const pathname = new URL(request.url).pathname;
+	const callbackMatch = OIDC_CALLBACK_PATH.exec(pathname);
+	if (callbackMatch && request.method === "GET") {
+		return callbackMatch[1] ?? null;
+	}
+	if (pathname !== OIDC_INITIATION_PATH || request.method !== "POST") {
+		return null;
+	}
+	if (!hasTrustedShortySource(request, shortyOrigin)) {
+		return null;
+	}
+
+	let body: OidcInitiationBody;
+	try {
+		body = (await request.clone().json()) as OidcInitiationBody;
+	} catch {
+		return null;
+	}
+	if (
+		!body ||
+		typeof body !== "object" ||
+		Array.isArray(body) ||
+		!hasTrustedShortyCallbacks(body, shortyOrigin)
+	) {
+		return null;
+	}
+	if (
+		(body.providerType !== undefined && body.providerType !== "oidc") ||
+		typeof body.providerId !== "string" ||
+		!OIDC_CALLBACK_PATH.test(`/api/auth/sso/callback/${body.providerId}`)
+	) {
+		return null;
+	}
+	return body.providerId;
+}
 
 function resolveHookHeaders(context: {
 	headers?: HeadersInit;
@@ -142,14 +231,31 @@ export function createAuth(request?: Request) {
 				}
 			: origin,
 		secret: getAuthSecret(request),
-		trustedOrigins: (incomingRequest) => {
+		trustedOrigins: async (incomingRequest) => {
 			const nextRequestOrigin = incomingRequest
 				? resolveTrustedRequestOrigin(incomingRequest, {
 						allowedHosts,
 						fallbackOrigin: configuredFallback,
 					})
 				: origin;
-			return [...new Set([nextRequestOrigin, fallback].filter(Boolean))];
+			const shortyOrigins = [
+				...new Set([nextRequestOrigin, fallback].filter(Boolean)),
+			];
+			if (!incomingRequest || !nextRequestOrigin) {
+				return shortyOrigins;
+			}
+			const providerId = await oidcProviderIdForTrustedOrigins(
+				incomingRequest,
+				nextRequestOrigin,
+			);
+			if (!providerId) {
+				return shortyOrigins;
+			}
+			const providerOrigins = await loadOidcProviderTrustedOrigins(
+				db,
+				providerId,
+			);
+			return [...new Set([...shortyOrigins, ...providerOrigins])];
 		},
 		database: withSsoConfigCrypto(
 			drizzleAdapter(db, {
@@ -287,6 +393,23 @@ export function createAuth(request?: Request) {
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
 				const headers = resolveHookHeaders(ctx);
+				if (ctx.path === SSO_INITIATION_HOOK_PATH && ctx.request) {
+					const requestOrigin = new URL(ctx.request.url).origin;
+					if (!hasTrustedShortySource(ctx.request, requestOrigin)) {
+						throw new APIError("FORBIDDEN", {
+							message: "Untrusted SSO initiation origin",
+						});
+					}
+					const body = ctx.body as OidcInitiationBody;
+					if (
+						body?.callbackURL !== undefined &&
+						!hasTrustedShortyCallbacks(body, requestOrigin)
+					) {
+						throw new APIError("FORBIDDEN", {
+							message: "Untrusted SSO callback URL",
+						});
+					}
+				}
 				if (SSO_ADMIN_PATHS.has(ctx.path)) {
 					throw new APIError("FORBIDDEN", {
 						message: "errors.permissionDenied",
