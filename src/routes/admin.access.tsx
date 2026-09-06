@@ -16,7 +16,11 @@ export const Route = createFileRoute("/admin/access")({
 
 const allTabs: Array<{
 	path: string;
-	labelKey: "access.tabs.users" | "access.tabs.invites" | "access.tabs.roles";
+	labelKey:
+		| "access.tabs.users"
+		| "access.tabs.invites"
+		| "access.tabs.roles"
+		| "access.tabs.mcp";
 	permission: Permission;
 }> = [
 	{
@@ -33,6 +37,11 @@ const allTabs: Array<{
 		path: "/admin/access/roles",
 		labelKey: "access.tabs.roles",
 		permission: "roles.read" as Permission,
+	},
+	{
+		path: "/admin/access/mcp",
+		labelKey: "access.tabs.mcp",
+		permission: "mcp.manage" as Permission,
 	},
 ];
 

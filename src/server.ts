@@ -2,6 +2,8 @@ import handler from "@tanstack/react-start/server-entry";
 import { app } from "./server/api/app";
 import { createAuth } from "./server/auth/auth";
 import { getLogger, serializeError } from "./server/logging";
+import { withMcpCors } from "./server/mcp/cors";
+import { handleMcpRequest, isMcpPublicPath } from "./server/mcp/handler";
 
 const serverLog = getLogger(["server"]);
 const authLog = getLogger(["auth"]);
@@ -9,12 +11,20 @@ const authLog = getLogger(["auth"]);
 const RESERVED_EXACT_PATHS = new Set([
 	"/admin",
 	"/api",
+	"/mcp",
 	"/favicon.ico",
 	"/robots.txt",
 	"/manifest.webmanifest",
 ]);
 
-const RESERVED_PREFIXES = ["/admin/", "/api/", "/assets/", "/_build/"];
+const RESERVED_PREFIXES = [
+	"/admin/",
+	"/api/",
+	"/mcp/",
+	"/.well-known/",
+	"/assets/",
+	"/_build/",
+];
 
 const HTML_CONTENT_SECURITY_POLICY = [
 	"default-src 'self'",
@@ -162,8 +172,17 @@ export default {
 		serverLog.debug(`${ctx.path}`, ctx);
 
 		try {
+			const mcpResponse = await handleMcpRequest(request);
+			if (mcpResponse) {
+				return applySecurityHeaders(request, mcpResponse);
+			}
+
 			if (ctx.path.startsWith("/api/auth/")) {
-				return await handleAuthRequest(request, ctx);
+				const response = await handleAuthRequest(request, ctx);
+				if (isMcpPublicPath(ctx.path)) {
+					return withMcpCors(response);
+				}
+				return response;
 			}
 
 			if (shouldUseElysia(request)) {

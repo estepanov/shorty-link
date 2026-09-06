@@ -84,6 +84,8 @@ import {
 	listUsers,
 	updateUser,
 } from "../services/users";
+import { listMcpGrants, revokeMcpGrant } from "../services/mcp-grants";
+import { getMcpSettings, setMcpServerEnabled } from "../services/mcp-settings";
 
 type AiBinding = {
 	run: (model: string, input: Record<string, unknown>) => Promise<unknown>;
@@ -978,11 +980,15 @@ export const app = new Elysia({
 					if (params.id === ctx.user.id && body.isActive === false) {
 						throw new Error("errors.cannotSelfDisable");
 					}
+					if (body.mcpAccessEnabled !== undefined) {
+						await requirePermissionOrError(request, "mcp.manage");
+					}
 					await updateUser(db, params.id, {
 						name: body.name,
 						email: body.email,
 						locale: body.locale,
 						isActive: body.isActive,
+						mcpAccessEnabled: body.mcpAccessEnabled,
 					});
 					return { ok: true };
 				},
@@ -990,6 +996,7 @@ export const app = new Elysia({
 					detail: { tags: ["Users"], summary: "Update user" },
 					body: t.Object({
 						isActive: t.Optional(t.Boolean()),
+						mcpAccessEnabled: t.Optional(t.Boolean()),
 						name: t.Optional(t.String({ minLength: 2 })),
 						email: t.Optional(t.String({ format: "email" })),
 						locale: t.Optional(t.String()),
@@ -1205,6 +1212,67 @@ export const app = new Elysia({
 				{
 					detail: { tags: ["Invites"], summary: "Delete invite" },
 					body: t.Object({ id: t.String({ minLength: 1 }) }),
+				},
+			)
+			.get(
+				"/mcp/settings",
+				async ({ db, request }) => {
+					await requirePermissionOrError(request, "mcp.manage");
+					const settings = await getMcpSettings(db);
+					const origin = new URL(request.url).origin;
+					return {
+						enabled: settings.serverEnabled,
+						mcpUrl: `${origin}/mcp`,
+						authorizationServerUrl: `${origin}/.well-known/oauth-authorization-server`,
+						protectedResourceUrl: `${origin}/.well-known/oauth-protected-resource`,
+					};
+				},
+				{
+					detail: { tags: ["MCP"], summary: "Get MCP server settings" },
+				},
+			)
+			.put(
+				"/mcp/settings",
+				async ({ body, db, request }) => {
+					await requireSecurePermissionOrError(request, "mcp.manage");
+					await setMcpServerEnabled(db, body.enabled);
+					const settings = await getMcpSettings(db);
+					const origin = new URL(request.url).origin;
+					return {
+						enabled: settings.serverEnabled,
+						mcpUrl: `${origin}/mcp`,
+						authorizationServerUrl: `${origin}/.well-known/oauth-authorization-server`,
+						protectedResourceUrl: `${origin}/.well-known/oauth-protected-resource`,
+					};
+				},
+				{
+					detail: { tags: ["MCP"], summary: "Update MCP server settings" },
+					body: t.Object({
+						enabled: t.Boolean(),
+					}),
+				},
+			)
+			.get(
+				"/mcp/grants",
+				async ({ db, request }) => {
+					const ctx = await requireAuthOrError(request);
+					return listMcpGrants(db, ctx.user.id);
+				},
+				{
+					detail: { tags: ["MCP"], summary: "List current user MCP grants" },
+				},
+			)
+			.delete(
+				"/mcp/grants/:id",
+				async ({ db, params, request }) => {
+					assertTrustedAdminWrite(request);
+					const ctx = await requireAuthOrError(request);
+					await revokeMcpGrant(db, ctx.user.id, params.id);
+					return { ok: true };
+				},
+				{
+					detail: { tags: ["MCP"], summary: "Revoke a current user MCP grant" },
+					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
 			.get(

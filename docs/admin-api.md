@@ -79,6 +79,16 @@ Supported redirect status codes for link create, update, and filtering are `301`
 - `PATCH /api/admin/api-keys/:id`
 - `DELETE /api/admin/api-keys/:id`
 
+### MCP
+
+- `GET /api/admin/mcp/settings` — requires `mcp.manage`
+- `PUT /api/admin/mcp/settings` with body `{ "enabled": true }` — requires `mcp.manage`
+- `GET /api/admin/mcp/grants` — current user's authorized MCP clients
+- `DELETE /api/admin/mcp/grants/:id` — revoke one of the current user's MCP grants
+- `PATCH /api/admin/users/:id` accepts `mcpAccessEnabled` — requires `mcp.manage` when that field is sent
+
+The hosted MCP endpoint is `POST /mcp`. Claude and ChatGPT discover OAuth from `/.well-known/oauth-protected-resource` and authorize at `/api/auth/mcp/*`. Tools honor the authenticated user's role, permissions, and domain/link scopes.
+
 ## Examples
 
 Create an API key:

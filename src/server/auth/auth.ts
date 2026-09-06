@@ -5,6 +5,7 @@ import { i18n } from "@better-auth/i18n";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { mcp } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 
@@ -12,6 +13,10 @@ import { type Permission, parsePermissions } from "@/lib/permissions";
 
 import { createDb } from "../db/client";
 import { apiKey as apiKeyTable, roles, schema, user } from "../db/schema";
+import {
+	assertMcpServerEnabled,
+	assertMcpUserAllowed,
+} from "../services/mcp-settings";
 import {
 	completePasskeyRegistrationUser,
 	resolvePasskeyRegistrationUser,
@@ -131,6 +136,38 @@ export function createAuth(request?: Request) {
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
+				if (
+					ctx.path === "/mcp/authorize" ||
+					ctx.path === "/mcp/token" ||
+					ctx.path === "/mcp/register" ||
+					ctx.path === "/mcp/userinfo"
+				) {
+					try {
+						await assertMcpServerEnabled(createDb());
+					} catch {
+						throw new APIError("FORBIDDEN", {
+							message: "MCP server is disabled",
+						});
+					}
+				}
+				if (ctx.path === "/mcp/authorize") {
+					const headers = resolveHookHeaders(ctx);
+					const session = await createAuth(
+						ctx.request ??
+							new Request(`${origin}/api/auth/mcp/authorize`, { headers }),
+					).api.getSession({
+						headers,
+					});
+					if (session) {
+						try {
+							await assertMcpUserAllowed(createDb(), session.user.id);
+						} catch {
+							throw new APIError("FORBIDDEN", {
+								message: "MCP access is disabled for this user",
+							});
+						}
+					}
+				}
 				if (ctx.path !== "/api-key/create") {
 					return;
 				}
@@ -236,6 +273,14 @@ export function createAuth(request?: Request) {
 				userLocaleField: "locale",
 			}),
 			tanstackStartCookies(),
+			mcp({
+				loginPage: "/admin",
+				resource: `${origin}/mcp`,
+				oidcConfig: {
+					allowDynamicClientRegistration: true,
+					consentPage: "/admin/mcp/consent",
+				},
+			}),
 		],
 	});
 }
