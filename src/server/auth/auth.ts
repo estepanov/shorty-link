@@ -277,6 +277,7 @@ export function createAuth(request?: Request) {
 				loginPage: "/admin",
 				resource: `${origin}/mcp`,
 				oidcConfig: {
+					loginPage: "/admin",
 					allowDynamicClientRegistration: true,
 					consentPage: "/admin/mcp/consent",
 				},

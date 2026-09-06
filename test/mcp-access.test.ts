@@ -124,9 +124,10 @@ describe("mcp access controls", () => {
 
 	it("grants system roles the mcp.manage permission", async () => {
 		const owner = await getRoleById(db, SYSTEM_ROLE_OWNER);
-		expect(owner.permissions).toContain("mcp.manage");
+		expect(owner).not.toBeNull();
+		expect(owner?.permissions).toContain("mcp.manage");
 		for (const permission of ALL_PERMISSIONS) {
-			expect(owner.permissions).toContain(permission);
+			expect(owner?.permissions).toContain(permission);
 		}
 		const [admin] = await db
 			.select({ permissions: roles.permissions })
