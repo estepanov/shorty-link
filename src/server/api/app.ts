@@ -66,6 +66,8 @@ import {
 	suggestSlugFromUrl,
 	updateInvite,
 } from "../services/links";
+import { listMcpGrants, revokeMcpGrant } from "../services/mcp-grants";
+import { getMcpSettings, setMcpServerEnabled } from "../services/mcp-settings";
 import {
 	createRole,
 	deleteRole,
@@ -84,8 +86,6 @@ import {
 	listUsers,
 	updateUser,
 } from "../services/users";
-import { listMcpGrants, revokeMcpGrant } from "../services/mcp-grants";
-import { getMcpSettings, setMcpServerEnabled } from "../services/mcp-settings";
 
 type AiBinding = {
 	run: (model: string, input: Record<string, unknown>) => Promise<unknown>;

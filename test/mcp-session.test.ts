@@ -3,15 +3,14 @@ import { mkdirSync } from "node:fs";
 import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
-
-import { getMcpBearerSession } from "../src/server/mcp/session";
 import {
 	oauthAccessToken,
 	oauthApplication,
-	schema,
 	SYSTEM_ROLE_OWNER,
+	schema,
 	user,
 } from "../src/server/db/schema";
+import { getMcpBearerSession } from "../src/server/mcp/session";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 describe("mcp bearer session", () => {

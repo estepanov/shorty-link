@@ -148,7 +148,10 @@ describe("api key auth hook", () => {
 		});
 		const firstCall = mocks.getSession.mock.calls[0];
 		expect(firstCall).toBeDefined();
-		expect((firstCall![0] as { headers: Headers }).headers.get("cookie")).toBe(
+		if (!firstCall) {
+			return;
+		}
+		expect((firstCall[0] as { headers: Headers }).headers.get("cookie")).toBe(
 			"better-auth.session_token=session-token",
 		);
 	});

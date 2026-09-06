@@ -12,7 +12,6 @@ import {
 	assertMcpUserAllowed,
 } from "../services/mcp-settings";
 import { mcpOptionsResponse, mcpWwwAuthenticate, withMcpCors } from "./cors";
-import { getMcpBearerSession } from "./session";
 import {
 	initializeResult,
 	isJsonRpcFailure,
@@ -22,6 +21,7 @@ import {
 	jsonRpcResult,
 	parseJsonRpcRequest,
 } from "./protocol";
+import { getMcpBearerSession } from "./session";
 import { callMcpTool, listMcpTools } from "./tools";
 
 const log = getLogger(["mcp"]);
