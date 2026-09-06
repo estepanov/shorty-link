@@ -335,13 +335,22 @@ describe("api key auth hook", () => {
 		);
 	});
 
-	it("enables the plugin capability for gated IdP-initiated SAML", async () => {
+	it("enables IdP-initiated SAML only for an explicitly allowed ACS request", async () => {
 		createAuth(new Request("http://localhost:8787/api/auth/session"));
-		const pluginOptions = mocks.sso.mock.calls.at(-1)?.[0] as {
+		const defaultOptions = mocks.sso.mock.calls.at(-1)?.[0] as {
 			saml?: { allowIdpInitiated?: boolean };
 			trustEmailVerified?: boolean;
 		};
-		expect(pluginOptions.saml?.allowIdpInitiated).toBe(true);
-		expect(pluginOptions.trustEmailVerified).toBe(true);
+		expect(defaultOptions.saml?.allowIdpInitiated).toBe(false);
+		expect(defaultOptions.trustEmailVerified).toBe(true);
+
+		createAuth(
+			new Request("http://localhost:8787/api/auth/sso/saml2/sp/acs/workforce"),
+			{ allowSamlIdpInitiated: true },
+		);
+		const allowedOptions = mocks.sso.mock.calls.at(-1)?.[0] as {
+			saml?: { allowIdpInitiated?: boolean };
+		};
+		expect(allowedOptions.saml?.allowIdpInitiated).toBe(true);
 	});
 });
