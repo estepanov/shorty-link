@@ -52,7 +52,7 @@ export function matchingSsoProviders(
 ): SsoPublicProvider[] {
 	return catalog.providers
 		.filter((provider) => domainMatches(email, provider.domains))
-		.toSorted((left, right) => left.providerId.localeCompare(right.providerId));
+		.sort((left, right) => left.providerId.localeCompare(right.providerId));
 }
 
 export function visibleSsoProviders(

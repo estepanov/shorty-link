@@ -61,6 +61,9 @@ describe("SSO provider form codec", () => {
 				idpMetadata: { entityID: "https://idp.example.test" },
 			},
 		});
+		if (payload.protocol !== "saml") {
+			throw new Error("Expected a SAML patch");
+		}
 		expect(payload.samlConfig?.idpMetadata).not.toHaveProperty("metadata");
 	});
 
