@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 
 import type { AuthContext } from "../src/server/auth/session";
+import { SYSTEM_ROLE_OWNER, schema, user } from "../src/server/db/schema";
 import { callMcpTool } from "../src/server/mcp/tools";
-import { schema, SYSTEM_ROLE_OWNER, user } from "../src/server/db/schema";
 import { getLinkById, saveLink } from "../src/server/services/links";
 import { createRole } from "../src/server/services/roles";
 import { applyD1Migrations } from "./apply-d1-migrations";

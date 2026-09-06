@@ -11,8 +11,8 @@ import {
 	oauthApplication,
 	oauthConsent,
 	roles,
-	schema,
 	SYSTEM_ROLE_OWNER,
+	schema,
 	user,
 } from "../src/server/db/schema";
 import {
