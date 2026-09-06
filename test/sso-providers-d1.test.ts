@@ -10,6 +10,7 @@ import {
 	type SsoProviderWrite,
 } from "../src/lib/sso-types";
 import {
+	account,
 	roles,
 	SYSTEM_ROLE_ADMIN,
 	SYSTEM_ROLE_OWNER,
@@ -20,6 +21,7 @@ import {
 } from "../src/server/db/schema";
 import {
 	createSsoProvider,
+	deleteSsoProvider,
 	updateSsoProvider,
 } from "../src/server/services/sso-providers";
 import { applyD1Migrations } from "./apply-d1-migrations";
@@ -161,6 +163,18 @@ describe("D1 SSO provider persistence", () => {
 			createSsoProvider(
 				db,
 				oidcInput({
+					defaultRoleId: SYSTEM_ROLE_OWNER,
+					jitEnabled: true,
+				}),
+				"owner",
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoOwnerRoleForbidden");
+		await expect(
+			createSsoProvider(
+				db,
+				oidcInput({
 					groupRoleMappings: [{ group: "owners", roleId: SYSTEM_ROLE_OWNER }],
 				}),
 				"owner",
@@ -169,6 +183,43 @@ describe("D1 SSO provider persistence", () => {
 			),
 		).rejects.toThrow("errors.ssoOwnerRoleForbidden");
 		expect(await db.select().from(ssoProvider)).toHaveLength(0);
+	});
+
+	it("rejects JIT provisioning without a non-empty default role before writing", async () => {
+		await expect(
+			createSsoProvider(
+				db,
+				oidcInput({ defaultRoleId: " ", jitEnabled: true }),
+				"owner",
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoConfigurationInvalid");
+		expect(await db.select().from(ssoProvider)).toHaveLength(0);
+
+		await createSsoProvider(
+			db,
+			oidcInput({ defaultRoleId: SYSTEM_ROLE_ADMIN }),
+			"owner",
+			ORIGIN,
+			REQUEST,
+		);
+		const [providerBefore] = await db.select().from(ssoProvider);
+		const [settingsBefore] = await db.select().from(ssoProviderSettings);
+
+		await expect(
+			updateSsoProvider(
+				db,
+				"workforce",
+				{ defaultRoleId: null, jitEnabled: true },
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoConfigurationInvalid");
+		expect(await db.select().from(ssoProvider)).toEqual([providerBefore]);
+		expect(await db.select().from(ssoProviderSettings)).toEqual([
+			settingsBefore,
+		]);
 	});
 
 	it("requires complete OIDC credentials and manual endpoints", async () => {
@@ -346,7 +397,196 @@ describe("D1 SSO provider persistence", () => {
 		expect(await db.select().from(ssoProvider)).toEqual([providerBefore]);
 	});
 
-	it("restores the exact provider row when settings persistence fails", async () => {
+	it("keeps linked OIDC identities on the same issuer while allowing credential and endpoint rotation", async () => {
+		await createSsoProvider(db, oidcInput(), "owner", ORIGIN, REQUEST);
+		const timestamp = new Date();
+		await db.insert(account).values({
+			accountId: "subject-1",
+			createdAt: timestamp,
+			id: "oidc-account",
+			issuer: "local:workforce",
+			providerId: "workforce",
+			updatedAt: timestamp,
+			userId: "owner",
+		});
+
+		const rotated = await updateSsoProvider(
+			db,
+			"workforce",
+			{
+				clientSecret: "rotated-secret",
+				oidcConfig: {
+					authorizationEndpoint: "https://idp.example.test/v2/authorize",
+					jwksEndpoint: "https://idp.example.test/v2/jwks",
+					skipDiscovery: true,
+					tokenEndpoint: "https://idp.example.test/v2/token",
+				},
+			},
+			ORIGIN,
+			REQUEST,
+		);
+		expect(rotated.oidcConfig).toMatchObject({
+			authorizationEndpoint: "https://idp.example.test/v2/authorize",
+			clientSecret: "********",
+			issuer: "https://idp.example.test",
+		});
+		const [encryptedProvider] = await db.select().from(ssoProvider);
+		expect(encryptedProvider.oidcConfig).toContain("ssoenc:v1:");
+		expect(encryptedProvider.oidcConfig).not.toContain("rotated-secret");
+
+		const [providerBefore] = await db.select().from(ssoProvider);
+		const [settingsBefore] = await db.select().from(ssoProviderSettings);
+		await expect(
+			updateSsoProvider(
+				db,
+				"workforce",
+				{ issuer: "https://other-idp.example.test" },
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoIdentityBoundaryImmutable");
+		expect(await db.select().from(ssoProvider)).toEqual([providerBefore]);
+		expect(await db.select().from(ssoProviderSettings)).toEqual([
+			settingsBefore,
+		]);
+	});
+
+	it("keeps linked SAML identities on the same IdP entity while allowing metadata rotation", async () => {
+		await createSsoProvider(
+			db,
+			{
+				displayName: "Metadata SAML",
+				domain: "metadata.test",
+				issuer: "https://shorty.test/saml/metadata",
+				protocol: "saml",
+				providerId: "metadata-saml",
+				samlConfig: { idpMetadata: { metadata: validSamlMetadata } },
+			},
+			"owner",
+			ORIGIN,
+			REQUEST,
+		);
+		const timestamp = new Date();
+		await db.insert(account).values({
+			accountId: "subject-1",
+			createdAt: timestamp,
+			id: "saml-account",
+			issuer: "local:metadata-saml",
+			providerId: "metadata-saml",
+			updatedAt: timestamp,
+			userId: "owner",
+		});
+
+		const rotatedMetadata = validSamlMetadata.replace(
+			"https://idp.example.test/sso",
+			"https://idp.example.test/sso-rotated",
+		);
+		await expect(
+			updateSsoProvider(
+				db,
+				"metadata-saml",
+				{
+					samlConfig: {
+						idpMetadata: { metadata: rotatedMetadata },
+					},
+				},
+				ORIGIN,
+				REQUEST,
+			),
+		).resolves.toMatchObject({ providerId: "metadata-saml" });
+
+		const changedEntityMetadata = rotatedMetadata.replace(
+			'entityID="https://idp.example.test"',
+			'entityID="https://other-idp.example.test"',
+		);
+		await expect(
+			updateSsoProvider(
+				db,
+				"metadata-saml",
+				{
+					samlConfig: {
+						idpMetadata: { metadata: changedEntityMetadata },
+					},
+				},
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoIdentityBoundaryImmutable");
+	});
+
+	it("rolls back account and provider deletion together when the parent delete fails", async () => {
+		await createSsoProvider(db, oidcInput(), "owner", ORIGIN, REQUEST);
+		const timestamp = new Date();
+		await db.insert(account).values({
+			accountId: "subject-1",
+			createdAt: timestamp,
+			id: "linked-account",
+			issuer: "local:workforce",
+			providerId: "workforce",
+			updatedAt: timestamp,
+			userId: "owner",
+		});
+		const accountsBefore = await db.select().from(account);
+		const providersBefore = await db.select().from(ssoProvider);
+		const settingsBefore = await db.select().from(ssoProviderSettings);
+		await database
+			.prepare(`
+				CREATE TRIGGER fail_sso_provider_delete
+				BEFORE DELETE ON ssoProvider
+				BEGIN
+					SELECT RAISE(FAIL, 'injected provider delete failure');
+				END
+			`)
+			.run();
+
+		await expect(deleteSsoProvider(db, "workforce")).rejects.toThrow(
+			"injected provider delete failure",
+		);
+		expect(await db.select().from(account)).toEqual(accountsBefore);
+		expect(await db.select().from(ssoProvider)).toEqual(providersBefore);
+		expect(await db.select().from(ssoProviderSettings)).toEqual(settingsBefore);
+	});
+
+	it("deletes linked accounts and permits an explicit provider relink", async () => {
+		await createSsoProvider(db, oidcInput(), "owner", ORIGIN, REQUEST);
+		const timestamp = new Date();
+		await db.insert(account).values({
+			accountId: "subject-1",
+			createdAt: timestamp,
+			id: "stale-account",
+			issuer: "local:workforce",
+			providerId: "workforce",
+			updatedAt: timestamp,
+			userId: "owner",
+		});
+
+		await deleteSsoProvider(db, "workforce");
+		expect(await db.select().from(account)).toHaveLength(0);
+		expect(await db.select().from(ssoProvider)).toHaveLength(0);
+		expect(await db.select().from(ssoProviderSettings)).toHaveLength(0);
+
+		await createSsoProvider(
+			db,
+			oidcInput({ issuer: "https://replacement-idp.example.test" }),
+			"owner",
+			ORIGIN,
+			REQUEST,
+		);
+		await db.insert(account).values({
+			accountId: "subject-1",
+			createdAt: timestamp,
+			id: "replacement-account",
+			issuer: "local:workforce",
+			providerId: "workforce",
+			updatedAt: timestamp,
+			userId: "owner",
+		});
+		expect(await db.select({ id: account.id }).from(account)).toEqual([
+			{ id: "replacement-account" },
+		]);
+	});
+
+	it("rolls back both provider rows when an atomic settings update fails", async () => {
 		await createSsoProvider(db, oidcInput(), "owner", ORIGIN, REQUEST);
 		const [providerBefore] = await db.select().from(ssoProvider);
 		const [settingsBefore] = await db.select().from(ssoProviderSettings);
@@ -371,7 +611,7 @@ describe("D1 SSO provider persistence", () => {
 				ORIGIN,
 				REQUEST,
 			),
-		).rejects.toThrow("Failed query");
+		).rejects.toThrow("injected settings failure");
 
 		expect(
 			await db
@@ -385,6 +625,76 @@ describe("D1 SSO provider persistence", () => {
 				.from(ssoProviderSettings)
 				.where(eq(ssoProviderSettings.providerId, "workforce")),
 		).toEqual([settingsBefore]);
+	});
+
+	it("returns deterministic missing and concurrent-update conflicts without mixed state", async () => {
+		await expect(
+			updateSsoProvider(
+				db,
+				"missing",
+				{ displayName: "Missing" },
+				ORIGIN,
+				REQUEST,
+			),
+		).rejects.toThrow("errors.ssoProviderMissing");
+
+		await createSsoProvider(db, oidcInput(), "owner", ORIGIN, REQUEST);
+		await updateSsoProvider(
+			db,
+			"workforce",
+			{ displayName: "Sequential one", domain: "sequential-one.test" },
+			ORIGIN,
+			REQUEST,
+		);
+		await updateSsoProvider(
+			db,
+			"workforce",
+			{ displayName: "Sequential two", domain: "sequential-two.test" },
+			ORIGIN,
+			REQUEST,
+		);
+		const [sequentialProvider] = await db.select().from(ssoProvider);
+		const [sequentialSettings] = await db.select().from(ssoProviderSettings);
+		expect(
+			`${sequentialProvider.domain}:${sequentialSettings.displayName}`,
+		).toBe("sequential-two.test:Sequential two");
+
+		const outcomes = await Promise.allSettled([
+			updateSsoProvider(
+				db,
+				"workforce",
+				{ displayName: "Concurrent alpha", domain: "alpha.test" },
+				ORIGIN,
+				REQUEST,
+			),
+			updateSsoProvider(
+				db,
+				"workforce",
+				{ displayName: "Concurrent beta", domain: "beta.test" },
+				ORIGIN,
+				REQUEST,
+			),
+		]);
+		expect(
+			outcomes.filter(({ status }) => status === "fulfilled"),
+		).toHaveLength(1);
+		const rejected = outcomes.find(({ status }) => status === "rejected");
+		expect(rejected?.status).toBe("rejected");
+		if (rejected?.status !== "rejected") {
+			throw new Error("Expected one concurrent update to be rejected");
+		}
+		expect(rejected.reason).toMatchObject({
+			message: "errors.ssoProviderConflict",
+		});
+
+		const [concurrentProvider] = await db.select().from(ssoProvider);
+		const [concurrentSettings] = await db.select().from(ssoProviderSettings);
+		expect([
+			"alpha.test:Concurrent alpha",
+			"beta.test:Concurrent beta",
+		]).toContain(
+			`${concurrentProvider.domain}:${concurrentSettings.displayName}`,
+		);
 	});
 
 	it("accepts references to a newly added custom role", async () => {

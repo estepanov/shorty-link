@@ -322,6 +322,10 @@ export const messages = {
 		"errors.ssoProtocolInvalid": "Protocol must be oidc or saml.",
 		"errors.ssoProtocolImmutable":
 			"An SSO provider's protocol cannot be changed.",
+		"errors.ssoProviderConflict":
+			"That SSO provider changed while you were editing it. Reload and try again.",
+		"errors.ssoIdentityBoundaryImmutable":
+			"Delete and recreate this provider to change its identity authority after accounts have linked.",
 		"errors.ssoConfigurationInvalid":
 			"Complete the required configuration for this SSO protocol.",
 		"errors.ssoGroupMappingInvalid":
@@ -795,6 +799,10 @@ export const messages = {
 		"errors.ssoProtocolInvalid": "El protocolo debe ser oidc o saml.",
 		"errors.ssoProtocolImmutable":
 			"No se puede cambiar el protocolo de un proveedor SSO.",
+		"errors.ssoProviderConflict":
+			"Ese proveedor SSO cambio mientras lo editabas. Vuelve a cargarlo e intentalo de nuevo.",
+		"errors.ssoIdentityBoundaryImmutable":
+			"Elimina y vuelve a crear este proveedor para cambiar su autoridad de identidad despues de vincular cuentas.",
 		"errors.ssoConfigurationInvalid":
 			"Completa la configuracion requerida para este protocolo SSO.",
 		"errors.ssoGroupMappingInvalid":

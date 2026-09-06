@@ -23,6 +23,7 @@ import { applyD1Migrations } from "./apply-d1-migrations";
 
 describe("D1 SSO admission persistence", () => {
 	let proxy: Awaited<ReturnType<typeof getPlatformProxy>> | null = null;
+	let database: D1Database;
 	let db: ReturnType<typeof drizzle<typeof schema>>;
 
 	beforeEach(async () => {
@@ -34,8 +35,9 @@ describe("D1 SSO admission persistence", () => {
 			persist: false,
 			remoteBindings: false,
 		});
-		db = drizzle((proxy.env as { DB: D1Database }).DB, { schema });
-		await applyD1Migrations((proxy.env as { DB: D1Database }).DB);
+		database = (proxy.env as { DB: D1Database }).DB;
+		db = drizzle(database, { schema });
+		await applyD1Migrations(database);
 
 		const timestamp = new Date();
 		await db.insert(user).values({
@@ -185,6 +187,66 @@ describe("D1 SSO admission persistence", () => {
 		expect(invite).toMatchObject({
 			acceptedAt: expect.any(Number),
 			ssoClaimId: "competing-callback",
+		});
+		expect(
+			await db.select().from(user).where(eq(user.id, "member")),
+		).toHaveLength(0);
+	});
+
+	it("restores its invite claim and removes the staged user when the admission batch throws", async () => {
+		await db.insert(adminInvites).values({
+			acceptedAt: null,
+			createdAt: Date.now(),
+			email: "member@acme.test",
+			expiresAt: Date.now() + 60_000,
+			id: "invite",
+			invitedBy: "owner",
+			roleId: SYSTEM_ROLE_ADMIN,
+			ssoClaimId: null,
+			token: "invite-token",
+		});
+		const prepared = await prepareSsoAdmission(db, {
+			email: "member@acme.test",
+			emailVerified: true,
+			groups: [],
+			providerId: "workforce",
+		});
+		const timestamp = new Date();
+		await db.insert(user).values({
+			createdAt: timestamp,
+			email: prepared.email,
+			emailVerified: true,
+			id: "member",
+			image: null,
+			isActive: false,
+			invitedBy: "owner",
+			locale: "en",
+			name: "Member",
+			roleId: SYSTEM_ROLE_ADMIN,
+			updatedAt: timestamp,
+		});
+		await database
+			.prepare(`
+				CREATE TRIGGER fail_sso_user_activation
+				BEFORE UPDATE OF is_active ON user
+				WHEN NEW.id = 'member'
+				BEGIN
+					SELECT RAISE(FAIL, 'injected activation failure');
+				END
+			`)
+			.run();
+
+		await expect(applySsoAdmission(db, prepared, "member")).rejects.toThrow(
+			"injected activation failure",
+		);
+
+		const [invite] = await db
+			.select()
+			.from(adminInvites)
+			.where(eq(adminInvites.id, "invite"));
+		expect(invite).toMatchObject({
+			acceptedAt: null,
+			ssoClaimId: null,
 		});
 		expect(
 			await db.select().from(user).where(eq(user.id, "member")),

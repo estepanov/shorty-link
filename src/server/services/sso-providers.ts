@@ -3,7 +3,7 @@ import {
 	discoverOIDCConfig,
 	type SAMLConfig,
 } from "@better-auth/sso";
-import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -26,6 +26,7 @@ import {
 } from "../auth/sso-secrets";
 import type { AppDb } from "../db/client";
 import {
+	account,
 	adminInvites,
 	roles,
 	SYSTEM_ROLE_OWNER,
@@ -151,6 +152,9 @@ function settingsFromWrite(
 			: input.defaultRoleId;
 	const jitEnabled = input.jitEnabled ?? current?.jitEnabled ?? false;
 	const mappings = input.groupRoleMappings ?? current?.groupRoleMappings ?? [];
+	if (jitEnabled && !defaultRoleId?.trim()) {
+		throw new Error("errors.ssoConfigurationInvalid");
+	}
 	if (jitEnabled && defaultRoleId === SYSTEM_ROLE_OWNER) {
 		throw new Error("errors.ssoOwnerRoleForbidden");
 	}
@@ -285,6 +289,42 @@ function parseConfigRecord(
 		return null;
 	}
 	return parsed as Record<string, unknown>;
+}
+
+function externalIdentityAuthority(
+	protocol: SsoProtocol,
+	issuer: string,
+	oidcJson: string | null,
+	samlJson: string | null,
+) {
+	switch (protocol) {
+		case "oidc": {
+			const config = parseConfigRecord(oidcJson);
+			return configString(config, "issuer")?.trim() || issuer.trim();
+		}
+		case "saml": {
+			const config = parseConfigRecord(samlJson);
+			if (!config) {
+				throw new Error("errors.ssoConfigurationInvalid");
+			}
+			try {
+				const entityId = deriveSAMLIdentityProviderEntityID(
+					config as unknown as SAMLConfig,
+				).trim();
+				if (entityId) {
+					return entityId;
+				}
+			} catch {
+				// Fall through to the stable configuration error.
+			}
+			throw new Error("errors.ssoConfigurationInvalid");
+		}
+		default: {
+			const _exhaustive: never = protocol;
+			void _exhaustive;
+			throw new Error("errors.ssoProtocolInvalid");
+		}
+	}
 }
 
 const OIDC_TRUSTED_URL_KEYS = [
@@ -664,7 +704,31 @@ export async function updateSsoProvider(
 	origin: string,
 	request?: Request,
 ) {
-	const current = await getAdminSsoProvider(db, providerId, origin, request);
+	const rows = await db
+		.select({
+			provider: ssoProvider,
+			settings: ssoProviderSettings,
+		})
+		.from(ssoProvider)
+		.innerJoin(
+			ssoProviderSettings,
+			eq(ssoProvider.providerId, ssoProviderSettings.providerId),
+		)
+		.where(eq(ssoProvider.providerId, providerId))
+		.limit(1);
+	const row = rows[0];
+	if (!row) {
+		throw new Error("errors.ssoProviderMissing");
+	}
+	const currentOidc = await readConfigJson(row.provider.oidcConfig, request);
+	const currentSaml = await readConfigJson(row.provider.samlConfig, request);
+	const current = toAdminProvider(
+		row.provider,
+		row.settings,
+		origin,
+		currentOidc,
+		currentSaml,
+	);
 	const protocol = input.protocol
 		? normalizeProtocol(input.protocol)
 		: current.protocol;
@@ -672,69 +736,113 @@ export async function updateSsoProvider(
 		throw new Error("errors.ssoProtocolImmutable");
 	}
 	const issuer = input.issuer ?? current.issuer;
-	const rows = await db
-		.select()
-		.from(ssoProvider)
-		.where(eq(ssoProvider.providerId, providerId))
-		.limit(1);
-	const row = rows[0];
-	if (!row) {
-		throw new Error("errors.ssoProviderMissing");
-	}
-	const currentOidc = await readConfigJson(row.oidcConfig, request);
-	const currentSaml = await readConfigJson(row.samlConfig, request);
 	const settings = settingsFromWrite(providerId, protocol, input, current);
 	await assertRoleReferences(db, settings);
-	const oidcJson =
+	const nextOidc =
 		protocol === "oidc"
-			? await persistConfigJson(
-					await buildOidcJson(input, issuer, currentOidc),
-					request,
-				)
+			? await buildOidcJson(input, issuer, currentOidc)
 			: null;
-	const samlJson =
+	const nextSaml =
 		protocol === "saml"
-			? await persistConfigJson(
-					await buildSamlJson(input, issuer, currentSaml),
-					request,
-				)
+			? await buildSamlJson(input, issuer, currentSaml)
 			: null;
+	const identityBoundaryChanged =
+		externalIdentityAuthority(
+			protocol,
+			row.provider.issuer,
+			currentOidc,
+			currentSaml,
+		) !== externalIdentityAuthority(protocol, issuer, nextOidc, nextSaml);
+	const oidcJson = await persistConfigJson(nextOidc, request);
+	const samlJson = await persistConfigJson(nextSaml, request);
 
-	await db
+	const updatedAt = Math.max(now(), row.settings.updatedAt + 1);
+	const noLinkedAccounts = identityBoundaryChanged
+		? sql`not exists (
+				select 1
+				from ${account}
+				where ${account.providerId} = ${providerId}
+			)`
+		: undefined;
+	const providerUpdate = db
 		.update(ssoProvider)
 		.set({
-			domain: input.domain ?? row.domain,
+			domain: input.domain ?? row.provider.domain,
 			issuer,
 			oidcConfig: oidcJson,
 			samlConfig: samlJson,
 		})
-		.where(eq(ssoProvider.providerId, providerId));
-	try {
-		await upsertSettings(db, settings);
-	} catch (error) {
-		await db
-			.update(ssoProvider)
-			.set({
-				domain: row.domain,
-				id: row.id,
-				issuer: row.issuer,
-				oidcConfig: row.oidcConfig,
-				organizationId: row.organizationId,
-				providerId: row.providerId,
-				samlConfig: row.samlConfig,
-				userId: row.userId,
-			})
-			.where(eq(ssoProvider.providerId, providerId));
-		throw error;
+		.where(
+			and(
+				eq(ssoProvider.providerId, providerId),
+				sql`exists (
+					select 1
+					from ${ssoProviderSettings}
+					where ${ssoProviderSettings.providerId} = ${providerId}
+						and ${ssoProviderSettings.updatedAt} = ${row.settings.updatedAt}
+				)`,
+				noLinkedAccounts,
+			),
+		);
+	const settingsUpdate = db
+		.update(ssoProviderSettings)
+		.set({
+			allowIdpInitiated: settings.allowIdpInitiated,
+			defaultRoleId: settings.defaultRoleId,
+			displayName: settings.displayName,
+			enabled: settings.enabled,
+			enforceSso: settings.enforceSso,
+			groupClaim: settings.groupClaim.trim() || "groups",
+			groupRoleMappings: JSON.stringify(settings.groupRoleMappings),
+			jitEnabled: settings.jitEnabled,
+			protocol: settings.protocol,
+			updatedAt,
+		})
+		.where(
+			and(
+				eq(ssoProviderSettings.providerId, providerId),
+				eq(ssoProviderSettings.updatedAt, row.settings.updatedAt),
+				noLinkedAccounts,
+			),
+		);
+	const providerState = db
+		.select({
+			linkedAccountCount: sql<number>`(
+				select count(*)
+				from ${account}
+				where ${account.providerId} = ${providerId}
+			)`,
+			providerId: ssoProvider.providerId,
+		})
+		.from(ssoProvider)
+		.innerJoin(
+			ssoProviderSettings,
+			eq(ssoProvider.providerId, ssoProviderSettings.providerId),
+		)
+		.where(eq(ssoProvider.providerId, providerId))
+		.limit(1);
+	const [providerResult, settingsResult, state] = await db.batch([
+		providerUpdate,
+		settingsUpdate,
+		providerState,
+	]);
+	if (providerResult.meta.changes !== 1 || settingsResult.meta.changes !== 1) {
+		if (state.length === 0) {
+			throw new Error("errors.ssoProviderMissing");
+		}
+		if (identityBoundaryChanged && state[0].linkedAccountCount > 0) {
+			throw new Error("errors.ssoIdentityBoundaryImmutable");
+		}
+		throw new Error("errors.ssoProviderConflict");
 	}
 	return getAdminSsoProvider(db, providerId, origin, request);
 }
 
 export async function deleteSsoProvider(db: AppDb, providerId: string) {
-	await db
-		.delete(ssoProviderSettings)
-		.where(eq(ssoProviderSettings.providerId, providerId));
-	await db.delete(ssoProvider).where(eq(ssoProvider.providerId, providerId));
+	await db.batch([
+		db.delete(account).where(eq(account.providerId, providerId)),
+		db.delete(ssoProvider).where(eq(ssoProvider.providerId, providerId)),
+	]);
 }
 
 export async function loadSsoSettingsView(db: AppDb, providerId: string) {
@@ -915,11 +1023,7 @@ export async function applySsoAdmission(
 					email,
 					claimId,
 				);
-			const [claimed, activated] = await db.$client.batch([
-				claimStatement,
-				activateStatement,
-			]);
-			if (claimed.meta.changes !== 1 || activated.meta.changes !== 1) {
+			const restoreAdmissionState = async () => {
 				const restoreInvite = db.$client
 					.prepare(`
 						update "admin_invite"
@@ -934,7 +1038,18 @@ export async function applySsoAdmission(
 					`)
 					.bind(authenticatedUserId, email);
 				await db.$client.batch([restoreInvite, removeStagedUser]);
-				throw new Error("errors.ssoNotProvisioned");
+			};
+			try {
+				const [claimed, activated] = await db.$client.batch([
+					claimStatement,
+					activateStatement,
+				]);
+				if (claimed.meta.changes !== 1 || activated.meta.changes !== 1) {
+					throw new Error("errors.ssoNotProvisioned");
+				}
+			} catch (error) {
+				await restoreAdmissionState();
+				throw error;
 			}
 			return { userId: authenticatedUserId };
 		}

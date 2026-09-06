@@ -7,6 +7,12 @@ describe("SSO error mapping", () => {
 		expect(mapSsoErrorCode("errors.ssoNotProvisioned")).toBe(
 			"errors.ssoNotProvisioned",
 		);
+		expect(mapSsoErrorCode("errors.ssoIdentityBoundaryImmutable")).toBe(
+			"errors.ssoIdentityBoundaryImmutable",
+		);
+		expect(mapSsoErrorCode("errors.ssoProviderConflict")).toBe(
+			"errors.ssoProviderConflict",
+		);
 	});
 
 	it("maps known cancellation errors to the localized cancellation message", () => {

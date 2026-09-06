@@ -78,6 +78,8 @@ Optional per provider:
 - Require SSO for those email domains
 - Allow IdP-initiated sign-in
 
+After an account links through a provider, Shorty locks the external identity authority for that provider ID: the OIDC issuer or SAML IdP entity ID. You can still rotate client secrets, certificates, and protocol endpoints when that authority stays the same. To move linked users to a different authority, delete and recreate the provider; deletion also removes its linked SSO account records so users explicitly relink on their next sign-in.
+
 To revoke an unused invite, delete it from the invites list.
 
 ## Create an API key
