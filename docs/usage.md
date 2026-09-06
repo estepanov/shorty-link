@@ -69,6 +69,8 @@ The email-domain list is an authorization boundary, not just a login-page filter
 
 Paste the shown callback URL or SAML ACS URL into the identity provider. Client secrets stay in D1, encrypted with `BETTER_AUTH_SECRET`. On admin save, Shorty discovers OIDC metadata from the issuer using a scoped issuer-origin allowlist and stores the hydrated endpoints. Login does not add IdP hosts to Better Auth `trustedOrigins`.
 
+For SAML, configure the IdP attribute names that contain the email, verified-email flag, and display name. The verified-email attribute must be present and assert a true value; a signed assertion without it cannot sign in. IdP-initiated SAML responses are accepted only when **Allow IdP-initiated sign-in** is enabled on that provider.
+
 Optional per provider:
 
 - Just-in-time provisioning with a default role (never owner)

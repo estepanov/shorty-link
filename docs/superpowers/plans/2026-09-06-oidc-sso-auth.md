@@ -37,9 +37,9 @@
 
 **Files:**
 - Modify: `src/lib/permissions.ts`, `src/server/db/schema.ts`
-- Create: `migrations/0010_sso_providers.sql`
+- Create: `migrations/0010_sso_providers.sql`, `migrations/0011_sso_invite_claim.sql`
 
-- [ ] Add `sso.read|write|delete`, `ssoProvider`, `ssoProviderSettings`, `account.issuer` backfill, system-role permission JSON update.
+- [ ] Add `sso.read|write|delete`, `ssoProvider`, `ssoProviderSettings`, `account.issuer` backfill, atomic invite-claim correlation, and the system-role permission JSON update.
 
 ### Task 3: Better Auth 1.7 + plugin wiring
 

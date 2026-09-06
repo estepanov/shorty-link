@@ -81,7 +81,7 @@ Duplicates Better Auth session and account handling.
 IdP-initiated:
 
 - OIDC: `oidcConfig.allowIdpInitiated: true`; bounce uses `baseURL` then `/admin`.
-- SAML: IdP POSTs to `/api/auth/sso/saml2/sp/acs/{providerId}`; `samlConfig.callbackUrl` is `/admin`. `src/server.ts` already sends every `/api/auth/*` method, including POST, to `createAuth(request).handler`.
+- SAML: IdP POSTs to `/api/auth/sso/saml2/sp/acs/{providerId}`; `samlConfig.callbackUrl` is `/admin`. The Better Auth global SAML capability is enabled, while `src/server.ts` rejects unsolicited responses unless that specific enabled SAML provider has `allow_idp_initiated = 1`. Correlated responses continue to Better Auth's `InResponseTo` validation.
 
 Admin configuration (authenticated, `sso.write`):
 
@@ -208,11 +208,16 @@ Tests cover: round-trip, wrong secret fails, already-encrypted idempotence, nest
 
 ```ts
 sso({
-  disableImplicitSignUp: true,
+  disableImplicitSignUp: false,
   provisionUserOnEveryLogin: true,
+  trustEmailVerified: true,
   provisionUser: provisionShortySsoUser,
 })
 ```
+
+Cloudflare D1 provides atomic batches but not the interactive native transactions required by Better Auth's SSO `resolveUser` callback. Shorty therefore gates every create, link, and sign-in through `user.validateUserInfo` before Better Auth writes anything. New users are staged with their approved role and inactive invite users remain disabled. `provisionUser` then applies the prepared decision before the session cookie is issued: JIT users are activated, existing-user mappings are applied, and invite claim plus user activation run in one D1 batch correlated by `admin_invite.sso_claim_id`. A failed or competing invite claim removes the staged inactive user.
+
+`trustEmailVerified` only trusts the `email_verified` result extracted from a cryptographically validated admin-managed provider response. OIDC uses the configured mapping or standard claim. SAML requires an explicit `mapping.emailVerified` attribute whose value parses as true. `resolveSsoAdmission` still rejects any unverified identity.
 
 The client must never send `requestSignUp: true`.
 
@@ -322,8 +327,10 @@ EN and ES strings in `src/lib/i18n.ts`.
 2. `resolveSsoAdmission` and `isSsoEnforcedForEmail` unit tests, including existing-user/invite/JIT domain boundaries, group mapping, and owner protection.
 3. Admin API: permissions, CSRF, redaction, public catalog, reserved ids, blank-secret PATCH.
 4. Auth hook: raw `/api/auth/sso/register` is 403; enforced-domain passkey is rejected; bootstrap passkey still works.
-5. Permission migration: system roles gain `sso.*`; custom roles do not.
-6. Existing passkey, invite, and API-key tests still pass after the 1.7 upgrade.
+5. Real Better Auth + D1 OIDC callback tests: verified JIT and invite admission succeed without native transactions; unverified and cross-domain identities fail without creating users.
+6. SAML ACS gate tests: malformed and oversized requests fail closed; unsolicited responses require the enabled provider's opt-in; correlated responses continue to Better Auth.
+7. Permission migration: system roles gain `sso.*`; custom roles do not.
+8. Existing passkey, invite, and API-key tests still pass after the 1.7 upgrade.
 
 No live Okta/SAML tenant in CI.
 

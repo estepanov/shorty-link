@@ -56,6 +56,8 @@ Fresh installs apply the same migration history from the beginning.
 
 SSO support adds migration `0010_sso_providers.sql`: an `account.issuer` backfill for Better Auth 1.7, `ssoProvider` / `sso_provider_settings` tables, and `sso.*` permissions on the system owner and admin roles. Back up D1 before applying it on a populated database.
 
+Migration `0011_sso_invite_claim.sql` adds an internal claim identifier used to atomically correlate an SSO invite claim with activation of the staged Better Auth user. It also repairs any SSO account rows that Better Auth initially wrote with the fallback `local:unknown` issuer.
+
 ## Rollback Expectations
 
 Worker code can usually be rolled back by checking out the previous tag and redeploying.

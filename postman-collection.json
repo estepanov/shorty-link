@@ -9,7 +9,7 @@
 					"description": "",
 					"item": [
 						{
-							"id": "a607cdc7-82be-49cd-b5ab-b35365ba75c9",
+							"id": "1fc87be7-58b5-4005-8bfe-c76488764d02",
 							"name": "Health check",
 							"request": {
 								"name": "Health check",
@@ -26,7 +26,7 @@
 							},
 							"response": [
 								{
-									"id": "4e8c8c52-19df-4d92-a39e-ea680a30b8bd",
+									"id": "b6e22ff9-68d9-49fa-8d3c-84e5814f50c7",
 									"name": "200",
 									"originalRequest": {
 										"url": {
@@ -46,7 +46,9 @@
 								}
 							],
 							"event": [],
-							"protocolProfileBehavior": { "disableBodyPruning": true }
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							}
 						}
 					]
 				},
@@ -59,7 +61,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "f4a49aba-b3e6-4e99-8153-bdd5bb37b794",
+									"id": "01f2a39c-f5df-4086-9beb-5fe753ce1019",
 									"name": "Agent browser login",
 									"request": {
 										"name": "Agent browser login",
@@ -125,7 +127,7 @@
 									},
 									"response": [
 										{
-											"id": "81659c37-0358-4216-8ae8-87f046327bdc",
+											"id": "e6df1409-7a5c-4f72-a20e-4cbd8e69a062",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -191,7 +193,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						}
@@ -202,11 +206,524 @@
 					"description": "",
 					"item": [
 						{
+							"name": "sso-providers",
+							"description": "",
+							"item": [
+								{
+									"name": "public",
+									"description": "",
+									"item": [
+										{
+											"id": "397a02b4-498f-41ea-b63e-96e1ddf6d6dd",
+											"name": "List enabled SSO providers for sign-in",
+											"request": {
+												"name": "List enabled SSO providers for sign-in",
+												"description": {},
+												"url": {
+													"path": ["api", "admin", "sso-providers", "public"],
+													"host": ["{{baseUrl}}"],
+													"query": [],
+													"variable": []
+												},
+												"method": "GET",
+												"body": {},
+												"auth": null
+											},
+											"response": [
+												{
+													"id": "37f4ef12-d9db-4973-805a-3595eeb8d140",
+													"name": "200",
+													"originalRequest": {
+														"url": {
+															"path": [
+																"api",
+																"admin",
+																"sso-providers",
+																"public"
+															],
+															"host": ["{{baseUrl}}"],
+															"query": [],
+															"variable": []
+														},
+														"method": "GET",
+														"body": {}
+													},
+													"status": "OK",
+													"code": 200,
+													"header": [],
+													"cookie": [],
+													"_postman_previewlanguage": "text"
+												}
+											],
+											"event": [],
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
+										}
+									]
+								},
+								{
+									"id": "a3b32de5-b4a2-44d9-903f-115c68d1bb44",
+									"name": "List SSO providers",
+									"request": {
+										"name": "List SSO providers",
+										"description": {},
+										"url": {
+											"path": ["api", "admin", "sso-providers"],
+											"host": ["{{baseUrl}}"],
+											"query": [],
+											"variable": []
+										},
+										"method": "GET",
+										"body": {},
+										"auth": null
+									},
+									"response": [
+										{
+											"id": "0c22667a-af2f-4bd2-903e-2ebd3e7c1f20",
+											"name": "200",
+											"originalRequest": {
+												"url": {
+													"path": ["api", "admin", "sso-providers"],
+													"host": ["{{baseUrl}}"],
+													"query": [],
+													"variable": []
+												},
+												"method": "GET",
+												"body": {}
+											},
+											"status": "OK",
+											"code": 200,
+											"header": [],
+											"cookie": [],
+											"_postman_previewlanguage": "text"
+										}
+									],
+									"event": [],
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
+								},
+								{
+									"id": "30489349-2315-4942-91ee-a7f8a9dffd3e",
+									"name": "Register SSO provider",
+									"request": {
+										"name": "Register SSO provider",
+										"description": {},
+										"url": {
+											"path": ["api", "admin", "sso-providers"],
+											"host": ["{{baseUrl}}"],
+											"query": [],
+											"variable": []
+										},
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"method": "POST",
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"auth": null
+									},
+									"response": [
+										{
+											"id": "2d8d81a5-19c2-43a8-a06b-6a8de0d0abd3",
+											"name": "200",
+											"originalRequest": {
+												"url": {
+													"path": ["api", "admin", "sso-providers"],
+													"host": ["{{baseUrl}}"],
+													"query": [],
+													"variable": []
+												},
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"method": "POST",
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"header": [],
+											"cookie": [],
+											"_postman_previewlanguage": "text"
+										}
+									],
+									"event": [],
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
+								},
+								{
+									"name": "{providerId}",
+									"description": "",
+									"item": [
+										{
+											"name": "sp-metadata",
+											"description": "",
+											"item": [
+												{
+													"id": "2ccd23a4-f04c-4583-b8e1-d11c9f359b49",
+													"name": "Get SAML SP metadata",
+													"request": {
+														"name": "Get SAML SP metadata",
+														"description": {},
+														"url": {
+															"path": [
+																"api",
+																"admin",
+																"sso-providers",
+																":providerId",
+																"sp-metadata"
+															],
+															"host": ["{{baseUrl}}"],
+															"query": [],
+															"variable": [
+																{
+																	"type": "any",
+																	"value": "<string>",
+																	"key": "providerId",
+																	"disabled": false,
+																	"description": {
+																		"content": "(Required) ",
+																		"type": "text/plain"
+																	}
+																}
+															]
+														},
+														"method": "GET",
+														"body": {},
+														"auth": null
+													},
+													"response": [
+														{
+															"id": "44d61c88-5847-42c2-8e7d-0b0b5d856ef9",
+															"name": "200",
+															"originalRequest": {
+																"url": {
+																	"path": [
+																		"api",
+																		"admin",
+																		"sso-providers",
+																		":providerId",
+																		"sp-metadata"
+																	],
+																	"host": ["{{baseUrl}}"],
+																	"query": [],
+																	"variable": [
+																		{
+																			"disabled": false,
+																			"description": {
+																				"content": "(Required) ",
+																				"type": "text/plain"
+																			},
+																			"type": "any",
+																			"value": "<string>",
+																			"key": "providerId"
+																		}
+																	]
+																},
+																"method": "GET",
+																"body": {}
+															},
+															"status": "OK",
+															"code": 200,
+															"header": [],
+															"cookie": [],
+															"_postman_previewlanguage": "text"
+														}
+													],
+													"event": [],
+													"protocolProfileBehavior": {
+														"disableBodyPruning": true
+													}
+												}
+											]
+										},
+										{
+											"id": "8947c605-3128-4a71-9c8c-00d20bf380ea",
+											"name": "Get SSO provider",
+											"request": {
+												"name": "Get SSO provider",
+												"description": {},
+												"url": {
+													"path": [
+														"api",
+														"admin",
+														"sso-providers",
+														":providerId"
+													],
+													"host": ["{{baseUrl}}"],
+													"query": [],
+													"variable": [
+														{
+															"type": "any",
+															"value": "<string>",
+															"key": "providerId",
+															"disabled": false,
+															"description": {
+																"content": "(Required) ",
+																"type": "text/plain"
+															}
+														}
+													]
+												},
+												"method": "GET",
+												"body": {},
+												"auth": null
+											},
+											"response": [
+												{
+													"id": "b27e343f-7b62-4a55-93ec-690dfd0425ae",
+													"name": "200",
+													"originalRequest": {
+														"url": {
+															"path": [
+																"api",
+																"admin",
+																"sso-providers",
+																":providerId"
+															],
+															"host": ["{{baseUrl}}"],
+															"query": [],
+															"variable": [
+																{
+																	"disabled": false,
+																	"description": {
+																		"content": "(Required) ",
+																		"type": "text/plain"
+																	},
+																	"type": "any",
+																	"value": "<string>",
+																	"key": "providerId"
+																}
+															]
+														},
+														"method": "GET",
+														"body": {}
+													},
+													"status": "OK",
+													"code": 200,
+													"header": [],
+													"cookie": [],
+													"_postman_previewlanguage": "text"
+												}
+											],
+											"event": [],
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
+										},
+										{
+											"id": "88249353-29b6-4242-ba7c-82b4e937bad8",
+											"name": "Update SSO provider",
+											"request": {
+												"name": "Update SSO provider",
+												"description": {},
+												"url": {
+													"path": [
+														"api",
+														"admin",
+														"sso-providers",
+														":providerId"
+													],
+													"host": ["{{baseUrl}}"],
+													"query": [],
+													"variable": [
+														{
+															"type": "any",
+															"value": "<string>",
+															"key": "providerId",
+															"disabled": false,
+															"description": {
+																"content": "(Required) ",
+																"type": "text/plain"
+															}
+														}
+													]
+												},
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"method": "PATCH",
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"protocol\": \"<string>\",\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"auth": null
+											},
+											"response": [
+												{
+													"id": "2ab38316-0088-4504-9c84-49dbd791270b",
+													"name": "200",
+													"originalRequest": {
+														"url": {
+															"path": [
+																"api",
+																"admin",
+																"sso-providers",
+																":providerId"
+															],
+															"host": ["{{baseUrl}}"],
+															"query": [],
+															"variable": [
+																{
+																	"disabled": false,
+																	"description": {
+																		"content": "(Required) ",
+																		"type": "text/plain"
+																	},
+																	"type": "any",
+																	"value": "<string>",
+																	"key": "providerId"
+																}
+															]
+														},
+														"header": [
+															{
+																"key": "Content-Type",
+																"value": "application/json"
+															}
+														],
+														"method": "PATCH",
+														"body": {
+															"mode": "raw",
+															"raw": "{\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"protocol\": \"<string>\",\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+															"options": {
+																"raw": {
+																	"headerFamily": "json",
+																	"language": "json"
+																}
+															}
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"header": [],
+													"cookie": [],
+													"_postman_previewlanguage": "text"
+												}
+											],
+											"event": [],
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
+										},
+										{
+											"id": "1f1fc4d2-55c8-4bb8-8210-aae16c81bd02",
+											"name": "Delete SSO provider",
+											"request": {
+												"name": "Delete SSO provider",
+												"description": {},
+												"url": {
+													"path": [
+														"api",
+														"admin",
+														"sso-providers",
+														":providerId"
+													],
+													"host": ["{{baseUrl}}"],
+													"query": [],
+													"variable": [
+														{
+															"type": "any",
+															"value": "<string>",
+															"key": "providerId",
+															"disabled": false,
+															"description": {
+																"content": "(Required) ",
+																"type": "text/plain"
+															}
+														}
+													]
+												},
+												"method": "DELETE",
+												"body": {},
+												"auth": null
+											},
+											"response": [
+												{
+													"id": "53475b30-a32f-47f8-b8b3-58e5f0662762",
+													"name": "200",
+													"originalRequest": {
+														"url": {
+															"path": [
+																"api",
+																"admin",
+																"sso-providers",
+																":providerId"
+															],
+															"host": ["{{baseUrl}}"],
+															"query": [],
+															"variable": [
+																{
+																	"disabled": false,
+																	"description": {
+																		"content": "(Required) ",
+																		"type": "text/plain"
+																	},
+																	"type": "any",
+																	"value": "<string>",
+																	"key": "providerId"
+																}
+															]
+														},
+														"method": "DELETE",
+														"body": {}
+													},
+													"status": "OK",
+													"code": 200,
+													"header": [],
+													"cookie": [],
+													"_postman_previewlanguage": "text"
+												}
+											],
+											"event": [],
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
+										}
+									]
+								}
+							]
+						},
+						{
 							"name": "bootstrap",
 							"description": "",
 							"item": [
 								{
-									"id": "e2f15c2e-6700-4393-9aaf-eb7b94542ee6",
+									"id": "add9c911-03ec-4d0c-96df-53d66dd161ec",
 									"name": "Check bootstrap state",
 									"request": {
 										"name": "Check bootstrap state",
@@ -223,7 +740,7 @@
 									},
 									"response": [
 										{
-											"id": "baeab5fd-8c72-4eeb-b188-6f4307d0fb33",
+											"id": "a3e54fbd-27df-469d-bedf-bccae9bd9840",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -243,7 +760,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						},
@@ -256,7 +775,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "ac8b0803-7472-4c25-ac37-50cb0f2cef81",
+											"id": "7bd5f47f-3ac7-4211-949a-8cc6d906eedc",
 											"name": "Complete onboarding bootstrap",
 											"request": {
 												"name": "Complete onboarding bootstrap",
@@ -268,7 +787,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -285,7 +807,7 @@
 											},
 											"response": [
 												{
-													"id": "cf93a63f-25e9-4df4-ad45-24872d0c9d1b",
+													"id": "d40fabdb-238d-4f13-b598-b556b7055751",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -325,7 +847,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								}
@@ -336,7 +860,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "b7a765ca-9058-4fd0-888b-57cb574cc2b5",
+									"id": "a01bc22e-0fe3-498f-a7a4-aea1fb5679bd",
 									"name": "Get dashboard data",
 									"request": {
 										"name": "Get dashboard data",
@@ -353,7 +877,7 @@
 									},
 									"response": [
 										{
-											"id": "71571771-6736-4b38-81ef-c8cc08c0715e",
+											"id": "91914870-2746-40cd-82b2-1f51e00c445e",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -373,7 +897,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						},
@@ -382,7 +908,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "f11fdc0d-2f10-4992-8be4-2379d340b942",
+									"id": "a271d3b1-260d-4c6a-8709-a3a8a6287ff1",
 									"name": "Get current user profile",
 									"request": {
 										"name": "Get current user profile",
@@ -399,7 +925,7 @@
 									},
 									"response": [
 										{
-											"id": "dfd696e7-44cd-4a69-8086-e5fbefe273c0",
+											"id": "ad8fce86-7711-44f1-8fd5-4b3c7d8e94fa",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -419,10 +945,12 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
-									"id": "051a7f38-f5e1-4e23-9abf-eb2b33a79b50",
+									"id": "2477397b-4324-4423-9b93-426ba1efcd57",
 									"name": "Update current user profile",
 									"request": {
 										"name": "Update current user profile",
@@ -434,21 +962,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "PATCH",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"email\": \"<email>\",\n  \"name\": \"<string>\",\n  \"locale\": \"<string>\"\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "ae95199c-e511-4a47-8670-4042e5c429c1",
+											"id": "6cdc6d14-b260-4ffc-ab11-4e0d8b671876",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -458,7 +992,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "PATCH",
 												"body": {
@@ -480,7 +1017,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						},
@@ -489,7 +1028,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "4041864f-8cda-41c5-a429-5527bf7d3eab",
+									"id": "6002b102-b1b0-4629-a4f8-a1b2dc62835a",
 									"name": "Get current auth context",
 									"request": {
 										"name": "Get current auth context",
@@ -506,7 +1045,7 @@
 									},
 									"response": [
 										{
-											"id": "797a2bb2-6760-4fb1-87b9-dba36d37ac95",
+											"id": "eb8bd67c-5326-4a9a-aae6-3cf769dcbb69",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -526,7 +1065,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						},
@@ -535,7 +1076,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "43dfdb35-34bf-40e9-9ef8-c53d13ca5fa4",
+									"id": "112532ba-8805-43a1-9298-9398201e7b7c",
 									"name": "List links",
 									"request": {
 										"name": "List links",
@@ -607,7 +1148,7 @@
 									},
 									"response": [
 										{
-											"id": "8ec4be32-6a5f-4d1f-9b5e-113c4c068211",
+											"id": "e23b367f-6329-4381-8c82-5c6a7e8e01af",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -682,10 +1223,12 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
-									"id": "6d4d8bcc-a424-42fa-86ca-8a0132975e6a",
+									"id": "b9194d6a-18b8-4f24-9e30-5058c248c915",
 									"name": "Create link",
 									"request": {
 										"name": "Create link",
@@ -697,21 +1240,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "POST",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"targetUrl\": \"<string>\",\n  \"hostname\": \"<string>\",\n  \"slug\": \"<string>\",\n  \"title\": \"<string>\",\n  \"notes\": \"<string>\",\n  \"statusCode\": \"<number>\",\n  \"preserveQueryParams\": \"<boolean>\",\n  \"isActive\": \"<boolean>\"\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "07e5b1dd-64c9-421f-923f-a5241c2f9b82",
+											"id": "e9e10ce3-f447-49d9-a6a8-b0b7f1add51e",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -721,7 +1270,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -743,14 +1295,16 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
 									"name": "{id}",
 									"description": "",
 									"item": [
 										{
-											"id": "f0f0e23c-c6ad-4754-b876-b67e6b479515",
+											"id": "2713bf8c-18a9-4d0c-b9e3-9e1ca2d0018d",
 											"name": "Get link by ID",
 											"request": {
 												"name": "Get link by ID",
@@ -778,7 +1332,7 @@
 											},
 											"response": [
 												{
-													"id": "a118c9c4-b0e8-46fd-8b1d-8d90fae18640",
+													"id": "aac07f05-b200-41ff-beef-a1d05b625a89",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -809,10 +1363,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "987e2b8d-4d04-413a-9fde-430a6c7ee604",
+											"id": "3d12dea1-59eb-4edc-b44c-788056eef1dd",
 											"name": "Update link",
 											"request": {
 												"name": "Update link",
@@ -835,7 +1391,10 @@
 													]
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "PATCH",
 												"body": {
@@ -852,7 +1411,7 @@
 											},
 											"response": [
 												{
-													"id": "c6803619-f392-4c1c-bc41-8dedcf4934c8",
+													"id": "09096525-428d-4c34-b713-0f433a001c3f",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -898,10 +1457,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "65db3a3a-3ee2-47cf-8082-d9dc3d35400b",
+											"id": "1214baed-e29f-45ed-a873-80137e7890a2",
 											"name": "Delete link",
 											"request": {
 												"name": "Delete link",
@@ -929,7 +1490,7 @@
 											},
 											"response": [
 												{
-													"id": "f85a68c3-5bff-4cc5-b307-6b12df564967",
+													"id": "0caf3e15-753f-4756-a9a5-5a3d7617c635",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -960,14 +1521,16 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
 											"name": "stats",
 											"description": "",
 											"item": [
 												{
-													"id": "f3b13fe7-9967-4fe2-822b-1cd9ab2854b8",
+													"id": "e4b3203f-52f0-471a-a06a-9952fcd5c738",
 													"name": "Get link statistics",
 													"request": {
 														"name": "Get link statistics",
@@ -1005,7 +1568,7 @@
 													},
 													"response": [
 														{
-															"id": "80a85bc3-45e5-449a-b194-2983e09abae6",
+															"id": "eccee2e4-04b3-4794-82f3-dc51ffdef7dd",
 															"name": "200",
 															"originalRequest": {
 																"url": {
@@ -1067,7 +1630,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "99fee9e7-1de3-4e05-ae24-bb2b259adc88",
+									"id": "55ab05c1-96b6-4f30-a479-e288f1c517dd",
 									"name": "List domains",
 									"request": {
 										"name": "List domains",
@@ -1084,7 +1647,7 @@
 									},
 									"response": [
 										{
-											"id": "4e6379b7-727b-4c12-8043-4d89b35e75ba",
+											"id": "7150df90-29d7-4347-b4f7-bbe05858e614",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1104,10 +1667,12 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
-									"id": "cc1f2f57-8390-4b41-802b-a3e6b9e5a6f5",
+									"id": "45c9ab08-8ab4-4de1-91d2-92038aa995f4",
 									"name": "Create domain",
 									"request": {
 										"name": "Create domain",
@@ -1119,21 +1684,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "POST",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"hostname\": \"<string>\",\n  \"label\": \"<string>\",\n  \"isPrimary\": \"<boolean>\",\n  \"isActive\": \"<boolean>\",\n  \"rootBehavior\": \"<string>\",\n  \"rootRedirectStatusCode\": \"<number>\",\n  \"rootRedirectTargetUrl\": \"<string>\",\n  \"unknownSlugBehavior\": \"<string>\",\n  \"unknownSlugRedirectStatusCode\": \"<number>\",\n  \"unknownSlugRedirectTargetUrl\": \"<string>\"\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "6b8d660c-6164-455d-b5e8-84b1bfa5bab6",
+											"id": "99414874-ee97-4c2b-a1c5-ceab7b3e091c",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1143,7 +1714,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -1165,14 +1739,16 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
 									"name": "{id}",
 									"description": "",
 									"item": [
 										{
-											"id": "245e90dd-daa0-413b-8c52-c02ecd3b29e5",
+											"id": "22881e71-ef86-458e-b525-30f3c86010ea",
 											"name": "Get domain by ID",
 											"request": {
 												"name": "Get domain by ID",
@@ -1200,7 +1776,7 @@
 											},
 											"response": [
 												{
-													"id": "4dd51f5c-05db-4d54-8abd-ea9e4c0dfaf3",
+													"id": "e869e062-1ff5-42bc-a3b4-e0d17a8ec5ba",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1231,10 +1807,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "c14bbd9a-4df3-4936-a3f6-0dbbed511654",
+											"id": "df489fe7-a3c3-4289-b46b-209aa1e55075",
 											"name": "Update domain",
 											"request": {
 												"name": "Update domain",
@@ -1257,7 +1835,10 @@
 													]
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "PATCH",
 												"body": {
@@ -1274,7 +1855,7 @@
 											},
 											"response": [
 												{
-													"id": "217a0eef-0e56-49af-9f12-949c40a3b941",
+													"id": "3ecdf22c-dbde-44e0-a02f-76a704ae99e4",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1320,10 +1901,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "dc75ca62-3de6-4774-bc78-079c799ab1a8",
+											"id": "1b58d1c0-4ff8-46c7-bf1f-338d2b72d77e",
 											"name": "Delete domain",
 											"request": {
 												"name": "Delete domain",
@@ -1351,7 +1934,7 @@
 											},
 											"response": [
 												{
-													"id": "d71d4030-294b-4e48-acc7-fddc1bc301c2",
+													"id": "4309e5a9-e12c-4085-a1a2-74d0148119aa",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1382,7 +1965,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								}
@@ -1393,7 +1978,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "754b3f6b-f9f3-410a-8d2b-afe0a5b894db",
+									"id": "834ec428-f940-4ec6-ad60-c74805d05744",
 									"name": "Create invite",
 									"request": {
 										"name": "Create invite",
@@ -1405,21 +1990,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "POST",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"email\": \"<email>\",\n  \"expiresInDays\": \"<number>\",\n  \"roleId\": \"<string>\"\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "69f07ce0-4cf1-4821-9d2d-c3efc2235d28",
+											"id": "59ae78de-e6a5-4dcd-bc4c-c4f519936fe1",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1429,7 +2020,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -1451,10 +2045,12 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
-									"id": "7d5c8501-e8c1-454b-8ec0-a749777d8d4d",
+									"id": "385a10ef-a437-4d27-893a-82142d0001cf",
 									"name": "List invites",
 									"request": {
 										"name": "List invites",
@@ -1517,7 +2113,7 @@
 									},
 									"response": [
 										{
-											"id": "ddeda488-7d55-4751-b106-99cc3389489b",
+											"id": "33a8af54-437c-407a-9c1e-438cf2c9d423",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1583,10 +2179,12 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
-									"id": "935f93e3-e936-4e0f-89c7-070df95caa76",
+									"id": "84233eeb-1550-480d-b267-4ec70c892618",
 									"name": "Delete invite",
 									"request": {
 										"name": "Delete invite",
@@ -1598,21 +2196,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "DELETE",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"id\": \"<string>\"\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "0ca1fdfb-03bd-4fd4-aa39-d8c7f39307dc",
+											"id": "77846f15-f602-453b-9458-c8518bd84793",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1622,7 +2226,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "DELETE",
 												"body": {
@@ -1644,14 +2251,16 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
 									"name": "{id}",
 									"description": "",
 									"item": [
 										{
-											"id": "9a8c012b-1828-46fb-b811-4c84b250c15f",
+											"id": "9283c4d8-a7ae-445a-9778-155b46a4f983",
 											"name": "Get invite by ID",
 											"request": {
 												"name": "Get invite by ID",
@@ -1679,7 +2288,7 @@
 											},
 											"response": [
 												{
-													"id": "f773027b-a82c-4cc5-8e79-5e2971461867",
+													"id": "66a027a6-86d0-46c2-9ba8-0201a3578a52",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1710,10 +2319,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "9f6e8311-7e55-442a-828e-426753f2ed26",
+											"id": "ea7ca465-8ca0-4950-99bd-18aecbdfd798",
 											"name": "patch Api Admin Invites By Id",
 											"request": {
 												"name": "patch Api Admin Invites By Id",
@@ -1736,7 +2347,10 @@
 													]
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "PATCH",
 												"body": {
@@ -1753,7 +2367,7 @@
 											},
 											"response": [
 												{
-													"id": "20755b35-876f-42e8-b870-d766290f4ee9",
+													"id": "5f2391db-22b7-431f-b074-57e900e514eb",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1799,7 +2413,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								}
@@ -1810,7 +2426,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "b02c8b58-a201-4ec7-a2d1-3d9b3f19efc9",
+									"id": "07e97b44-a08d-4530-a8a8-d3024d58724f",
 									"name": "List users",
 									"request": {
 										"name": "List users",
@@ -1873,7 +2489,7 @@
 									},
 									"response": [
 										{
-											"id": "03dba566-5b17-46b5-8d02-c9f767643edc",
+											"id": "bd04444b-0cc3-4c98-89e5-4a0d6502f30b",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1939,14 +2555,16 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
 									"name": "{id}",
 									"description": "",
 									"item": [
 										{
-											"id": "daa92ad3-9011-4a33-a2b8-e30689f7e8e4",
+											"id": "4469316b-935c-4196-a87e-c141233bcb8a",
 											"name": "Get user by ID",
 											"request": {
 												"name": "Get user by ID",
@@ -1974,7 +2592,7 @@
 											},
 											"response": [
 												{
-													"id": "c0e1cbf6-af84-417c-b15b-d14a97873294",
+													"id": "fcd9c87b-4a46-4a03-97ec-cf11bd0c2fc1",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2005,10 +2623,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "62a3e73c-d3e3-4350-ab38-13dff7a93068",
+											"id": "50c6f75a-0cd7-427f-b1ab-f3ab0f2e1c7a",
 											"name": "Update user",
 											"request": {
 												"name": "Update user",
@@ -2031,7 +2651,10 @@
 													]
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "PATCH",
 												"body": {
@@ -2048,7 +2671,7 @@
 											},
 											"response": [
 												{
-													"id": "09a152df-3e16-45bf-9778-2607c0f2d0a4",
+													"id": "ed7941c4-dd53-4f63-8682-00ad7ab0db90",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2094,10 +2717,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "0b4181aa-8655-4599-adef-e7e20cec6ae9",
+											"id": "e148d7af-5e5d-44bb-9adf-5b0555ecc901",
 											"name": "Delete user",
 											"request": {
 												"name": "Delete user",
@@ -2125,7 +2750,7 @@
 											},
 											"response": [
 												{
-													"id": "a843319d-8957-41ce-8544-d9def510d601",
+													"id": "d49ed6f8-f578-4900-98bd-29e43894dfcc",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2156,14 +2781,16 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
 											"name": "role",
 											"description": "",
 											"item": [
 												{
-													"id": "b58cfc7f-78b2-4949-a597-cf7a9ff01774",
+													"id": "884b4742-6c7f-44c1-9d91-c3175294800c",
 													"name": "Assign user role",
 													"request": {
 														"name": "Assign user role",
@@ -2206,7 +2833,7 @@
 													},
 													"response": [
 														{
-															"id": "4d7fe731-aee4-4207-9952-2c3b3ce0b2df",
+															"id": "176eccc9-fe19-40f5-bb33-6fcae807793d",
 															"name": "200",
 															"originalRequest": {
 																"url": {
@@ -2273,7 +2900,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "6e359856-49d3-4273-8c77-6c5847c295a0",
+									"id": "10a73e7b-eb48-4cd9-a765-0a5337eb6c85",
 									"name": "List active sessions",
 									"request": {
 										"name": "List active sessions",
@@ -2290,7 +2917,7 @@
 									},
 									"response": [
 										{
-											"id": "075f9415-ac9f-45f7-a569-68abc5c9ad07",
+											"id": "2beaa565-ed7b-425c-b2fa-81e3cb51b5c4",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2310,14 +2937,16 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
 									"name": "revoke",
 									"description": "",
 									"item": [
 										{
-											"id": "3eacbfb4-6494-47f2-a6ff-37e1247ef58a",
+											"id": "b3a11f96-7893-4f66-be9c-6222d2c12ae4",
 											"name": "Revoke a session",
 											"request": {
 												"name": "Revoke a session",
@@ -2329,7 +2958,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -2346,7 +2978,7 @@
 											},
 											"response": [
 												{
-													"id": "63b43137-ce52-4d05-bdea-9c1d0b2eace6",
+													"id": "157e075d-08c6-4394-a36c-06315e2c46fe",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2381,7 +3013,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								},
@@ -2390,7 +3024,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "7fb16c34-aab3-4f0f-a7fe-cb0f5f183c67",
+											"id": "2914a04f-1497-4943-96bc-57b6b556491d",
 											"name": "Revoke all other sessions",
 											"request": {
 												"name": "Revoke all other sessions",
@@ -2407,7 +3041,7 @@
 											},
 											"response": [
 												{
-													"id": "d43afdcd-73a8-41ba-b1c4-1b221f5363ce",
+													"id": "7444b704-6ee1-46c8-b461-8b9c7b53d8a5",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2432,7 +3066,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								},
@@ -2441,7 +3077,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "b1b8bc7e-695b-4eca-8315-a488da4ecc73",
+											"id": "a6237cdc-baaa-4f5b-9b70-12e140720c5a",
 											"name": "Sign out current session",
 											"request": {
 												"name": "Sign out current session",
@@ -2458,7 +3094,7 @@
 											},
 											"response": [
 												{
-													"id": "e6122c79-9623-46f6-b0ed-d258b70fcc4a",
+													"id": "6be8c8b0-ec29-4b30-be4b-52d169f20952",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2478,7 +3114,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								}
@@ -2489,7 +3127,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "c8f02819-d2b6-4c7f-bb0f-9510b37c098a",
+									"id": "48170d2c-1830-4e9f-a667-dfa550730f4d",
 									"name": "List API keys",
 									"request": {
 										"name": "List API keys",
@@ -2543,7 +3181,7 @@
 									},
 									"response": [
 										{
-											"id": "eafd8591-c411-425d-9b17-8a351adab7ee",
+											"id": "8cfd7c7a-0c30-4768-8dc4-098227086996",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2600,10 +3238,12 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
-									"id": "7f28004e-e194-4919-b63b-ec5f447e18ee",
+									"id": "09bb7abc-0744-4cdd-aadc-744000b67aa5",
 									"name": "Create API key",
 									"request": {
 										"name": "Create API key",
@@ -2615,21 +3255,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "POST",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"name\": \"<string>\",\n  \"expiresInDays\": \"<number>\"\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "b674a30d-334f-4196-a59a-507158d9b981",
+											"id": "2bd6cb67-e6df-4e1d-9487-1aa4e99b14cc",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2639,7 +3285,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -2661,14 +3310,16 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
 									"name": "{id}",
 									"description": "",
 									"item": [
 										{
-											"id": "5ebd010c-e7cc-42a2-95bd-dabfda865b49",
+											"id": "2c68c4df-7bc2-4469-bff4-8dda088b70ab",
 											"name": "Update API key",
 											"request": {
 												"name": "Update API key",
@@ -2691,7 +3342,10 @@
 													]
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "PATCH",
 												"body": {
@@ -2708,7 +3362,7 @@
 											},
 											"response": [
 												{
-													"id": "6db19f6e-5e79-445c-9a6e-1192fd5c0c39",
+													"id": "9ecd83c5-95e6-4125-af89-453be054c282",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2754,10 +3408,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "8850435e-0efc-499a-a9c3-a698159836fa",
+											"id": "c43a4ebf-5b61-4a43-aa8c-62616b507905",
 											"name": "Delete API key",
 											"request": {
 												"name": "Delete API key",
@@ -2785,7 +3441,7 @@
 											},
 											"response": [
 												{
-													"id": "1fab1908-c162-4a1e-805e-a21c58fad9f3",
+													"id": "a98aa0f4-e9bd-4f08-81ce-d44b8790c62e",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2816,7 +3472,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								}
@@ -2827,7 +3485,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "bdfb572c-f417-45ef-b0f4-48be9f1219ea",
+									"id": "a51ea4b5-918c-47e8-8b98-3cab22a9a60b",
 									"name": "Suggest a slug from URL",
 									"request": {
 										"name": "Suggest a slug from URL",
@@ -2854,7 +3512,7 @@
 									},
 									"response": [
 										{
-											"id": "ab40acb3-c21a-4d07-87e0-cf34cbbf8f42",
+											"id": "56d704c9-eb49-42c4-9f1f-1997005b462c",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2884,7 +3542,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						},
@@ -2893,7 +3553,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "fe6b19f5-34ce-4e36-ac38-4b113a135b72",
+									"id": "e051b520-16a0-41d7-b7cf-a02214ba3c9f",
 									"name": "List all permissions and groups",
 									"request": {
 										"name": "List all permissions and groups",
@@ -2910,7 +3570,7 @@
 									},
 									"response": [
 										{
-											"id": "40925fcc-d652-4d88-b1ea-34a4f5f8ecfe",
+											"id": "533c666e-02c7-4198-8951-03e0003ee132",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2930,7 +3590,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						},
@@ -2943,7 +3605,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "ce506f18-869d-4a9c-8269-10cfb59a2d12",
+											"id": "9f60c480-64d2-4049-9242-4b853c54cf86",
 											"name": "List assignable roles",
 											"request": {
 												"name": "List assignable roles",
@@ -2960,7 +3622,7 @@
 											},
 											"response": [
 												{
-													"id": "ce806aae-1976-4460-89b5-b7928292d80b",
+													"id": "f9dde411-2b68-4c1f-a214-4a7e71ffbfe3",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2980,12 +3642,14 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										}
 									]
 								},
 								{
-									"id": "b13f52bb-fafc-447d-9547-da04088d51fb",
+									"id": "9b04b760-d27f-49be-a685-0f99cb673cbe",
 									"name": "List roles",
 									"request": {
 										"name": "List roles",
@@ -3030,7 +3694,7 @@
 									},
 									"response": [
 										{
-											"id": "ba7e2659-e899-46a3-ad71-bf8d95da52c7",
+											"id": "af198264-7062-41f6-adb6-42e0751fa123",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3078,10 +3742,12 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
-									"id": "1bad758d-45cd-4d61-ac9f-2f5e3190cbe9",
+									"id": "89a11a72-3ab2-44b0-985c-5b023801b898",
 									"name": "Create role",
 									"request": {
 										"name": "Create role",
@@ -3093,21 +3759,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "POST",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"name\": \"<string>\",\n  \"permissions\": [\n    \"<string>\"\n  ],\n  \"description\": \"<string>\",\n  \"domainScopeIds\": [\n    \"<string>\",\n    \"<string>\"\n  ],\n  \"linkScopeIds\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "223fefc4-dec5-4d2f-be89-877fffdc5ccc",
+											"id": "3ded985f-0981-4aea-91f4-2a180dba64aa",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3117,7 +3789,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -3139,14 +3814,16 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								},
 								{
 									"name": "{id}",
 									"description": "",
 									"item": [
 										{
-											"id": "51847a03-1ee0-4fdf-adbb-19b29643c327",
+											"id": "0bc6fab0-5057-4c8d-8406-290680c67b49",
 											"name": "Get role by ID",
 											"request": {
 												"name": "Get role by ID",
@@ -3174,7 +3851,7 @@
 											},
 											"response": [
 												{
-													"id": "22a352ac-b5c6-4715-b773-109e7adcac14",
+													"id": "816b6e8c-e5d2-4911-8550-c3177e1fb58d",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3205,10 +3882,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "836962f4-74e9-4ed3-8240-768213126015",
+											"id": "5d83b6e2-6185-4a39-a20c-f33b9eaf6284",
 											"name": "Update role",
 											"request": {
 												"name": "Update role",
@@ -3231,7 +3910,10 @@
 													]
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "PATCH",
 												"body": {
@@ -3248,7 +3930,7 @@
 											},
 											"response": [
 												{
-													"id": "742abe9e-9d5b-4468-a0f4-ee9c7067149c",
+													"id": "562b1004-12dd-4ff5-90d5-9917f24847f3",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3294,10 +3976,12 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
+											}
 										},
 										{
-											"id": "0d36b35b-f0d4-46ee-b742-bfb8983633df",
+											"id": "554f9c7f-24c6-4f8d-aa1d-1d430637da48",
 											"name": "Delete role",
 											"request": {
 												"name": "Delete role",
@@ -3325,7 +4009,7 @@
 											},
 											"response": [
 												{
-													"id": "110685f6-03ed-4b51-be1e-50e4bd4e9348",
+													"id": "c3fe2059-1887-4d69-a10f-287b0b528a95",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3356,496 +4040,9 @@
 												}
 											],
 											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
-										}
-									]
-								}
-							]
-						},
-						{
-							"name": "sso-providers",
-							"description": "",
-							"item": [
-								{
-									"name": "public",
-									"description": "",
-									"item": [
-										{
-											"id": "0c5bf851-c52a-4344-adea-06da0ca4751d",
-											"name": "List enabled SSO providers for sign-in",
-											"request": {
-												"name": "List enabled SSO providers for sign-in",
-												"description": {},
-												"url": {
-													"path": ["api", "admin", "sso-providers", "public"],
-													"host": ["{{baseUrl}}"],
-													"query": [],
-													"variable": []
-												},
-												"method": "GET",
-												"body": {},
-												"auth": null
-											},
-											"response": [
-												{
-													"id": "a6396205-0977-4b90-abf3-07911d135f34",
-													"name": "200",
-													"originalRequest": {
-														"url": {
-															"path": [
-																"api",
-																"admin",
-																"sso-providers",
-																"public"
-															],
-															"host": ["{{baseUrl}}"],
-															"query": [],
-															"variable": []
-														},
-														"method": "GET",
-														"body": {}
-													},
-													"status": "OK",
-													"code": 200,
-													"header": [],
-													"cookie": [],
-													"_postman_previewlanguage": "text"
-												}
-											],
-											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
-										}
-									]
-								},
-								{
-									"id": "c98a8970-041e-4f10-840a-21b4595fba61",
-									"name": "List SSO providers",
-									"request": {
-										"name": "List SSO providers",
-										"description": {},
-										"url": {
-											"path": ["api", "admin", "sso-providers"],
-											"host": ["{{baseUrl}}"],
-											"query": [],
-											"variable": []
-										},
-										"method": "GET",
-										"body": {},
-										"auth": null
-									},
-									"response": [
-										{
-											"id": "320b52ab-eb6b-4c69-bb82-da8f553f3e0f",
-											"name": "200",
-											"originalRequest": {
-												"url": {
-													"path": ["api", "admin", "sso-providers"],
-													"host": ["{{baseUrl}}"],
-													"query": [],
-													"variable": []
-												},
-												"method": "GET",
-												"body": {}
-											},
-											"status": "OK",
-											"code": 200,
-											"header": [],
-											"cookie": [],
-											"_postman_previewlanguage": "text"
-										}
-									],
-									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
-								},
-								{
-									"id": "ac191fa0-ff21-4384-a0c8-0c2383f014ae",
-									"name": "Register SSO provider",
-									"request": {
-										"name": "Register SSO provider",
-										"description": {},
-										"url": {
-											"path": ["api", "admin", "sso-providers"],
-											"host": ["{{baseUrl}}"],
-											"query": [],
-											"variable": []
-										},
-										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
-										],
-										"method": "POST",
-										"body": {
-											"mode": "raw",
-											"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"w,|Z'\": \"\"\n  },\n  \"samlConfig\": {\n    \")z\": \"\"\n  }\n}",
-											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+											"protocolProfileBehavior": {
+												"disableBodyPruning": true
 											}
-										},
-										"auth": null
-									},
-									"response": [
-										{
-											"id": "779e6156-69e5-491e-94b2-ea549164e47e",
-											"name": "200",
-											"originalRequest": {
-												"url": {
-													"path": ["api", "admin", "sso-providers"],
-													"host": ["{{baseUrl}}"],
-													"query": [],
-													"variable": []
-												},
-												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
-												],
-												"method": "POST",
-												"body": {
-													"mode": "raw",
-													"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"w,|Z'\": \"\"\n  },\n  \"samlConfig\": {\n    \")z\": \"\"\n  }\n}",
-													"options": {
-														"raw": {
-															"headerFamily": "json",
-															"language": "json"
-														}
-													}
-												}
-											},
-											"status": "OK",
-											"code": 200,
-											"header": [],
-											"cookie": [],
-											"_postman_previewlanguage": "text"
-										}
-									],
-									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
-								},
-								{
-									"name": "{providerId}",
-									"description": "",
-									"item": [
-										{
-											"name": "sp-metadata",
-											"description": "",
-											"item": [
-												{
-													"id": "9496489a-0a90-49fb-9bd7-a28fcfb39310",
-													"name": "Get SAML SP metadata",
-													"request": {
-														"name": "Get SAML SP metadata",
-														"description": {},
-														"url": {
-															"path": [
-																"api",
-																"admin",
-																"sso-providers",
-																":providerId",
-																"sp-metadata"
-															],
-															"host": ["{{baseUrl}}"],
-															"query": [],
-															"variable": [
-																{
-																	"type": "any",
-																	"value": "<string>",
-																	"key": "providerId",
-																	"disabled": false,
-																	"description": {
-																		"content": "(Required) ",
-																		"type": "text/plain"
-																	}
-																}
-															]
-														},
-														"method": "GET",
-														"body": {},
-														"auth": null
-													},
-													"response": [
-														{
-															"id": "754e660c-d5a8-4107-90cb-3429a031797a",
-															"name": "200",
-															"originalRequest": {
-																"url": {
-																	"path": [
-																		"api",
-																		"admin",
-																		"sso-providers",
-																		":providerId",
-																		"sp-metadata"
-																	],
-																	"host": ["{{baseUrl}}"],
-																	"query": [],
-																	"variable": [
-																		{
-																			"disabled": false,
-																			"description": {
-																				"content": "(Required) ",
-																				"type": "text/plain"
-																			},
-																			"type": "any",
-																			"value": "<string>",
-																			"key": "providerId"
-																		}
-																	]
-																},
-																"method": "GET",
-																"body": {}
-															},
-															"status": "OK",
-															"code": 200,
-															"header": [],
-															"cookie": [],
-															"_postman_previewlanguage": "text"
-														}
-													],
-													"event": [],
-													"protocolProfileBehavior": {
-														"disableBodyPruning": true
-													}
-												}
-											]
-										},
-										{
-											"id": "67b8ce51-1e08-49db-952d-b0495a993a56",
-											"name": "Get SSO provider",
-											"request": {
-												"name": "Get SSO provider",
-												"description": {},
-												"url": {
-													"path": [
-														"api",
-														"admin",
-														"sso-providers",
-														":providerId"
-													],
-													"host": ["{{baseUrl}}"],
-													"query": [],
-													"variable": [
-														{
-															"type": "any",
-															"value": "<string>",
-															"key": "providerId",
-															"disabled": false,
-															"description": {
-																"content": "(Required) ",
-																"type": "text/plain"
-															}
-														}
-													]
-												},
-												"method": "GET",
-												"body": {},
-												"auth": null
-											},
-											"response": [
-												{
-													"id": "9176ef9d-3a34-4c5c-ab85-1697d85de1fd",
-													"name": "200",
-													"originalRequest": {
-														"url": {
-															"path": [
-																"api",
-																"admin",
-																"sso-providers",
-																":providerId"
-															],
-															"host": ["{{baseUrl}}"],
-															"query": [],
-															"variable": [
-																{
-																	"disabled": false,
-																	"description": {
-																		"content": "(Required) ",
-																		"type": "text/plain"
-																	},
-																	"type": "any",
-																	"value": "<string>",
-																	"key": "providerId"
-																}
-															]
-														},
-														"method": "GET",
-														"body": {}
-													},
-													"status": "OK",
-													"code": 200,
-													"header": [],
-													"cookie": [],
-													"_postman_previewlanguage": "text"
-												}
-											],
-											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
-										},
-										{
-											"id": "23781d07-ddff-4192-bffb-ba0cc1494771",
-											"name": "Update SSO provider",
-											"request": {
-												"name": "Update SSO provider",
-												"description": {},
-												"url": {
-													"path": [
-														"api",
-														"admin",
-														"sso-providers",
-														":providerId"
-													],
-													"host": ["{{baseUrl}}"],
-													"query": [],
-													"variable": [
-														{
-															"type": "any",
-															"value": "<string>",
-															"key": "providerId",
-															"disabled": false,
-															"description": {
-																"content": "(Required) ",
-																"type": "text/plain"
-															}
-														}
-													]
-												},
-												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
-												],
-												"method": "PATCH",
-												"body": {
-													"mode": "raw",
-													"raw": "{\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"T\": \"\"\n  },\n  \"protocol\": \"<string>\",\n  \"samlConfig\": {\n    \" c6$\\\\:H\": \"\"\n  }\n}",
-													"options": {
-														"raw": {
-															"headerFamily": "json",
-															"language": "json"
-														}
-													}
-												},
-												"auth": null
-											},
-											"response": [
-												{
-													"id": "b54a7c12-cac6-4c59-be3e-f18e99f0c1c4",
-													"name": "200",
-													"originalRequest": {
-														"url": {
-															"path": [
-																"api",
-																"admin",
-																"sso-providers",
-																":providerId"
-															],
-															"host": ["{{baseUrl}}"],
-															"query": [],
-															"variable": [
-																{
-																	"disabled": false,
-																	"description": {
-																		"content": "(Required) ",
-																		"type": "text/plain"
-																	},
-																	"type": "any",
-																	"value": "<string>",
-																	"key": "providerId"
-																}
-															]
-														},
-														"header": [
-															{
-																"key": "Content-Type",
-																"value": "application/json"
-															}
-														],
-														"method": "PATCH",
-														"body": {
-															"mode": "raw",
-															"raw": "{\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"T\": \"\"\n  },\n  \"protocol\": \"<string>\",\n  \"samlConfig\": {\n    \" c6$\\\\:H\": \"\"\n  }\n}",
-															"options": {
-																"raw": {
-																	"headerFamily": "json",
-																	"language": "json"
-																}
-															}
-														}
-													},
-													"status": "OK",
-													"code": 200,
-													"header": [],
-													"cookie": [],
-													"_postman_previewlanguage": "text"
-												}
-											],
-											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
-										},
-										{
-											"id": "bd5cd149-9cb6-46a9-b5d7-eee8025f40c3",
-											"name": "Delete SSO provider",
-											"request": {
-												"name": "Delete SSO provider",
-												"description": {},
-												"url": {
-													"path": [
-														"api",
-														"admin",
-														"sso-providers",
-														":providerId"
-													],
-													"host": ["{{baseUrl}}"],
-													"query": [],
-													"variable": [
-														{
-															"type": "any",
-															"value": "<string>",
-															"key": "providerId",
-															"disabled": false,
-															"description": {
-																"content": "(Required) ",
-																"type": "text/plain"
-															}
-														}
-													]
-												},
-												"method": "DELETE",
-												"body": {},
-												"auth": null
-											},
-											"response": [
-												{
-													"id": "8a12cb6e-ae24-449f-92d9-99333f7c99e9",
-													"name": "200",
-													"originalRequest": {
-														"url": {
-															"path": [
-																"api",
-																"admin",
-																"sso-providers",
-																":providerId"
-															],
-															"host": ["{{baseUrl}}"],
-															"query": [],
-															"variable": [
-																{
-																	"disabled": false,
-																	"description": {
-																		"content": "(Required) ",
-																		"type": "text/plain"
-																	},
-																	"type": "any",
-																	"value": "<string>",
-																	"key": "providerId"
-																}
-															]
-														},
-														"method": "DELETE",
-														"body": {}
-													},
-													"status": "OK",
-													"code": 200,
-													"header": [],
-													"cookie": [],
-													"_postman_previewlanguage": "text"
-												}
-											],
-											"event": [],
-											"protocolProfileBehavior": { "disableBodyPruning": true }
 										}
 									]
 								}
@@ -3862,7 +4059,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "ddf3e42e-e1fc-4fc5-b499-2314d1a07a35",
+									"id": "5a1b2f81-98c4-4344-a469-0d6336cdda7e",
 									"name": "Lookup invite by token",
 									"request": {
 										"name": "Lookup invite by token",
@@ -3890,7 +4087,7 @@
 									},
 									"response": [
 										{
-											"id": "c3f204a6-f616-49b8-a611-b35ea0d3de5c",
+											"id": "9a8457f1-69d8-4058-adbf-9256af5cdf97",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3921,7 +4118,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						}
@@ -3936,7 +4135,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "925c5419-ec61-414c-818b-de0526c5c6b0",
+									"id": "3be059eb-f9e9-40cd-b5fb-d13a4c89e106",
 									"name": "Accept onboarding invite",
 									"request": {
 										"name": "Accept onboarding invite",
@@ -3948,21 +4147,27 @@
 											"variable": []
 										},
 										"header": [
-											{ "key": "Content-Type", "value": "application/json" }
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
 										],
 										"method": "POST",
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"name\": \"<string>\",\n  \"token\": \"<string>\",\n  \"locale\": \"<string>\"\n}",
 											"options": {
-												"raw": { "headerFamily": "json", "language": "json" }
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
 											}
 										},
 										"auth": null
 									},
 									"response": [
 										{
-											"id": "792c7da5-8bd6-42dc-a427-20bac7ec8734",
+											"id": "684659b7-5b8f-45c4-a7a4-046842e58d1c",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3972,7 +4177,10 @@
 													"variable": []
 												},
 												"header": [
-													{ "key": "Content-Type", "value": "application/json" }
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
 												"method": "POST",
 												"body": {
@@ -3994,7 +4202,9 @@
 										}
 									],
 									"event": [],
-									"protocolProfileBehavior": { "disableBodyPruning": true }
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									}
 								}
 							]
 						}
@@ -4004,9 +4214,14 @@
 		}
 	],
 	"event": [],
-	"variable": [{ "key": "baseUrl", "value": "/" }],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "/"
+		}
+	],
 	"info": {
-		"_postman_id": "d1de7cdf-54cc-41c4-9547-813bd4d9c279",
+		"_postman_id": "3d124a4d-1d64-4d37-b65b-e1a0f04effb4",
 		"name": "Shorty Link API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"description": {

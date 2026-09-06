@@ -58,7 +58,7 @@ Shorty Link is designed to be forked and deployed to your own Cloudflare account
 
 8. Open `/admin` on your deployed hostname and create the first admin with a passkey.
 
-9. Optional: after bootstrap, open **Access → SSO** to register an OIDC or SAML provider. Add the callback URL `{origin}/api/auth/sso/callback/{providerId}` or the SAML ACS URL `{origin}/api/auth/sso/saml2/sp/acs/{providerId}` at your identity provider. Configure every email domain that the provider is authorized to assert: Shorty enforces this allowlist for existing accounts, invite claims, and JIT provisioning. `BETTER_AUTH_SECRET` also encrypts stored SSO client secrets. OIDC discovery runs on admin write against the issuer origin only; hydrated endpoints are stored so sign-in does not expand CSRF trust.
+9. Optional: after bootstrap, open **Access → SSO** to register an OIDC or SAML provider. Add the callback URL `{origin}/api/auth/sso/callback/{providerId}` or the SAML ACS URL `{origin}/api/auth/sso/saml2/sp/acs/{providerId}` at your identity provider. Configure every email domain that the provider is authorized to assert: Shorty enforces this allowlist for existing accounts, invite claims, and JIT provisioning. SAML providers must map an IdP attribute that asserts the email is verified; IdP-initiated SAML responses additionally require the provider's **Allow IdP-initiated sign-in** setting. `BETTER_AUTH_SECRET` also encrypts stored SSO client secrets. OIDC discovery runs on admin write against the issuer origin only; hydrated endpoints are stored so sign-in does not expand CSRF trust.
 
 ## Automated Deploys
 
