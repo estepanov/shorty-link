@@ -46,15 +46,13 @@ export function isSsoEnforcedForEmail(
 	);
 }
 
-export function matchingSsoProvider(
+export function matchingSsoProviders(
 	catalog: SsoPublicCatalog,
 	email: string,
-): SsoPublicProvider | null {
-	return (
-		catalog.providers.find((provider) =>
-			domainMatches(email, provider.domains),
-		) ?? null
-	);
+): SsoPublicProvider[] {
+	return catalog.providers
+		.filter((provider) => domainMatches(email, provider.domains))
+		.toSorted((left, right) => left.providerId.localeCompare(right.providerId));
 }
 
 export function visibleSsoProviders(

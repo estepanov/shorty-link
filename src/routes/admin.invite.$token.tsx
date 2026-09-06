@@ -22,6 +22,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, defaultLocale, supportedLocales } from "@/lib/i18n";
+import type { SsoPublicProvider } from "@/lib/sso-catalog";
 import { mapSsoErrorCode, parseSsoCallbackError } from "@/lib/sso-errors";
 
 export const Route = createFileRoute("/admin/invite/$token")({
@@ -35,9 +36,8 @@ function Invite() {
 	const { data: session } = authClient.useSession();
 	const [email, setEmail] = useState<string | null>(null);
 	const [sso, setSso] = useState<{
-		displayName: string | null;
 		enforced: boolean;
-		providerId: string | null;
+		providers: SsoPublicProvider[];
 	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
@@ -100,12 +100,7 @@ function Invite() {
 		);
 	}, [session, token]);
 
-	async function signInSso() {
-		const providerId = sso?.providerId;
-		if (!providerId) {
-			return;
-		}
-
+	async function signInSso(providerId: string) {
 		setBusy(true);
 		setError(null);
 		try {
@@ -161,7 +156,7 @@ function Invite() {
 							void form.handleSubmit();
 						}}
 					>
-						{sso?.enforced && sso.providerId ? null : (
+						{sso?.enforced && sso.providers.length > 0 ? null : (
 							<>
 								<form.Field name="name">
 									{(field) => (
@@ -201,16 +196,19 @@ function Invite() {
 								</form.Field>
 							</>
 						)}
-						{sso?.enforced && sso.providerId ? (
-							<Button
-								disabled={busy || !email}
-								onClick={() => {
-									void signInSso();
-								}}
-								type="button"
-							>
-								{t("sso.signInWith")} {sso.displayName ?? sso.providerId}
-							</Button>
+						{sso?.enforced && sso.providers.length > 0 ? (
+							sso.providers.map((provider) => (
+								<Button
+									disabled={busy || !email}
+									key={provider.providerId}
+									onClick={() => {
+										void signInSso(provider.providerId);
+									}}
+									type="button"
+								>
+									{t("sso.signInWith")} {provider.displayName}
+								</Button>
+							))
 						) : (
 							<Button disabled={!email} type="submit">
 								{t("auth.addPasskey")}

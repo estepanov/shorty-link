@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { SsoPublicCatalog } from "../src/lib/sso-catalog";
 import {
 	isSsoEnforcedForEmail,
-	matchingSsoProvider,
+	matchingSsoProviders,
 	visibleSsoProviders,
 } from "../src/lib/sso-catalog";
 
@@ -28,11 +28,26 @@ const catalog: SsoPublicCatalog = {
 };
 
 describe("sso catalog", () => {
-	it("matches the first provider whose domain includes the email", () => {
-		expect(matchingSsoProvider(catalog, "ada@acme.com")?.providerId).toBe(
-			"okta",
-		);
-		expect(matchingSsoProvider(catalog, "ada@other.com")).toBeNull();
+	it("returns every matching provider in deterministic order", () => {
+		const overlappingCatalog: SsoPublicCatalog = {
+			hasEnforcedDomain: true,
+			providers: [
+				...catalog.providers,
+				{
+					displayName: "Acme Backup",
+					domains: ["acme.com"],
+					enforceSso: true,
+					protocol: "saml",
+					providerId: "backup",
+				},
+			],
+		};
+		expect(
+			matchingSsoProviders(overlappingCatalog, "ada@acme.com").map(
+				(provider) => provider.providerId,
+			),
+		).toEqual(["backup", "okta"]);
+		expect(matchingSsoProviders(catalog, "ada@other.com")).toEqual([]);
 	});
 
 	it("hides enforced providers until the email domain is known", () => {

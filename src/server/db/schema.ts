@@ -336,9 +336,10 @@ export const ssoProvider = sqliteTable(
 		domain: text("domain").notNull(),
 		oidcConfig: text("oidcConfig"),
 		samlConfig: text("samlConfig"),
-		userId: text("userId")
-			.notNull()
-			.references(() => user.id, { onDelete: "restrict" }),
+		// Better Auth requires this registration actor ID. Keep it as audit
+		// attribution rather than a lifecycle FK: global SSO must survive an
+		// administrator's deletion.
+		userId: text("userId").notNull(),
 		providerId: text("providerId").notNull().unique(),
 		organizationId: text("organizationId"),
 	},

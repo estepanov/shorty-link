@@ -35,10 +35,8 @@ export const ssoSamlConfigBody = t.Object({
 	privateKey: t.Optional(t.String()),
 });
 
-export const ssoProviderBody = t.Object({
+const ssoProviderCommonBody = {
 	allowIdpInitiated: t.Optional(t.Boolean()),
-	clientId: t.Optional(t.String()),
-	clientSecret: t.Optional(t.String()),
 	defaultRoleId: t.Optional(t.Union([t.String(), t.Null()])),
 	displayName: t.String({ minLength: 1 }),
 	domain: t.String({ minLength: 1 }),
@@ -48,18 +46,78 @@ export const ssoProviderBody = t.Object({
 	groupRoleMappings: t.Optional(t.Array(ssoGroupMappingBody)),
 	issuer: t.String({ minLength: 1 }),
 	jitEnabled: t.Optional(t.Boolean()),
-	oidcConfig: t.Optional(ssoOidcConfigBody),
-	protocol: t.Union([t.Literal("oidc"), t.Literal("saml")]),
 	providerId: t.String({ minLength: 1 }),
-	samlConfig: t.Optional(ssoSamlConfigBody),
-});
+};
 
-export const ssoProviderPatchBody = t.Partial(
-	t.Omit(ssoProviderBody, ["providerId"]),
+const ssoProviderPatchCommonBody = {
+	allowIdpInitiated: t.Optional(t.Boolean()),
+	defaultRoleId: t.Optional(t.Union([t.String(), t.Null()])),
+	displayName: t.Optional(t.String({ minLength: 1 })),
+	domain: t.Optional(t.String({ minLength: 1 })),
+	enabled: t.Optional(t.Boolean()),
+	enforceSso: t.Optional(t.Boolean()),
+	groupClaim: t.Optional(t.String()),
+	groupRoleMappings: t.Optional(t.Array(ssoGroupMappingBody)),
+	issuer: t.Optional(t.String({ minLength: 1 })),
+	jitEnabled: t.Optional(t.Boolean()),
+};
+
+export const ssoOidcProviderBody = t.Object(
+	{
+		...ssoProviderCommonBody,
+		clientId: t.String({ minLength: 1 }),
+		clientSecret: t.String({ minLength: 1 }),
+		oidcConfig: t.Optional(ssoOidcConfigBody),
+		protocol: t.Literal("oidc"),
+	},
+	{ additionalProperties: false },
 );
+
+export const ssoSamlProviderBody = t.Object(
+	{
+		...ssoProviderCommonBody,
+		protocol: t.Literal("saml"),
+		samlConfig: ssoSamlConfigBody,
+	},
+	{ additionalProperties: false },
+);
+
+export const ssoProviderBody = t.Union([
+	ssoOidcProviderBody,
+	ssoSamlProviderBody,
+]);
+
+export const ssoOidcProviderPatchBody = t.Object(
+	{
+		...ssoProviderPatchCommonBody,
+		clientId: t.Optional(t.String({ minLength: 1 })),
+		clientSecret: t.Optional(t.String()),
+		oidcConfig: t.Optional(ssoOidcConfigBody),
+		protocol: t.Literal("oidc"),
+	},
+	{ additionalProperties: false },
+);
+
+export const ssoSamlProviderPatchBody = t.Object(
+	{
+		...ssoProviderPatchCommonBody,
+		protocol: t.Literal("saml"),
+		samlConfig: t.Optional(ssoSamlConfigBody),
+	},
+	{ additionalProperties: false },
+);
+
+export const ssoProviderPatchBody = t.Union([
+	ssoOidcProviderPatchBody,
+	ssoSamlProviderPatchBody,
+]);
 
 export type SsoGroupRoleMapping = Static<typeof ssoGroupMappingBody>;
 export type SsoOidcWriteConfig = Static<typeof ssoOidcConfigBody>;
+export type SsoOidcProviderPatch = Static<typeof ssoOidcProviderPatchBody>;
+export type SsoOidcProviderWrite = Static<typeof ssoOidcProviderBody>;
 export type SsoProviderPatch = Static<typeof ssoProviderPatchBody>;
 export type SsoProviderWrite = Static<typeof ssoProviderBody>;
+export type SsoSamlProviderPatch = Static<typeof ssoSamlProviderPatchBody>;
+export type SsoSamlProviderWrite = Static<typeof ssoSamlProviderBody>;
 export type SsoSamlWriteConfig = Static<typeof ssoSamlConfigBody>;

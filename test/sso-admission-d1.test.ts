@@ -127,7 +127,7 @@ describe("D1 SSO admission persistence", () => {
 		const [member] = await db.select().from(user).where(eq(user.id, "member"));
 		expect(acceptedInvite).toMatchObject({
 			acceptedAt: expect.any(Number),
-			ssoClaimId: expect.any(String),
+			ssoClaimId: "member",
 		});
 		expect(member).toMatchObject({
 			invitedBy: "owner",
@@ -172,7 +172,6 @@ describe("D1 SSO admission persistence", () => {
 			.update(adminInvites)
 			.set({
 				acceptedAt: Date.now(),
-				ssoClaimId: "competing-callback",
 			})
 			.where(eq(adminInvites.id, "invite"));
 
@@ -186,7 +185,7 @@ describe("D1 SSO admission persistence", () => {
 			.where(eq(adminInvites.id, "invite"));
 		expect(invite).toMatchObject({
 			acceptedAt: expect.any(Number),
-			ssoClaimId: "competing-callback",
+			ssoClaimId: null,
 		});
 		expect(
 			await db.select().from(user).where(eq(user.id, "member")),

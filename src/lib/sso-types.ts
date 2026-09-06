@@ -1,18 +1,26 @@
 import type { SsoProtocol, SsoPublicProvider } from "./sso-catalog";
 import type {
 	SsoGroupRoleMapping,
+	SsoOidcProviderPatch,
+	SsoOidcProviderWrite,
 	SsoOidcWriteConfig,
 	SsoProviderPatch,
 	SsoProviderWrite,
+	SsoSamlProviderPatch,
+	SsoSamlProviderWrite,
 	SsoSamlWriteConfig,
 } from "./sso-contract";
 
 export type {
 	SsoGroupRoleMapping,
+	SsoOidcProviderPatch,
+	SsoOidcProviderWrite,
 	SsoOidcWriteConfig,
 	SsoProtocol,
 	SsoProviderPatch,
 	SsoProviderWrite,
+	SsoSamlProviderPatch,
+	SsoSamlProviderWrite,
 	SsoSamlWriteConfig,
 };
 

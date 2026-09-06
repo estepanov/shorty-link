@@ -8,9 +8,13 @@ import { inArray } from "drizzle-orm";
 import type {
 	SsoAdminProvider,
 	SsoOidcReadConfig,
+	SsoOidcProviderPatch,
+	SsoOidcProviderWrite,
 	SsoProviderPatch,
 	SsoProviderWrite,
 	SsoSamlReadConfig,
+	SsoSamlProviderPatch,
+	SsoSamlProviderWrite,
 } from "@/lib/sso-types";
 import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "@/lib/sso-types";
 import {
@@ -19,11 +23,10 @@ import {
 } from "../auth/oidc-endpoint-security";
 import { getAuthSecret } from "../auth/secret";
 import {
-	decryptSsoConfigJson,
-	encryptSsoConfigJson,
-	redactSsoConfigJson,
-	ssoConfigHasSecret,
-} from "../auth/sso-secrets";
+	decodeSsoConfigJson,
+	encodeSsoConfigJson,
+} from "../auth/sso-config-codec";
+import { redactSsoConfigJson, ssoConfigHasSecret } from "../auth/sso-secrets";
 import type { AppDb } from "../db/client";
 import {
 	roles,
@@ -220,7 +223,7 @@ export async function persistConfigJson(
 	if (!json) {
 		return null;
 	}
-	return encryptSsoConfigJson(json, getAuthSecret(request));
+	return encodeSsoConfigJson(json, getAuthSecret(request));
 }
 
 export async function readConfigJson(
@@ -230,11 +233,11 @@ export async function readConfigJson(
 	if (!json) {
 		return null;
 	}
-	return decryptSsoConfigJson(json, getAuthSecret(request));
+	return decodeSsoConfigJson(json, getAuthSecret(request));
 }
 
 async function hydrateOidcConfig(
-	input: SsoProviderWrite | SsoProviderPatch,
+	input: SsoOidcProviderWrite | SsoOidcProviderPatch,
 	issuer: string,
 ) {
 	const allowIdpInitiated = input.allowIdpInitiated ?? false;
@@ -352,7 +355,7 @@ export function externalIdentityAuthority(
 }
 
 export async function buildOidcJson(
-	input: SsoProviderWrite | SsoProviderPatch,
+	input: SsoOidcProviderWrite | SsoOidcProviderPatch,
 	issuer: string,
 	currentJson: string | null,
 ) {
@@ -369,22 +372,13 @@ export async function buildOidcJson(
 		typeof current?.skipDiscovery === "boolean"
 			? current.skipDiscovery
 			: undefined;
-	const oidcConfig = {
-		authorizationEndpoint:
-			input.oidcConfig?.authorizationEndpoint ??
-			configString(current, "authorizationEndpoint"),
-		discoveryEndpoint:
-			input.oidcConfig?.discoveryEndpoint ??
-			configString(current, "discoveryEndpoint"),
-		jwksEndpoint:
-			input.oidcConfig?.jwksEndpoint ?? configString(current, "jwksEndpoint"),
-		skipDiscovery:
-			input.oidcConfig?.skipDiscovery ?? currentSkipDiscovery ?? false,
-		tokenEndpoint:
-			input.oidcConfig?.tokenEndpoint ?? configString(current, "tokenEndpoint"),
-		userInfoEndpoint:
-			input.oidcConfig?.userInfoEndpoint ??
-			configString(current, "userInfoEndpoint"),
+	const oidcConfig = input.oidcConfig ?? {
+		authorizationEndpoint: configString(current, "authorizationEndpoint"),
+		discoveryEndpoint: configString(current, "discoveryEndpoint"),
+		jwksEndpoint: configString(current, "jwksEndpoint"),
+		skipDiscovery: currentSkipDiscovery ?? false,
+		tokenEndpoint: configString(current, "tokenEndpoint"),
+		userInfoEndpoint: configString(current, "userInfoEndpoint"),
 	};
 	const hydrated = await hydrateOidcConfig(
 		{
@@ -404,12 +398,11 @@ export async function buildOidcJson(
 }
 
 export async function buildSamlJson(
-	input: SsoProviderWrite | SsoProviderPatch,
+	input: SsoSamlProviderWrite | SsoSamlProviderPatch,
 	issuer: string,
 	currentJson: string | null,
 ) {
 	const current = parseConfigRecord(currentJson);
-	const currentIdpMetadata = nestedConfig(current, "idpMetadata");
 	const currentMapping = nestedConfig(current, "mapping");
 	const requestedMapping = input.samlConfig?.mapping;
 	const mapping = {
@@ -426,17 +419,25 @@ export async function buildSamlJson(
 			configString(currentMapping, "name")?.trim() ||
 			DEFAULT_SAML_ATTRIBUTE_MAPPING.name,
 	};
-	const record: Record<string, unknown> = {
-		...(current ?? {}),
-		callbackUrl: "/admin",
-		issuer,
-		...(input.samlConfig ?? {}),
-		idpMetadata: {
-			...(currentIdpMetadata ?? {}),
-			...(input.samlConfig?.idpMetadata ?? {}),
-		},
-		mapping,
-	};
+	const requested = input.samlConfig;
+	const existingPrivateKey = configString(current, "privateKey");
+	const record: Record<string, unknown> = requested
+		? {
+				...requested,
+				callbackUrl: "/admin",
+				idpMetadata: requested.idpMetadata ?? {},
+				issuer,
+				mapping,
+				privateKey:
+					(requested.privateKey?.trim() ? requested.privateKey : undefined) ??
+					existingPrivateKey,
+			}
+		: {
+				...(current ?? {}),
+				callbackUrl: "/admin",
+				issuer,
+				mapping,
+			};
 	assertSamlConfig(record);
 	return JSON.stringify(record);
 }

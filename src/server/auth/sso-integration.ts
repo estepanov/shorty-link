@@ -1,4 +1,5 @@
 import { sso } from "@better-auth/sso";
+import type { BetterAuthOptions } from "better-auth";
 
 import type { AppDb } from "../db/client";
 import {
@@ -7,20 +8,21 @@ import {
 	prepareSsoAdmission,
 } from "../services/sso-provisioning";
 
-type SsoValidationInput = {
-	source: {
-		action: string;
-		method: string;
-		sso?: {
-			profile?: Record<string, unknown> | null;
-			providerId?: string;
-		};
-	};
-	user: {
-		email?: unknown;
-		emailVerified?: unknown;
-	};
-};
+type UserOptions = NonNullable<BetterAuthOptions["user"]>;
+type SsoValidationInput = Parameters<
+	NonNullable<UserOptions["validateUserInfo"]>
+>[0];
+type DatabaseHooks = NonNullable<BetterAuthOptions["databaseHooks"]>;
+type AccountCreateBeforeInput = Parameters<
+	NonNullable<
+		NonNullable<NonNullable<DatabaseHooks["account"]>["create"]>["before"]
+	>
+>[0];
+type UserCreateBeforeInput = Parameters<
+	NonNullable<
+		NonNullable<NonNullable<DatabaseHooks["user"]>["create"]>["before"]
+	>
+>[0];
 
 type AdmissionState =
 	| { status: "empty" }
@@ -28,10 +30,18 @@ type AdmissionState =
 	| { status: "consumed" };
 
 function createAdmissionCoordinator(db: AppDb) {
-	let state: AdmissionState = { status: "empty" };
+	const states = new Map<string, AdmissionState>();
+	let activeKey: string | null = null;
+	const keyFor = (providerId: string, email: string) =>
+		`${providerId}\0${email.trim().toLowerCase()}`;
 
 	const match = (providerId: string, email?: string) => {
-		if (state.status !== "prepared") {
+		const key = email === undefined ? activeKey : keyFor(providerId, email);
+		if (!key) {
+			return null;
+		}
+		const state = states.get(key);
+		if (!state || state.status !== "prepared") {
 			return null;
 		}
 		const prepared = state.prepared;
@@ -44,7 +54,11 @@ function createAdmissionCoordinator(db: AppDb) {
 		return prepared;
 	};
 	const matchEmail = (email: string) => {
-		if (state.status !== "prepared") {
+		if (!activeKey) {
+			return null;
+		}
+		const state = states.get(activeKey);
+		if (!state || state.status !== "prepared") {
 			return null;
 		}
 		return state.prepared.email === email.trim().toLowerCase()
@@ -54,13 +68,18 @@ function createAdmissionCoordinator(db: AppDb) {
 
 	return {
 		async prepare(input: SsoValidationInput) {
-			if (state.status !== "empty") {
-				throw new Error("errors.ssoNotProvisioned");
-			}
 			const providerId = input.source.sso?.providerId;
 			const email =
 				typeof input.user.email === "string" ? input.user.email : "";
 			if (!providerId) {
+				throw new Error("errors.ssoNotProvisioned");
+			}
+			const key = keyFor(providerId, email);
+			const existingState = states.get(key);
+			if (existingState?.status === "prepared") {
+				return;
+			}
+			if (existingState || (activeKey !== null && activeKey !== key)) {
 				throw new Error("errors.ssoNotProvisioned");
 			}
 			const prepared = await prepareSsoAdmission(db, {
@@ -76,7 +95,8 @@ function createAdmissionCoordinator(db: AppDb) {
 			if (isNewUser !== isNewUserDecision) {
 				throw new Error("errors.ssoNotProvisioned");
 			}
-			state = { prepared, status: "prepared" };
+			activeKey = key;
+			states.set(key, { prepared, status: "prepared" });
 		},
 		match,
 		matchEmail,
@@ -85,7 +105,8 @@ function createAdmissionCoordinator(db: AppDb) {
 			if (!prepared) {
 				throw new Error("errors.ssoNotProvisioned");
 			}
-			state = { status: "consumed" };
+			const key = keyFor(providerId, email);
+			states.set(key, { status: "consumed" });
 			return prepared;
 		},
 	};
@@ -98,7 +119,7 @@ export function createSsoIntegration(
 	const admission = createAdmissionCoordinator(db);
 
 	return {
-		async accountCreateBefore(newAccount: { providerId: string }) {
+		async accountCreateBefore(newAccount: AccountCreateBeforeInput) {
 			const prepared = admission.match(newAccount.providerId);
 			if (!prepared) {
 				return;
@@ -138,7 +159,7 @@ export function createSsoIntegration(
 				return { error: message, errorDescription: message };
 			}
 		},
-		async userCreateBefore(newUser: { email: string }) {
+		async userCreateBefore(newUser: UserCreateBeforeInput) {
 			const prepared = admission.matchEmail(newUser.email);
 			if (!prepared || prepared.decision.action === "sign_in") {
 				return;

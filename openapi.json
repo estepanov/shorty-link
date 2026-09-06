@@ -80,233 +80,410 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"type": "object",
-								"required": [
-									"displayName",
-									"domain",
-									"issuer",
-									"protocol",
-									"providerId"
-								],
-								"properties": {
-									"allowIdpInitiated": { "type": "boolean" },
-									"clientId": { "type": "string" },
-									"clientSecret": { "type": "string" },
-									"defaultRoleId": {
-										"anyOf": [{ "type": "string" }, { "type": "null" }]
-									},
-									"displayName": { "minLength": 1, "type": "string" },
-									"domain": { "minLength": 1, "type": "string" },
-									"enabled": { "type": "boolean" },
-									"enforceSso": { "type": "boolean" },
-									"groupClaim": { "type": "string" },
-									"groupRoleMappings": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"required": ["group", "roleId"],
-											"properties": {
-												"group": { "minLength": 1, "type": "string" },
-												"roleId": { "minLength": 1, "type": "string" }
-											}
-										}
-									},
-									"issuer": { "minLength": 1, "type": "string" },
-									"jitEnabled": { "type": "boolean" },
-									"oidcConfig": {
+								"anyOf": [
+									{
+										"additionalProperties": false,
 										"type": "object",
+										"required": [
+											"displayName",
+											"domain",
+											"issuer",
+											"providerId",
+											"clientId",
+											"clientSecret",
+											"protocol"
+										],
 										"properties": {
-											"authorizationEndpoint": { "type": "string" },
-											"discoveryEndpoint": { "type": "string" },
-											"jwksEndpoint": { "type": "string" },
-											"skipDiscovery": { "type": "boolean" },
-											"tokenEndpoint": { "type": "string" },
-											"userInfoEndpoint": { "type": "string" }
-										}
-									},
-									"protocol": {
-										"anyOf": [
-											{ "const": "oidc", "type": "string" },
-											{ "const": "saml", "type": "string" }
-										]
-									},
-									"providerId": { "minLength": 1, "type": "string" },
-									"samlConfig": {
-										"type": "object",
-										"properties": {
-											"entryPoint": { "type": "string" },
-											"idpMetadata": {
-												"type": "object",
-												"properties": {
-													"entityID": { "type": "string" },
-													"metadata": { "type": "string" }
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
 												}
 											},
-											"mapping": {
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"providerId": { "minLength": 1, "type": "string" },
+											"clientId": { "minLength": 1, "type": "string" },
+											"clientSecret": { "minLength": 1, "type": "string" },
+											"oidcConfig": {
 												"type": "object",
 												"properties": {
-													"email": { "minLength": 1, "type": "string" },
-													"emailVerified": { "minLength": 1, "type": "string" },
-													"name": { "minLength": 1, "type": "string" }
+													"authorizationEndpoint": { "type": "string" },
+													"discoveryEndpoint": { "type": "string" },
+													"jwksEndpoint": { "type": "string" },
+													"skipDiscovery": { "type": "boolean" },
+													"tokenEndpoint": { "type": "string" },
+													"userInfoEndpoint": { "type": "string" }
+												}
+											},
+											"protocol": { "const": "oidc", "type": "string" }
+										}
+									},
+									{
+										"additionalProperties": false,
+										"type": "object",
+										"required": [
+											"displayName",
+											"domain",
+											"issuer",
+											"providerId",
+											"protocol",
+											"samlConfig"
+										],
+										"properties": {
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
+												}
+											},
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"providerId": { "minLength": 1, "type": "string" },
+											"protocol": { "const": "saml", "type": "string" },
+											"samlConfig": {
+												"type": "object",
+												"properties": {
+													"cert": {
+														"anyOf": [
+															{ "type": "string" },
+															{ "type": "array", "items": { "type": "string" } }
+														]
+													},
+													"entryPoint": { "type": "string" },
+													"idpMetadata": {
+														"type": "object",
+														"properties": {
+															"cert": {
+																"anyOf": [
+																	{ "type": "string" },
+																	{
+																		"type": "array",
+																		"items": { "type": "string" }
+																	}
+																]
+															},
+															"entityID": { "type": "string" },
+															"metadata": { "type": "string" }
+														}
+													},
+													"mapping": {
+														"type": "object",
+														"properties": {
+															"email": { "minLength": 1, "type": "string" },
+															"emailVerified": {
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": { "minLength": 1, "type": "string" }
+														}
+													},
+													"privateKey": { "type": "string" }
 												}
 											}
 										}
 									}
-								}
+								]
 							}
 						},
 						"multipart/form-data": {
 							"schema": {
-								"type": "object",
-								"required": [
-									"displayName",
-									"domain",
-									"issuer",
-									"protocol",
-									"providerId"
-								],
-								"properties": {
-									"allowIdpInitiated": { "type": "boolean" },
-									"clientId": { "type": "string" },
-									"clientSecret": { "type": "string" },
-									"defaultRoleId": {
-										"anyOf": [{ "type": "string" }, { "type": "null" }]
-									},
-									"displayName": { "minLength": 1, "type": "string" },
-									"domain": { "minLength": 1, "type": "string" },
-									"enabled": { "type": "boolean" },
-									"enforceSso": { "type": "boolean" },
-									"groupClaim": { "type": "string" },
-									"groupRoleMappings": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"required": ["group", "roleId"],
-											"properties": {
-												"group": { "minLength": 1, "type": "string" },
-												"roleId": { "minLength": 1, "type": "string" }
-											}
-										}
-									},
-									"issuer": { "minLength": 1, "type": "string" },
-									"jitEnabled": { "type": "boolean" },
-									"oidcConfig": {
+								"anyOf": [
+									{
+										"additionalProperties": false,
 										"type": "object",
+										"required": [
+											"displayName",
+											"domain",
+											"issuer",
+											"providerId",
+											"clientId",
+											"clientSecret",
+											"protocol"
+										],
 										"properties": {
-											"authorizationEndpoint": { "type": "string" },
-											"discoveryEndpoint": { "type": "string" },
-											"jwksEndpoint": { "type": "string" },
-											"skipDiscovery": { "type": "boolean" },
-											"tokenEndpoint": { "type": "string" },
-											"userInfoEndpoint": { "type": "string" }
-										}
-									},
-									"protocol": {
-										"anyOf": [
-											{ "const": "oidc", "type": "string" },
-											{ "const": "saml", "type": "string" }
-										]
-									},
-									"providerId": { "minLength": 1, "type": "string" },
-									"samlConfig": {
-										"type": "object",
-										"properties": {
-											"entryPoint": { "type": "string" },
-											"idpMetadata": {
-												"type": "object",
-												"properties": {
-													"entityID": { "type": "string" },
-													"metadata": { "type": "string" }
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
 												}
 											},
-											"mapping": {
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"providerId": { "minLength": 1, "type": "string" },
+											"clientId": { "minLength": 1, "type": "string" },
+											"clientSecret": { "minLength": 1, "type": "string" },
+											"oidcConfig": {
 												"type": "object",
 												"properties": {
-													"email": { "minLength": 1, "type": "string" },
-													"emailVerified": { "minLength": 1, "type": "string" },
-													"name": { "minLength": 1, "type": "string" }
+													"authorizationEndpoint": { "type": "string" },
+													"discoveryEndpoint": { "type": "string" },
+													"jwksEndpoint": { "type": "string" },
+													"skipDiscovery": { "type": "boolean" },
+													"tokenEndpoint": { "type": "string" },
+													"userInfoEndpoint": { "type": "string" }
+												}
+											},
+											"protocol": { "const": "oidc", "type": "string" }
+										}
+									},
+									{
+										"additionalProperties": false,
+										"type": "object",
+										"required": [
+											"displayName",
+											"domain",
+											"issuer",
+											"providerId",
+											"protocol",
+											"samlConfig"
+										],
+										"properties": {
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
+												}
+											},
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"providerId": { "minLength": 1, "type": "string" },
+											"protocol": { "const": "saml", "type": "string" },
+											"samlConfig": {
+												"type": "object",
+												"properties": {
+													"cert": {
+														"anyOf": [
+															{ "type": "string" },
+															{ "type": "array", "items": { "type": "string" } }
+														]
+													},
+													"entryPoint": { "type": "string" },
+													"idpMetadata": {
+														"type": "object",
+														"properties": {
+															"cert": {
+																"anyOf": [
+																	{ "type": "string" },
+																	{
+																		"type": "array",
+																		"items": { "type": "string" }
+																	}
+																]
+															},
+															"entityID": { "type": "string" },
+															"metadata": { "type": "string" }
+														}
+													},
+													"mapping": {
+														"type": "object",
+														"properties": {
+															"email": { "minLength": 1, "type": "string" },
+															"emailVerified": {
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": { "minLength": 1, "type": "string" }
+														}
+													},
+													"privateKey": { "type": "string" }
 												}
 											}
 										}
 									}
-								}
+								]
 							}
 						},
 						"text/plain": {
 							"schema": {
-								"type": "object",
-								"required": [
-									"displayName",
-									"domain",
-									"issuer",
-									"protocol",
-									"providerId"
-								],
-								"properties": {
-									"allowIdpInitiated": { "type": "boolean" },
-									"clientId": { "type": "string" },
-									"clientSecret": { "type": "string" },
-									"defaultRoleId": {
-										"anyOf": [{ "type": "string" }, { "type": "null" }]
-									},
-									"displayName": { "minLength": 1, "type": "string" },
-									"domain": { "minLength": 1, "type": "string" },
-									"enabled": { "type": "boolean" },
-									"enforceSso": { "type": "boolean" },
-									"groupClaim": { "type": "string" },
-									"groupRoleMappings": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"required": ["group", "roleId"],
-											"properties": {
-												"group": { "minLength": 1, "type": "string" },
-												"roleId": { "minLength": 1, "type": "string" }
-											}
-										}
-									},
-									"issuer": { "minLength": 1, "type": "string" },
-									"jitEnabled": { "type": "boolean" },
-									"oidcConfig": {
+								"anyOf": [
+									{
+										"additionalProperties": false,
 										"type": "object",
+										"required": [
+											"displayName",
+											"domain",
+											"issuer",
+											"providerId",
+											"clientId",
+											"clientSecret",
+											"protocol"
+										],
 										"properties": {
-											"authorizationEndpoint": { "type": "string" },
-											"discoveryEndpoint": { "type": "string" },
-											"jwksEndpoint": { "type": "string" },
-											"skipDiscovery": { "type": "boolean" },
-											"tokenEndpoint": { "type": "string" },
-											"userInfoEndpoint": { "type": "string" }
-										}
-									},
-									"protocol": {
-										"anyOf": [
-											{ "const": "oidc", "type": "string" },
-											{ "const": "saml", "type": "string" }
-										]
-									},
-									"providerId": { "minLength": 1, "type": "string" },
-									"samlConfig": {
-										"type": "object",
-										"properties": {
-											"entryPoint": { "type": "string" },
-											"idpMetadata": {
-												"type": "object",
-												"properties": {
-													"entityID": { "type": "string" },
-													"metadata": { "type": "string" }
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
 												}
 											},
-											"mapping": {
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"providerId": { "minLength": 1, "type": "string" },
+											"clientId": { "minLength": 1, "type": "string" },
+											"clientSecret": { "minLength": 1, "type": "string" },
+											"oidcConfig": {
 												"type": "object",
 												"properties": {
-													"email": { "minLength": 1, "type": "string" },
-													"emailVerified": { "minLength": 1, "type": "string" },
-													"name": { "minLength": 1, "type": "string" }
+													"authorizationEndpoint": { "type": "string" },
+													"discoveryEndpoint": { "type": "string" },
+													"jwksEndpoint": { "type": "string" },
+													"skipDiscovery": { "type": "boolean" },
+													"tokenEndpoint": { "type": "string" },
+													"userInfoEndpoint": { "type": "string" }
+												}
+											},
+											"protocol": { "const": "oidc", "type": "string" }
+										}
+									},
+									{
+										"additionalProperties": false,
+										"type": "object",
+										"required": [
+											"displayName",
+											"domain",
+											"issuer",
+											"providerId",
+											"protocol",
+											"samlConfig"
+										],
+										"properties": {
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
+												}
+											},
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"providerId": { "minLength": 1, "type": "string" },
+											"protocol": { "const": "saml", "type": "string" },
+											"samlConfig": {
+												"type": "object",
+												"properties": {
+													"cert": {
+														"anyOf": [
+															{ "type": "string" },
+															{ "type": "array", "items": { "type": "string" } }
+														]
+													},
+													"entryPoint": { "type": "string" },
+													"idpMetadata": {
+														"type": "object",
+														"properties": {
+															"cert": {
+																"anyOf": [
+																	{ "type": "string" },
+																	{
+																		"type": "array",
+																		"items": { "type": "string" }
+																	}
+																]
+															},
+															"entityID": { "type": "string" },
+															"metadata": { "type": "string" }
+														}
+													},
+													"mapping": {
+														"type": "object",
+														"properties": {
+															"email": { "minLength": 1, "type": "string" },
+															"emailVerified": {
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": { "minLength": 1, "type": "string" }
+														}
+													},
+													"privateKey": { "type": "string" }
 												}
 											}
 										}
 									}
-								}
+								]
 							}
 						}
 					}
@@ -362,209 +539,359 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"type": "object",
-								"properties": {
-									"allowIdpInitiated": { "type": "boolean" },
-									"clientId": { "type": "string" },
-									"clientSecret": { "type": "string" },
-									"defaultRoleId": {
-										"anyOf": [{ "type": "string" }, { "type": "null" }]
-									},
-									"displayName": { "minLength": 1, "type": "string" },
-									"domain": { "minLength": 1, "type": "string" },
-									"enabled": { "type": "boolean" },
-									"enforceSso": { "type": "boolean" },
-									"groupClaim": { "type": "string" },
-									"groupRoleMappings": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"required": ["group", "roleId"],
-											"properties": {
-												"group": { "minLength": 1, "type": "string" },
-												"roleId": { "minLength": 1, "type": "string" }
-											}
-										}
-									},
-									"issuer": { "minLength": 1, "type": "string" },
-									"jitEnabled": { "type": "boolean" },
-									"oidcConfig": {
+								"anyOf": [
+									{
+										"additionalProperties": false,
 										"type": "object",
+										"required": ["protocol"],
 										"properties": {
-											"authorizationEndpoint": { "type": "string" },
-											"discoveryEndpoint": { "type": "string" },
-											"jwksEndpoint": { "type": "string" },
-											"skipDiscovery": { "type": "boolean" },
-											"tokenEndpoint": { "type": "string" },
-											"userInfoEndpoint": { "type": "string" }
-										}
-									},
-									"protocol": {
-										"anyOf": [
-											{ "const": "oidc", "type": "string" },
-											{ "const": "saml", "type": "string" }
-										]
-									},
-									"samlConfig": {
-										"type": "object",
-										"properties": {
-											"entryPoint": { "type": "string" },
-											"idpMetadata": {
-												"type": "object",
-												"properties": {
-													"entityID": { "type": "string" },
-													"metadata": { "type": "string" }
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
 												}
 											},
-											"mapping": {
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"clientId": { "minLength": 1, "type": "string" },
+											"clientSecret": { "type": "string" },
+											"oidcConfig": {
 												"type": "object",
 												"properties": {
-													"email": { "minLength": 1, "type": "string" },
-													"emailVerified": { "minLength": 1, "type": "string" },
-													"name": { "minLength": 1, "type": "string" }
+													"authorizationEndpoint": { "type": "string" },
+													"discoveryEndpoint": { "type": "string" },
+													"jwksEndpoint": { "type": "string" },
+													"skipDiscovery": { "type": "boolean" },
+													"tokenEndpoint": { "type": "string" },
+													"userInfoEndpoint": { "type": "string" }
+												}
+											},
+											"protocol": { "const": "oidc", "type": "string" }
+										}
+									},
+									{
+										"additionalProperties": false,
+										"type": "object",
+										"required": ["protocol"],
+										"properties": {
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
+												}
+											},
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"protocol": { "const": "saml", "type": "string" },
+											"samlConfig": {
+												"type": "object",
+												"properties": {
+													"cert": {
+														"anyOf": [
+															{ "type": "string" },
+															{ "type": "array", "items": { "type": "string" } }
+														]
+													},
+													"entryPoint": { "type": "string" },
+													"idpMetadata": {
+														"type": "object",
+														"properties": {
+															"cert": {
+																"anyOf": [
+																	{ "type": "string" },
+																	{
+																		"type": "array",
+																		"items": { "type": "string" }
+																	}
+																]
+															},
+															"entityID": { "type": "string" },
+															"metadata": { "type": "string" }
+														}
+													},
+													"mapping": {
+														"type": "object",
+														"properties": {
+															"email": { "minLength": 1, "type": "string" },
+															"emailVerified": {
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": { "minLength": 1, "type": "string" }
+														}
+													},
+													"privateKey": { "type": "string" }
 												}
 											}
 										}
 									}
-								}
+								]
 							}
 						},
 						"multipart/form-data": {
 							"schema": {
-								"type": "object",
-								"properties": {
-									"allowIdpInitiated": { "type": "boolean" },
-									"clientId": { "type": "string" },
-									"clientSecret": { "type": "string" },
-									"defaultRoleId": {
-										"anyOf": [{ "type": "string" }, { "type": "null" }]
-									},
-									"displayName": { "minLength": 1, "type": "string" },
-									"domain": { "minLength": 1, "type": "string" },
-									"enabled": { "type": "boolean" },
-									"enforceSso": { "type": "boolean" },
-									"groupClaim": { "type": "string" },
-									"groupRoleMappings": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"required": ["group", "roleId"],
-											"properties": {
-												"group": { "minLength": 1, "type": "string" },
-												"roleId": { "minLength": 1, "type": "string" }
-											}
-										}
-									},
-									"issuer": { "minLength": 1, "type": "string" },
-									"jitEnabled": { "type": "boolean" },
-									"oidcConfig": {
+								"anyOf": [
+									{
+										"additionalProperties": false,
 										"type": "object",
+										"required": ["protocol"],
 										"properties": {
-											"authorizationEndpoint": { "type": "string" },
-											"discoveryEndpoint": { "type": "string" },
-											"jwksEndpoint": { "type": "string" },
-											"skipDiscovery": { "type": "boolean" },
-											"tokenEndpoint": { "type": "string" },
-											"userInfoEndpoint": { "type": "string" }
-										}
-									},
-									"protocol": {
-										"anyOf": [
-											{ "const": "oidc", "type": "string" },
-											{ "const": "saml", "type": "string" }
-										]
-									},
-									"samlConfig": {
-										"type": "object",
-										"properties": {
-											"entryPoint": { "type": "string" },
-											"idpMetadata": {
-												"type": "object",
-												"properties": {
-													"entityID": { "type": "string" },
-													"metadata": { "type": "string" }
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
 												}
 											},
-											"mapping": {
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"clientId": { "minLength": 1, "type": "string" },
+											"clientSecret": { "type": "string" },
+											"oidcConfig": {
 												"type": "object",
 												"properties": {
-													"email": { "minLength": 1, "type": "string" },
-													"emailVerified": { "minLength": 1, "type": "string" },
-													"name": { "minLength": 1, "type": "string" }
+													"authorizationEndpoint": { "type": "string" },
+													"discoveryEndpoint": { "type": "string" },
+													"jwksEndpoint": { "type": "string" },
+													"skipDiscovery": { "type": "boolean" },
+													"tokenEndpoint": { "type": "string" },
+													"userInfoEndpoint": { "type": "string" }
+												}
+											},
+											"protocol": { "const": "oidc", "type": "string" }
+										}
+									},
+									{
+										"additionalProperties": false,
+										"type": "object",
+										"required": ["protocol"],
+										"properties": {
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
+												}
+											},
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"protocol": { "const": "saml", "type": "string" },
+											"samlConfig": {
+												"type": "object",
+												"properties": {
+													"cert": {
+														"anyOf": [
+															{ "type": "string" },
+															{ "type": "array", "items": { "type": "string" } }
+														]
+													},
+													"entryPoint": { "type": "string" },
+													"idpMetadata": {
+														"type": "object",
+														"properties": {
+															"cert": {
+																"anyOf": [
+																	{ "type": "string" },
+																	{
+																		"type": "array",
+																		"items": { "type": "string" }
+																	}
+																]
+															},
+															"entityID": { "type": "string" },
+															"metadata": { "type": "string" }
+														}
+													},
+													"mapping": {
+														"type": "object",
+														"properties": {
+															"email": { "minLength": 1, "type": "string" },
+															"emailVerified": {
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": { "minLength": 1, "type": "string" }
+														}
+													},
+													"privateKey": { "type": "string" }
 												}
 											}
 										}
 									}
-								}
+								]
 							}
 						},
 						"text/plain": {
 							"schema": {
-								"type": "object",
-								"properties": {
-									"allowIdpInitiated": { "type": "boolean" },
-									"clientId": { "type": "string" },
-									"clientSecret": { "type": "string" },
-									"defaultRoleId": {
-										"anyOf": [{ "type": "string" }, { "type": "null" }]
-									},
-									"displayName": { "minLength": 1, "type": "string" },
-									"domain": { "minLength": 1, "type": "string" },
-									"enabled": { "type": "boolean" },
-									"enforceSso": { "type": "boolean" },
-									"groupClaim": { "type": "string" },
-									"groupRoleMappings": {
-										"type": "array",
-										"items": {
-											"type": "object",
-											"required": ["group", "roleId"],
-											"properties": {
-												"group": { "minLength": 1, "type": "string" },
-												"roleId": { "minLength": 1, "type": "string" }
-											}
-										}
-									},
-									"issuer": { "minLength": 1, "type": "string" },
-									"jitEnabled": { "type": "boolean" },
-									"oidcConfig": {
+								"anyOf": [
+									{
+										"additionalProperties": false,
 										"type": "object",
+										"required": ["protocol"],
 										"properties": {
-											"authorizationEndpoint": { "type": "string" },
-											"discoveryEndpoint": { "type": "string" },
-											"jwksEndpoint": { "type": "string" },
-											"skipDiscovery": { "type": "boolean" },
-											"tokenEndpoint": { "type": "string" },
-											"userInfoEndpoint": { "type": "string" }
-										}
-									},
-									"protocol": {
-										"anyOf": [
-											{ "const": "oidc", "type": "string" },
-											{ "const": "saml", "type": "string" }
-										]
-									},
-									"samlConfig": {
-										"type": "object",
-										"properties": {
-											"entryPoint": { "type": "string" },
-											"idpMetadata": {
-												"type": "object",
-												"properties": {
-													"entityID": { "type": "string" },
-													"metadata": { "type": "string" }
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
 												}
 											},
-											"mapping": {
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"clientId": { "minLength": 1, "type": "string" },
+											"clientSecret": { "type": "string" },
+											"oidcConfig": {
 												"type": "object",
 												"properties": {
-													"email": { "minLength": 1, "type": "string" },
-													"emailVerified": { "minLength": 1, "type": "string" },
-													"name": { "minLength": 1, "type": "string" }
+													"authorizationEndpoint": { "type": "string" },
+													"discoveryEndpoint": { "type": "string" },
+													"jwksEndpoint": { "type": "string" },
+													"skipDiscovery": { "type": "boolean" },
+													"tokenEndpoint": { "type": "string" },
+													"userInfoEndpoint": { "type": "string" }
+												}
+											},
+											"protocol": { "const": "oidc", "type": "string" }
+										}
+									},
+									{
+										"additionalProperties": false,
+										"type": "object",
+										"required": ["protocol"],
+										"properties": {
+											"allowIdpInitiated": { "type": "boolean" },
+											"defaultRoleId": {
+												"anyOf": [{ "type": "string" }, { "type": "null" }]
+											},
+											"displayName": { "minLength": 1, "type": "string" },
+											"domain": { "minLength": 1, "type": "string" },
+											"enabled": { "type": "boolean" },
+											"enforceSso": { "type": "boolean" },
+											"groupClaim": { "type": "string" },
+											"groupRoleMappings": {
+												"type": "array",
+												"items": {
+													"type": "object",
+													"required": ["group", "roleId"],
+													"properties": {
+														"group": { "minLength": 1, "type": "string" },
+														"roleId": { "minLength": 1, "type": "string" }
+													}
+												}
+											},
+											"issuer": { "minLength": 1, "type": "string" },
+											"jitEnabled": { "type": "boolean" },
+											"protocol": { "const": "saml", "type": "string" },
+											"samlConfig": {
+												"type": "object",
+												"properties": {
+													"cert": {
+														"anyOf": [
+															{ "type": "string" },
+															{ "type": "array", "items": { "type": "string" } }
+														]
+													},
+													"entryPoint": { "type": "string" },
+													"idpMetadata": {
+														"type": "object",
+														"properties": {
+															"cert": {
+																"anyOf": [
+																	{ "type": "string" },
+																	{
+																		"type": "array",
+																		"items": { "type": "string" }
+																	}
+																]
+															},
+															"entityID": { "type": "string" },
+															"metadata": { "type": "string" }
+														}
+													},
+													"mapping": {
+														"type": "object",
+														"properties": {
+															"email": { "minLength": 1, "type": "string" },
+															"emailVerified": {
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": { "minLength": 1, "type": "string" }
+														}
+													},
+													"privateKey": { "type": "string" }
 												}
 											}
 										}
 									}
-								}
+								]
 							}
 						}
 					}

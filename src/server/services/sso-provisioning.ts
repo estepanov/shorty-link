@@ -155,68 +155,40 @@ export async function applySsoAdmission(
 		}
 		case "invite": {
 			const acceptedAt = Date.now();
-			const claimId = crypto.randomUUID();
+			const claimId = authenticatedUserId;
 			const claimStatement = db.$client
 				.prepare(`
 				update "admin_invite"
-				set "accepted_at" = ?, "sso_claim_id" = ?
+				set "accepted_at" = ?, "sso_claim_id" = ?, "role_id" = ?
 				where "token" = ?
 					and "email" = ?
 					and "accepted_at" is null
 					and "expires_at" > ?
 			`)
-				.bind(acceptedAt, claimId, decision.token, email, acceptedAt);
-			const activateStatement = db.$client
-				.prepare(`
-				update "user"
-				set "role_id" = ?, "invited_by" = ?, "is_active" = 1,
-					"updated_at" = ?
-				where "id" = ?
-					and "email" = ?
-					and "is_active" = 0
-					and exists (
-						select 1 from "admin_invite"
-						where "token" = ?
-							and "email" = ?
-							and "sso_claim_id" = ?
-					)
-			`)
 				.bind(
+					acceptedAt,
+					claimId,
 					decision.roleId,
-					decision.invitedBy,
-					Math.floor(Date.now() / 1000),
-					authenticatedUserId,
-					email,
 					decision.token,
 					email,
-					claimId,
+					acceptedAt,
 				);
-			const restoreAdmissionState = async () => {
-				const restoreInvite = db.$client
-					.prepare(`
-						update "admin_invite"
-						set "accepted_at" = null, "sso_claim_id" = null
-						where "token" = ? and "sso_claim_id" = ?
-					`)
-					.bind(decision.token, claimId);
-				const removeStagedUser = db.$client
+			const removeStagedUser = async () => {
+				const removeStatement = db.$client
 					.prepare(`
 						delete from "user"
 						where "id" = ? and "email" = ? and "is_active" = 0
 					`)
 					.bind(authenticatedUserId, email);
-				await db.$client.batch([restoreInvite, removeStagedUser]);
+				await removeStatement.run();
 			};
 			try {
-				const [claimed, activated] = await db.$client.batch([
-					claimStatement,
-					activateStatement,
-				]);
-				if (claimed.meta.changes !== 1 || activated.meta.changes !== 1) {
+				const claimed = await claimStatement.run();
+				if (claimed.meta.changes !== 1) {
 					throw new Error("errors.ssoNotProvisioned");
 				}
 			} catch (error) {
-				await restoreAdmissionState();
+				await removeStagedUser();
 				throw error;
 			}
 			return { userId: authenticatedUserId };

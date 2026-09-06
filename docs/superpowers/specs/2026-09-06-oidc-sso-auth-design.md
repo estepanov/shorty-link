@@ -154,7 +154,7 @@ Use camelCase column names. The SSO plugin queries those literals.
 | `domain` | text not null | Comma-separated bare email domains |
 | `oidcConfig` | text | JSON; secret fields encrypted at rest |
 | `samlConfig` | text | JSON; private keys and passwords encrypted at rest |
-| `userId` | text FK → `user.id` | Admin who registered the provider |
+| `userId` | text, no lifecycle FK | Immutable audit ID of the admin who registered the provider; deleting that admin does not disable global SSO |
 | `providerId` | text unique | Public slug used in callback paths |
 | `organizationId` | text nullable | Always null |
 
@@ -225,7 +225,7 @@ sso({
 })
 ```
 
-Cloudflare D1 provides atomic batches but not the interactive native transactions required by Better Auth's SSO `resolveUser` callback. Shorty therefore gates every create, link, and sign-in through `user.validateUserInfo` before Better Auth writes anything. New users are staged with their approved role and inactive invite users remain disabled. `provisionUser` then applies the prepared decision before the session cookie is issued: JIT users are activated, existing-user mappings are applied, and invite claim plus user activation run in one D1 batch correlated by `admin_invite.sso_claim_id`. A failed or competing invite claim removes the staged inactive user.
+Cloudflare D1 does not provide the interactive native transactions required by Better Auth's SSO `resolveUser` callback. Shorty therefore gates every create, link, and sign-in through `user.validateUserInfo` before Better Auth writes anything. New users are staged with their approved role and inactive invite users remain disabled. `provisionUser` then applies the prepared decision before the session cookie is issued: JIT users are activated, existing-user mappings are applied, and an `admin_invite` trigger makes invite claim plus activation of the exact `sso_claim_id` user one rollback-safe SQLite operation. A failed or competing invite claim removes the staged inactive user without leaving the invite claimed.
 
 `trustEmailVerified` only trusts the `email_verified` result extracted from a cryptographically validated admin-managed provider response. OIDC uses the configured mapping or standard claim. SAML requires an explicit `mapping.emailVerified` attribute whose value parses as true. `resolveSsoAdmission` still rejects any unverified identity.
 

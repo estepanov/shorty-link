@@ -102,7 +102,8 @@ export async function listPublicSsoProviders(
 			ssoProviderSettings,
 			eq(ssoProvider.providerId, ssoProviderSettings.providerId),
 		)
-		.where(eq(ssoProviderSettings.enabled, true));
+		.where(eq(ssoProviderSettings.enabled, true))
+		.orderBy(ssoProvider.providerId);
 
 	const providers = rows.map((row) => ({
 		displayName: row.displayName,
@@ -180,7 +181,7 @@ export async function createSsoProvider(
 	request?: Request,
 ) {
 	const providerId = normalizeProviderId(input.providerId);
-	const protocol = normalizeProtocol(input.protocol);
+	const protocol = input.protocol;
 	const existing = await db
 		.select({ providerId: ssoProvider.providerId })
 		.from(ssoProvider)
@@ -260,9 +261,7 @@ export async function updateSsoProvider(
 		currentOidc,
 		currentSaml,
 	);
-	const protocol = input.protocol
-		? normalizeProtocol(input.protocol)
-		: current.protocol;
+	const protocol = input.protocol;
 	if (protocol !== current.protocol) {
 		throw new Error("errors.ssoProtocolImmutable");
 	}

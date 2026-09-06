@@ -15,7 +15,7 @@ import {
 	isRedirectStatusCode,
 	type RedirectStatusCode,
 } from "@/lib/redirect-status";
-import { isSsoEnforcedForEmail, matchingSsoProvider } from "@/lib/sso-catalog";
+import { isSsoEnforcedForEmail, matchingSsoProviders } from "@/lib/sso-catalog";
 import pkg from "../../../package.json";
 import { createAgentLoginResponse } from "../auth/agent-login";
 import { createAuth } from "../auth/auth";
@@ -1296,7 +1296,7 @@ export const app = new Elysia({
 				throw new Error("errors.inviteMissing");
 			}
 			const catalog = await listPublicSsoProviders(db);
-			const match = matchingSsoProvider(catalog, invite.email);
+			const providers = matchingSsoProviders(catalog, invite.email);
 			const enforced = isSsoEnforcedForEmail(invite.email, catalog.providers);
 			return {
 				email: invite.email,
@@ -1304,8 +1304,7 @@ export const app = new Elysia({
 				token: invite.token,
 				sso: {
 					enforced,
-					providerId: match?.providerId ?? null,
-					displayName: match?.displayName ?? null,
+					providers,
 				},
 			};
 		},

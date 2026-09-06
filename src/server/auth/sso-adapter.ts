@@ -4,45 +4,16 @@ import type {
 	DBTransactionAdapter,
 } from "@better-auth/core/db/adapter";
 
-import { decryptSsoConfigJson, encryptSsoConfigJson } from "./sso-secrets";
-
-async function mapConfigField(
-	value: unknown,
-	transform: (json: string) => Promise<string>,
-) {
-	if (typeof value !== "string" || !value) {
-		return value;
-	}
-	return transform(value);
-}
-
-async function mapSsoConfigs<T>(
-	row: T,
-	transform: (json: string) => Promise<string>,
-): Promise<T> {
-	if (!row || typeof row !== "object") {
-		return row;
-	}
-	const record = row as Record<string, unknown>;
-	if (!("oidcConfig" in record) && !("samlConfig" in record)) {
-		return row;
-	}
-	const mapped = { ...record };
-	if ("oidcConfig" in record) {
-		mapped.oidcConfig = await mapConfigField(record.oidcConfig, transform);
-	}
-	if ("samlConfig" in record) {
-		mapped.samlConfig = await mapConfigField(record.samlConfig, transform);
-	}
-	return mapped as T;
-}
+import {
+	decodeSsoProviderRecord,
+	encodeSsoProviderRecord,
+	isSsoProviderModel,
+} from "./sso-config-codec";
 
 function wrapTransactionAdapter(
 	adapter: DBTransactionAdapter,
 	secret: string,
 ): DBTransactionAdapter {
-	const encrypt = (json: string) => encryptSsoConfigJson(json, secret);
-	const decrypt = (json: string) => decryptSsoConfigJson(json, secret);
 	const create: DBAdapter["create"] = async <
 		T extends Record<string, unknown>,
 		R = T,
@@ -52,51 +23,51 @@ function wrapTransactionAdapter(
 		select?: string[];
 		forceAllowId?: boolean;
 	}): Promise<R> => {
-		if (args.model !== "ssoProvider") {
+		if (!isSsoProviderModel(args.model)) {
 			return adapter.create<T, R>(args);
 		}
 		const row = await adapter.create<T, R>({
 			...args,
-			data: await mapSsoConfigs(args.data, encrypt),
+			data: await encodeSsoProviderRecord(args.data, secret),
 		});
-		return mapSsoConfigs(row, decrypt);
+		return decodeSsoProviderRecord(row, secret);
 	};
 	const findMany = async <T>(
 		args: Parameters<DBAdapter["findMany"]>[0],
 	): Promise<T[]> => {
 		const rows = await adapter.findMany<T>(args);
-		if (args.model !== "ssoProvider") {
+		if (!isSsoProviderModel(args.model)) {
 			return rows;
 		}
-		return Promise.all(rows.map((row) => mapSsoConfigs(row, decrypt)));
+		return Promise.all(rows.map((row) => decodeSsoProviderRecord(row, secret)));
 	};
 	const findOne = async <T>(
 		args: Parameters<DBAdapter["findOne"]>[0],
 	): Promise<T | null> => {
 		const row = await adapter.findOne<T>(args);
-		if (args.model !== "ssoProvider") {
+		if (!isSsoProviderModel(args.model)) {
 			return row;
 		}
-		return mapSsoConfigs(row, decrypt);
+		return decodeSsoProviderRecord(row, secret);
 	};
 	const update: DBAdapter["update"] = async <T>(
 		args: Parameters<DBAdapter["update"]>[0],
 	): Promise<T | null> => {
-		if (args.model !== "ssoProvider") {
+		if (!isSsoProviderModel(args.model)) {
 			return adapter.update<T>(args);
 		}
 		const row = await adapter.update<T>({
 			...args,
-			update: await mapSsoConfigs(args.update, encrypt),
+			update: await encodeSsoProviderRecord(args.update, secret),
 		});
-		return mapSsoConfigs(row, decrypt);
+		return decodeSsoProviderRecord(row, secret);
 	};
 	const updateMany: DBAdapter["updateMany"] = async (args) =>
 		adapter.updateMany(
-			args.model === "ssoProvider"
+			isSsoProviderModel(args.model)
 				? {
 						...args,
-						update: await mapSsoConfigs(args.update, encrypt),
+						update: await encodeSsoProviderRecord(args.update, secret),
 					}
 				: args,
 		);
@@ -104,29 +75,38 @@ function wrapTransactionAdapter(
 		args: Parameters<DBAdapter["consumeOne"]>[0],
 	): Promise<T | null> => {
 		const row = await adapter.consumeOne<T>(args);
-		return args.model === "ssoProvider" ? mapSsoConfigs(row, decrypt) : row;
+		return isSsoProviderModel(args.model)
+			? decodeSsoProviderRecord(row, secret)
+			: row;
 	};
 	const incrementOne: DBAdapter["incrementOne"] = async <T>(
 		args: Parameters<DBAdapter["incrementOne"]>[0],
 	): Promise<T | null> => {
 		const row = await adapter.incrementOne<T>(
-			args.model === "ssoProvider" && args.set
+			isSsoProviderModel(args.model) && args.set
 				? {
 						...args,
-						set: await mapSsoConfigs(args.set, encrypt),
+						set: await encodeSsoProviderRecord(args.set, secret),
 					}
 				: args,
 		);
-		return args.model === "ssoProvider" ? mapSsoConfigs(row, decrypt) : row;
+		return isSsoProviderModel(args.model)
+			? decodeSsoProviderRecord(row, secret)
+			: row;
 	};
 
 	return {
-		...adapter,
+		count: (args) => adapter.count(args),
 		consumeOne,
 		create,
+		createSchema: adapter.createSchema,
+		delete: (args) => adapter.delete(args),
+		deleteMany: (args) => adapter.deleteMany(args),
 		findMany,
 		findOne,
+		id: adapter.id,
 		incrementOne,
+		options: adapter.options,
 		update,
 		updateMany,
 	};

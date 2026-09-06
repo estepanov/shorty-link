@@ -130,6 +130,80 @@ export function SsoProtocolFields({
 								</Field>
 							)}
 						</form.Field>
+						<form.Field name="skipDiscovery">
+							{(field) => (
+								<Field orientation="horizontal">
+									<Checkbox
+										checked={field.state.value}
+										id="sso-skip-discovery"
+										onCheckedChange={(checked) =>
+											field.handleChange(checked === true)
+										}
+									/>
+									<FieldLabel
+										className="font-normal text-sm"
+										htmlFor="sso-skip-discovery"
+									>
+										{t("sso.skipDiscovery")}
+									</FieldLabel>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="discoveryEndpoint">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.discoveryEndpoint")}</FieldLabel>
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="authorizationEndpoint">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.authorizationEndpoint")}</FieldLabel>
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="tokenEndpoint">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.tokenEndpoint")}</FieldLabel>
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="jwksEndpoint">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.jwksEndpoint")}</FieldLabel>
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="userInfoEndpoint">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.userInfoEndpoint")}</FieldLabel>
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
 					</>
 				) : (
 					<>
@@ -139,8 +213,54 @@ export function SsoProtocolFields({
 									<FieldLabel>{t("sso.idpMetadata")}</FieldLabel>
 									<TextArea
 										onChange={(event) => field.handleChange(event.target.value)}
-										required={mode === "create"}
 										rows={8}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="entryPoint">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.entryPoint")}</FieldLabel>
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="idpEntityId">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.idpEntityId")}</FieldLabel>
+									<Input
+										onChange={(event) => field.handleChange(event.target.value)}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="cert">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.cert")}</FieldLabel>
+									<TextArea
+										onChange={(event) => field.handleChange(event.target.value)}
+										rows={6}
+										value={field.state.value}
+									/>
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="privateKey">
+							{(field) => (
+								<Field>
+									<FieldLabel>{t("sso.privateKey")}</FieldLabel>
+									<TextArea
+										onChange={(event) => field.handleChange(event.target.value)}
+										placeholder={mode === "edit" ? "********" : undefined}
+										rows={6}
 										value={field.state.value}
 									/>
 								</Field>

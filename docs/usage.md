@@ -62,7 +62,8 @@ Open **Users → Invites** and click **New invite**. Send the invite link to you
 Open **Access → SSO** and add an OpenID Connect or SAML provider. You will need:
 
 - Issuer (OIDC) or SP entity ID (SAML)
-- Client ID and secret, or IdP metadata XML
+- OIDC client credentials and discovered/manual endpoints, or SAML metadata XML
+  (alternatively an IdP SSO URL, entity ID, and signing certificate)
 - Email domains that should match this provider
 
 The email-domain list is an authorization boundary, not just a login-page filter. A provider can authenticate a verified email only when its domain matches that list, whether the person already has a Shorty account, is claiming an invite, or is being provisioned through JIT.

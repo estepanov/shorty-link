@@ -1,20 +1,11 @@
-import { mkdirSync } from "node:fs";
-
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getPlatformProxy } from "wrangler";
 
-import {
-	DEFAULT_SAML_ATTRIBUTE_MAPPING,
-	type SsoProviderWrite,
-} from "../src/lib/sso-types";
 import {
 	account,
 	roles,
 	SYSTEM_ROLE_ADMIN,
 	SYSTEM_ROLE_OWNER,
-	schema,
 	ssoProvider,
 	ssoProviderSettings,
 	user,
@@ -26,72 +17,29 @@ import {
 } from "../src/server/services/sso-providers";
 import { readConfigJson } from "../src/server/services/sso-provider-config";
 import { deleteUser } from "../src/server/services/users";
-import { applyD1Migrations } from "./apply-d1-migrations";
-
-const ORIGIN = "http://localhost:8787";
-const REQUEST = new Request(`${ORIGIN}/api/admin/sso-providers`);
-
-function oidcInput(
-	overrides: Partial<SsoProviderWrite> = {},
-): SsoProviderWrite {
-	return {
-		clientId: "client-id",
-		clientSecret: "client-secret",
-		displayName: "Workforce",
-		domain: "acme.test",
-		issuer: "https://idp.example.test",
-		oidcConfig: {
-			authorizationEndpoint: "https://idp.example.test/authorize",
-			jwksEndpoint: "https://idp.example.test/jwks",
-			skipDiscovery: true,
-			tokenEndpoint: "https://idp.example.test/token",
-		},
-		protocol: "oidc",
-		providerId: "workforce",
-		...overrides,
-	};
-}
-
-const validSamlMetadata =
-	'<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example.test"><IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"><SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example.test/sso"/></IDPSSODescriptor></EntityDescriptor>';
+import {
+	createSsoProviderD1Fixture,
+	oidcProviderInput as oidcInput,
+	SSO_TEST_ORIGIN as ORIGIN,
+	SSO_TEST_REQUEST as REQUEST,
+} from "./sso-provider-d1-fixture";
 
 describe("D1 SSO provider persistence", () => {
-	let proxy: Awaited<ReturnType<typeof getPlatformProxy>> | null = null;
+	let dispose: (() => Promise<void>) | null = null;
 	let database: D1Database;
-	let db: ReturnType<typeof drizzle<typeof schema>>;
+	let db: Awaited<ReturnType<typeof createSsoProviderD1Fixture>>["db"];
 
 	beforeEach(async () => {
-		mkdirSync("/tmp/wrangler-logs", { recursive: true });
-		process.env.WRANGLER_LOG_PATH = "/tmp/wrangler-logs";
-		process.env.WRANGLER_LOG = "error";
-		proxy = await getPlatformProxy({
-			configPath: "wrangler.jsonc",
-			persist: false,
-			remoteBindings: false,
-		});
-		database = (proxy.env as { DB: D1Database }).DB;
-		db = drizzle(database, { schema });
-		await applyD1Migrations(database);
-
-		const timestamp = new Date();
-		await db.insert(user).values({
-			createdAt: timestamp,
-			email: "owner@acme.test",
-			emailVerified: true,
-			id: "owner",
-			image: null,
-			isActive: true,
-			locale: "en",
-			name: "Owner",
-			roleId: SYSTEM_ROLE_OWNER,
-			updatedAt: timestamp,
-		});
+		const fixture = await createSsoProviderD1Fixture();
+		database = fixture.database;
+		db = fixture.db;
+		dispose = fixture.dispose;
 	});
 
 	afterEach(async () => {
 		vi.unstubAllGlobals();
-		await proxy?.dispose();
-		proxy = null;
+		await dispose?.();
+		dispose = null;
 	});
 
 	it("preserves allowIdpInitiated in OIDC runtime config on an unrelated patch", async () => {
@@ -106,7 +54,7 @@ describe("D1 SSO provider persistence", () => {
 		const updated = await updateSsoProvider(
 			db,
 			"workforce",
-			{ displayName: "Renamed workforce" },
+			{ displayName: "Renamed workforce", protocol: "oidc" },
 			ORIGIN,
 			REQUEST,
 		);
@@ -149,6 +97,7 @@ describe("D1 SSO provider persistence", () => {
 				{
 					domain: "changed.test",
 					groupRoleMappings: [{ group: "eng", roleId: "missing-role" }],
+					protocol: "oidc",
 				},
 				ORIGIN,
 				REQUEST,
@@ -214,7 +163,7 @@ describe("D1 SSO provider persistence", () => {
 			updateSsoProvider(
 				db,
 				"workforce",
-				{ defaultRoleId: null, jitEnabled: true },
+				{ defaultRoleId: null, jitEnabled: true, protocol: "oidc" },
 				ORIGIN,
 				REQUEST,
 			),
@@ -357,154 +306,6 @@ describe("D1 SSO provider persistence", () => {
 		).toHaveLength(0);
 	});
 
-	it("accepts valid SAML metadata or a verifiable manual configuration", async () => {
-		await createSsoProvider(
-			db,
-			{
-				displayName: "Metadata SAML",
-				domain: "metadata.test",
-				issuer: "https://shorty.test/saml/metadata",
-				protocol: "saml",
-				providerId: "metadata-saml",
-				samlConfig: { idpMetadata: { metadata: validSamlMetadata } },
-			},
-			"owner",
-			ORIGIN,
-			REQUEST,
-		);
-		await createSsoProvider(
-			db,
-			{
-				displayName: "Manual SAML",
-				domain: "manual.test",
-				issuer: "https://shorty.test/saml/manual",
-				protocol: "saml",
-				providerId: "manual-saml",
-				samlConfig: {
-					cert: "manual-idp-signing-certificate",
-					entryPoint: "https://idp.example.test/sso",
-					idpMetadata: { entityID: "https://idp.example.test" },
-				},
-			},
-			"owner",
-			ORIGIN,
-			REQUEST,
-		);
-		expect(await db.select().from(ssoProvider)).toHaveLength(2);
-	});
-
-	it("rejects manual SAML configuration without a signing certificate", async () => {
-		await expect(
-			createSsoProvider(
-				db,
-				{
-					displayName: "Unsigned Manual SAML",
-					domain: "manual.test",
-					issuer: "https://shorty.test/saml/manual",
-					protocol: "saml",
-					providerId: "unsigned-manual-saml",
-					samlConfig: {
-						entryPoint: "https://idp.example.test/sso",
-						idpMetadata: { entityID: "https://idp.example.test" },
-					},
-				},
-				"owner",
-				ORIGIN,
-				REQUEST,
-			),
-		).rejects.toThrow("errors.ssoConfigurationInvalid");
-		expect(await db.select().from(ssoProvider)).toHaveLength(0);
-	});
-
-	it("persists secure SAML attribute defaults and configurable mappings", async () => {
-		const created = await createSsoProvider(
-			db,
-			{
-				displayName: "Mapped SAML",
-				domain: "mapped.test",
-				issuer: "https://shorty.test/saml/mapped",
-				protocol: "saml",
-				providerId: "mapped-saml",
-				samlConfig: { idpMetadata: { metadata: validSamlMetadata } },
-			},
-			"owner",
-			ORIGIN,
-			REQUEST,
-		);
-		expect(created.samlConfig?.mapping).toEqual(DEFAULT_SAML_ATTRIBUTE_MAPPING);
-
-		const mapped = await updateSsoProvider(
-			db,
-			"mapped-saml",
-			{
-				samlConfig: {
-					mapping: {
-						email: "mail",
-						emailVerified: "mail_confirmed",
-						name: "full_name",
-					},
-				},
-			},
-			ORIGIN,
-			REQUEST,
-		);
-		expect(mapped.samlConfig?.mapping).toEqual({
-			email: "mail",
-			emailVerified: "mail_confirmed",
-			name: "full_name",
-		});
-
-		const renamed = await updateSsoProvider(
-			db,
-			"mapped-saml",
-			{ displayName: "Renamed SAML" },
-			ORIGIN,
-			REQUEST,
-		);
-		expect(renamed.samlConfig?.mapping).toEqual(mapped.samlConfig?.mapping);
-	});
-
-	it("rejects invalid or incomplete SAML configuration", async () => {
-		await expect(
-			createSsoProvider(
-				db,
-				{
-					displayName: "Invalid metadata",
-					domain: "acme.test",
-					issuer: "https://shorty.test/saml",
-					protocol: "saml",
-					providerId: "invalid-metadata",
-					samlConfig: {
-						idpMetadata: { metadata: "<not-valid-saml />" },
-					},
-				},
-				"owner",
-				ORIGIN,
-				REQUEST,
-			),
-		).rejects.toThrow("errors.ssoSamlMetadataInvalid");
-		await expect(
-			createSsoProvider(
-				db,
-				{
-					displayName: "Incomplete manual",
-					domain: "acme.test",
-					issuer: "https://shorty.test/saml",
-					protocol: "saml",
-					providerId: "incomplete-manual",
-					samlConfig: {
-						entryPoint: "https://idp.example.test/sso",
-						idpMetadata: { entityID: "https://idp.example.test" },
-					},
-				},
-				"owner",
-				ORIGIN,
-				REQUEST,
-			),
-		).rejects.toThrow("errors.ssoConfigurationInvalid");
-		expect(await db.select().from(ssoProvider)).toHaveLength(0);
-	});
-
 	it("rejects protocol changes without deleting the current config", async () => {
 		await createSsoProvider(db, oidcInput(), "owner", ORIGIN, REQUEST);
 		const [providerBefore] = await db.select().from(ssoProvider);
@@ -542,7 +343,13 @@ describe("D1 SSO provider persistence", () => {
 		});
 
 		await expect(
-			updateSsoProvider(db, "workforce", { clientSecret: "" }, ORIGIN, REQUEST),
+			updateSsoProvider(
+				db,
+				"workforce",
+				{ clientSecret: "", protocol: "oidc" },
+				ORIGIN,
+				REQUEST,
+			),
 		).resolves.toMatchObject({ hasClientSecret: true });
 		const [blankSecretProvider] = await db.select().from(ssoProvider);
 		expect(
@@ -562,6 +369,7 @@ describe("D1 SSO provider persistence", () => {
 					skipDiscovery: true,
 					tokenEndpoint: "https://idp.example.test/v2/token",
 				},
+				protocol: "oidc",
 			},
 			ORIGIN,
 			REQUEST,
@@ -581,7 +389,7 @@ describe("D1 SSO provider persistence", () => {
 			updateSsoProvider(
 				db,
 				"workforce",
-				{ issuer: "https://other-idp.example.test" },
+				{ issuer: "https://other-idp.example.test", protocol: "oidc" },
 				ORIGIN,
 				REQUEST,
 			),
@@ -590,69 +398,6 @@ describe("D1 SSO provider persistence", () => {
 		expect(await db.select().from(ssoProviderSettings)).toEqual([
 			settingsBefore,
 		]);
-	});
-
-	it("keeps linked SAML identities on the same IdP entity while allowing metadata rotation", async () => {
-		await createSsoProvider(
-			db,
-			{
-				displayName: "Metadata SAML",
-				domain: "metadata.test",
-				issuer: "https://shorty.test/saml/metadata",
-				protocol: "saml",
-				providerId: "metadata-saml",
-				samlConfig: { idpMetadata: { metadata: validSamlMetadata } },
-			},
-			"owner",
-			ORIGIN,
-			REQUEST,
-		);
-		const timestamp = new Date();
-		await db.insert(account).values({
-			accountId: "subject-1",
-			createdAt: timestamp,
-			id: "saml-account",
-			issuer: "local:metadata-saml",
-			providerId: "metadata-saml",
-			updatedAt: timestamp,
-			userId: "owner",
-		});
-
-		const rotatedMetadata = validSamlMetadata.replace(
-			"https://idp.example.test/sso",
-			"https://idp.example.test/sso-rotated",
-		);
-		await expect(
-			updateSsoProvider(
-				db,
-				"metadata-saml",
-				{
-					samlConfig: {
-						idpMetadata: { metadata: rotatedMetadata },
-					},
-				},
-				ORIGIN,
-				REQUEST,
-			),
-		).resolves.toMatchObject({ providerId: "metadata-saml" });
-
-		const changedEntityMetadata = rotatedMetadata.replace(
-			'entityID="https://idp.example.test"',
-			'entityID="https://other-idp.example.test"',
-		);
-		await expect(
-			updateSsoProvider(
-				db,
-				"metadata-saml",
-				{
-					samlConfig: {
-						idpMetadata: { metadata: changedEntityMetadata },
-					},
-				},
-				ORIGIN,
-				REQUEST,
-			),
-		).rejects.toThrow("errors.ssoIdentityBoundaryImmutable");
 	});
 
 	it("rolls back account and provider deletion together when the parent delete fails", async () => {
@@ -727,7 +472,7 @@ describe("D1 SSO provider persistence", () => {
 		]);
 	});
 
-	it("prevents user deletion from bypassing SSO provider deletion policy", async () => {
+	it("keeps global SSO configuration when its registration actor is deleted", async () => {
 		const timestamp = new Date();
 		await db.insert(user).values({
 			createdAt: timestamp,
@@ -743,15 +488,18 @@ describe("D1 SSO provider persistence", () => {
 		});
 		await createSsoProvider(db, oidcInput(), "manager", ORIGIN, REQUEST);
 
-		await expect(deleteUser(db, "manager")).rejects.toThrow(
-			"errors.userOwnsSsoProvider",
-		);
+		await expect(deleteUser(db, "manager")).resolves.toBeUndefined();
 		expect(
-			await db.select({ providerId: ssoProvider.providerId }).from(ssoProvider),
-		).toEqual([{ providerId: "workforce" }]);
+			await db
+				.select({
+					providerId: ssoProvider.providerId,
+					userId: ssoProvider.userId,
+				})
+				.from(ssoProvider),
+		).toEqual([{ providerId: "workforce", userId: "manager" }]);
 		expect(
 			await db.select({ id: user.id }).from(user).where(eq(user.id, "manager")),
-		).toEqual([{ id: "manager" }]);
+		).toEqual([]);
 	});
 
 	it("rolls back both provider rows when an atomic settings update fails", async () => {
@@ -775,6 +523,7 @@ describe("D1 SSO provider persistence", () => {
 				{
 					displayName: "Should not persist",
 					domain: "changed.test",
+					protocol: "oidc",
 				},
 				ORIGIN,
 				REQUEST,
@@ -827,7 +576,7 @@ describe("D1 SSO provider persistence", () => {
 			updateSsoProvider(
 				db,
 				"missing",
-				{ displayName: "Missing" },
+				{ displayName: "Missing", protocol: "oidc" },
 				ORIGIN,
 				REQUEST,
 			),
@@ -837,14 +586,22 @@ describe("D1 SSO provider persistence", () => {
 		await updateSsoProvider(
 			db,
 			"workforce",
-			{ displayName: "Sequential one", domain: "sequential-one.test" },
+			{
+				displayName: "Sequential one",
+				domain: "sequential-one.test",
+				protocol: "oidc",
+			},
 			ORIGIN,
 			REQUEST,
 		);
 		await updateSsoProvider(
 			db,
 			"workforce",
-			{ displayName: "Sequential two", domain: "sequential-two.test" },
+			{
+				displayName: "Sequential two",
+				domain: "sequential-two.test",
+				protocol: "oidc",
+			},
 			ORIGIN,
 			REQUEST,
 		);
@@ -858,14 +615,22 @@ describe("D1 SSO provider persistence", () => {
 			updateSsoProvider(
 				db,
 				"workforce",
-				{ displayName: "Concurrent alpha", domain: "alpha.test" },
+				{
+					displayName: "Concurrent alpha",
+					domain: "alpha.test",
+					protocol: "oidc",
+				},
 				ORIGIN,
 				REQUEST,
 			),
 			updateSsoProvider(
 				db,
 				"workforce",
-				{ displayName: "Concurrent beta", domain: "beta.test" },
+				{
+					displayName: "Concurrent beta",
+					domain: "beta.test",
+					protocol: "oidc",
+				},
 				ORIGIN,
 				REQUEST,
 			),

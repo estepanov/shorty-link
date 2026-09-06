@@ -9,7 +9,7 @@
 					"description": "",
 					"item": [
 						{
-							"id": "1fc87be7-58b5-4005-8bfe-c76488764d02",
+							"id": "e825ea7d-5249-4f1e-b599-e41211788a2b",
 							"name": "Health check",
 							"request": {
 								"name": "Health check",
@@ -26,7 +26,7 @@
 							},
 							"response": [
 								{
-									"id": "b6e22ff9-68d9-49fa-8d3c-84e5814f50c7",
+									"id": "e1d7a4e1-fda5-497e-828a-0decb3697467",
 									"name": "200",
 									"originalRequest": {
 										"url": {
@@ -61,7 +61,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "01f2a39c-f5df-4086-9beb-5fe753ce1019",
+									"id": "23218be1-1d85-44ea-9b34-d1077ec55594",
 									"name": "Agent browser login",
 									"request": {
 										"name": "Agent browser login",
@@ -127,7 +127,7 @@
 									},
 									"response": [
 										{
-											"id": "e6df1409-7a5c-4f72-a20e-4cbd8e69a062",
+											"id": "57278f5e-1368-46ca-8efa-377f6ada20a7",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -214,7 +214,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "397a02b4-498f-41ea-b63e-96e1ddf6d6dd",
+											"id": "32c8c2be-52d8-4cd8-89ed-cd21c7c2e773",
 											"name": "List enabled SSO providers for sign-in",
 											"request": {
 												"name": "List enabled SSO providers for sign-in",
@@ -231,7 +231,7 @@
 											},
 											"response": [
 												{
-													"id": "37f4ef12-d9db-4973-805a-3595eeb8d140",
+													"id": "2cc52b76-f6de-42b2-a39d-49e50c0aca59",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -263,7 +263,7 @@
 									]
 								},
 								{
-									"id": "a3b32de5-b4a2-44d9-903f-115c68d1bb44",
+									"id": "401536a0-ae0b-434b-94d9-a11c155759db",
 									"name": "List SSO providers",
 									"request": {
 										"name": "List SSO providers",
@@ -280,7 +280,7 @@
 									},
 									"response": [
 										{
-											"id": "0c22667a-af2f-4bd2-903e-2ebd3e7c1f20",
+											"id": "1ce8639c-169e-4ffd-ab4e-d2943dac4f6f",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -305,7 +305,7 @@
 									}
 								},
 								{
-									"id": "30489349-2315-4942-91ee-a7f8a9dffd3e",
+									"id": "85e1354f-c400-48c6-b64e-cbb06005a91a",
 									"name": "Register SSO provider",
 									"request": {
 										"name": "Register SSO provider",
@@ -325,7 +325,7 @@
 										"method": "POST",
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+											"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  }\n}",
 											"options": {
 												"raw": {
 													"headerFamily": "json",
@@ -337,7 +337,7 @@
 									},
 									"response": [
 										{
-											"id": "2d8d81a5-19c2-43a8-a06b-6a8de0d0abd3",
+											"id": "9e7ff0dd-a8ec-4906-b3c6-b53dccd41c79",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -355,7 +355,7 @@
 												"method": "POST",
 												"body": {
 													"mode": "raw",
-													"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+													"raw": "{\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"issuer\": \"<string>\",\n  \"providerId\": \"<string>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"protocol\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"defaultRoleId\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  }\n}",
 													"options": {
 														"raw": {
 															"headerFamily": "json",
@@ -385,7 +385,7 @@
 											"description": "",
 											"item": [
 												{
-													"id": "2ccd23a4-f04c-4583-b8e1-d11c9f359b49",
+													"id": "e3a0a66f-3e4c-43ea-ace4-26ac55727175",
 													"name": "Get SAML SP metadata",
 													"request": {
 														"name": "Get SAML SP metadata",
@@ -419,7 +419,7 @@
 													},
 													"response": [
 														{
-															"id": "44d61c88-5847-42c2-8e7d-0b0b5d856ef9",
+															"id": "c0205a44-976e-4272-a786-fbcdd0f43cf0",
 															"name": "200",
 															"originalRequest": {
 																"url": {
@@ -463,7 +463,7 @@
 											]
 										},
 										{
-											"id": "8947c605-3128-4a71-9c8c-00d20bf380ea",
+											"id": "560b9bc1-c48f-4e6f-976f-c2fd42de2b4c",
 											"name": "Get SSO provider",
 											"request": {
 												"name": "Get SSO provider",
@@ -496,7 +496,7 @@
 											},
 											"response": [
 												{
-													"id": "b27e343f-7b62-4a55-93ec-690dfd0425ae",
+													"id": "81171455-fb2b-4161-bb97-bf881a68ff6a",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -537,7 +537,7 @@
 											}
 										},
 										{
-											"id": "88249353-29b6-4242-ba7c-82b4e937bad8",
+											"id": "5387c108-7009-4fca-a9bc-f42ade978410",
 											"name": "Update SSO provider",
 											"request": {
 												"name": "Update SSO provider",
@@ -573,7 +573,7 @@
 												"method": "PATCH",
 												"body": {
 													"mode": "raw",
-													"raw": "{\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"protocol\": \"<string>\",\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+													"raw": "{\n  \"protocol\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  }\n}",
 													"options": {
 														"raw": {
 															"headerFamily": "json",
@@ -585,7 +585,7 @@
 											},
 											"response": [
 												{
-													"id": "2ab38316-0088-4504-9c84-49dbd791270b",
+													"id": "d44c9da8-c0aa-4199-99f4-2bf8221da997",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -619,7 +619,7 @@
 														"method": "PATCH",
 														"body": {
 															"mode": "raw",
-															"raw": "{\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  },\n  \"protocol\": \"<string>\",\n  \"samlConfig\": {\n    \"entryPoint\": \"<string>\",\n    \"idpMetadata\": {\n      \"entityID\": \"<string>\",\n      \"metadata\": \"<string>\"\n    },\n    \"mapping\": {\n      \"email\": \"<string>\",\n      \"emailVerified\": \"<string>\",\n      \"name\": \"<string>\"\n    }\n  }\n}",
+															"raw": "{\n  \"protocol\": \"<string>\",\n  \"allowIdpInitiated\": \"<boolean>\",\n  \"defaultRoleId\": \"<string>\",\n  \"displayName\": \"<string>\",\n  \"domain\": \"<string>\",\n  \"enabled\": \"<boolean>\",\n  \"enforceSso\": \"<boolean>\",\n  \"groupClaim\": \"<string>\",\n  \"groupRoleMappings\": [\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    },\n    {\n      \"group\": \"<string>\",\n      \"roleId\": \"<string>\"\n    }\n  ],\n  \"issuer\": \"<string>\",\n  \"jitEnabled\": \"<boolean>\",\n  \"clientId\": \"<string>\",\n  \"clientSecret\": \"<string>\",\n  \"oidcConfig\": {\n    \"authorizationEndpoint\": \"<string>\",\n    \"discoveryEndpoint\": \"<string>\",\n    \"jwksEndpoint\": \"<string>\",\n    \"skipDiscovery\": \"<boolean>\",\n    \"tokenEndpoint\": \"<string>\",\n    \"userInfoEndpoint\": \"<string>\"\n  }\n}",
 															"options": {
 																"raw": {
 																	"headerFamily": "json",
@@ -641,7 +641,7 @@
 											}
 										},
 										{
-											"id": "1f1fc4d2-55c8-4bb8-8210-aae16c81bd02",
+											"id": "6f847df1-f52d-4558-95f5-b59e92d05706",
 											"name": "Delete SSO provider",
 											"request": {
 												"name": "Delete SSO provider",
@@ -674,7 +674,7 @@
 											},
 											"response": [
 												{
-													"id": "53475b30-a32f-47f8-b8b3-58e5f0662762",
+													"id": "d2608fef-3317-4efd-bca5-ca8dd4c52afd",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -723,7 +723,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "add9c911-03ec-4d0c-96df-53d66dd161ec",
+									"id": "a9625cd5-21e6-4a02-842b-77f428008b72",
 									"name": "Check bootstrap state",
 									"request": {
 										"name": "Check bootstrap state",
@@ -740,7 +740,7 @@
 									},
 									"response": [
 										{
-											"id": "a3e54fbd-27df-469d-bedf-bccae9bd9840",
+											"id": "f743d5c3-4cc7-4946-ab24-3025bd987ddd",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -775,7 +775,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "7bd5f47f-3ac7-4211-949a-8cc6d906eedc",
+											"id": "3e76b4a0-5b57-4461-a0ab-e13e28b4c214",
 											"name": "Complete onboarding bootstrap",
 											"request": {
 												"name": "Complete onboarding bootstrap",
@@ -807,7 +807,7 @@
 											},
 											"response": [
 												{
-													"id": "d40fabdb-238d-4f13-b598-b556b7055751",
+													"id": "5ca28c17-4169-4f26-9429-88600295fc7e",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -860,7 +860,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "a01bc22e-0fe3-498f-a7a4-aea1fb5679bd",
+									"id": "1d4da356-02aa-4dca-b5d4-9ec677a078db",
 									"name": "Get dashboard data",
 									"request": {
 										"name": "Get dashboard data",
@@ -877,7 +877,7 @@
 									},
 									"response": [
 										{
-											"id": "91914870-2746-40cd-82b2-1f51e00c445e",
+											"id": "995f43a4-56e3-4207-a84c-e3c85a513db6",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -908,7 +908,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "a271d3b1-260d-4c6a-8709-a3a8a6287ff1",
+									"id": "6970dc99-cd58-4f4d-b55a-1888bc46441b",
 									"name": "Get current user profile",
 									"request": {
 										"name": "Get current user profile",
@@ -925,7 +925,7 @@
 									},
 									"response": [
 										{
-											"id": "ad8fce86-7711-44f1-8fd5-4b3c7d8e94fa",
+											"id": "f9060696-5a42-40c5-83b5-546849c1e887",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -950,7 +950,7 @@
 									}
 								},
 								{
-									"id": "2477397b-4324-4423-9b93-426ba1efcd57",
+									"id": "45be9fea-1ec1-4dc7-94aa-54bf72fbd379",
 									"name": "Update current user profile",
 									"request": {
 										"name": "Update current user profile",
@@ -982,7 +982,7 @@
 									},
 									"response": [
 										{
-											"id": "6cdc6d14-b260-4ffc-ab11-4e0d8b671876",
+											"id": "c223d39d-4ede-41d0-a89e-c88afe10eb05",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1028,7 +1028,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "6002b102-b1b0-4629-a4f8-a1b2dc62835a",
+									"id": "66525dcc-a2f9-404b-bb8b-e2d01523317a",
 									"name": "Get current auth context",
 									"request": {
 										"name": "Get current auth context",
@@ -1045,7 +1045,7 @@
 									},
 									"response": [
 										{
-											"id": "eb8bd67c-5326-4a9a-aae6-3cf769dcbb69",
+											"id": "7ad9f2aa-9066-4665-8e5c-70b2a1ddafb7",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1076,7 +1076,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "112532ba-8805-43a1-9298-9398201e7b7c",
+									"id": "c48ad7b5-076b-4ba3-af67-70d477d9447b",
 									"name": "List links",
 									"request": {
 										"name": "List links",
@@ -1148,7 +1148,7 @@
 									},
 									"response": [
 										{
-											"id": "e23b367f-6329-4381-8c82-5c6a7e8e01af",
+											"id": "a0ca89cb-5232-4e9a-8256-ff6ae8d8da84",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1228,7 +1228,7 @@
 									}
 								},
 								{
-									"id": "b9194d6a-18b8-4f24-9e30-5058c248c915",
+									"id": "2201eb3f-fda2-49b9-a8b5-242ba21e1f07",
 									"name": "Create link",
 									"request": {
 										"name": "Create link",
@@ -1260,7 +1260,7 @@
 									},
 									"response": [
 										{
-											"id": "e9e10ce3-f447-49d9-a6a8-b0b7f1add51e",
+											"id": "7f477965-2604-4849-8aaf-7a3531d061af",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1304,7 +1304,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "2713bf8c-18a9-4d0c-b9e3-9e1ca2d0018d",
+											"id": "2d0ce607-1efb-4fac-8b93-ceb6936e7b8e",
 											"name": "Get link by ID",
 											"request": {
 												"name": "Get link by ID",
@@ -1332,7 +1332,7 @@
 											},
 											"response": [
 												{
-													"id": "aac07f05-b200-41ff-beef-a1d05b625a89",
+													"id": "8776a86b-24f2-4b7f-a938-adcdd2ece14c",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1368,7 +1368,7 @@
 											}
 										},
 										{
-											"id": "3d12dea1-59eb-4edc-b44c-788056eef1dd",
+											"id": "bdf4c0f5-4571-4409-a347-898f6a628c9e",
 											"name": "Update link",
 											"request": {
 												"name": "Update link",
@@ -1411,7 +1411,7 @@
 											},
 											"response": [
 												{
-													"id": "09096525-428d-4c34-b713-0f433a001c3f",
+													"id": "d63f9a47-db05-490d-9f45-d553e3317f13",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1462,7 +1462,7 @@
 											}
 										},
 										{
-											"id": "1214baed-e29f-45ed-a873-80137e7890a2",
+											"id": "b241fed8-c50f-443a-859d-a0fe5f7e9614",
 											"name": "Delete link",
 											"request": {
 												"name": "Delete link",
@@ -1490,7 +1490,7 @@
 											},
 											"response": [
 												{
-													"id": "0caf3e15-753f-4756-a9a5-5a3d7617c635",
+													"id": "fdc52300-9ac2-44fc-b7ff-7799b48ca7e2",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1530,7 +1530,7 @@
 											"description": "",
 											"item": [
 												{
-													"id": "e4b3203f-52f0-471a-a06a-9952fcd5c738",
+													"id": "8a21e86b-12e6-4faf-886f-7da323e3b1e2",
 													"name": "Get link statistics",
 													"request": {
 														"name": "Get link statistics",
@@ -1568,7 +1568,7 @@
 													},
 													"response": [
 														{
-															"id": "eccee2e4-04b3-4794-82f3-dc51ffdef7dd",
+															"id": "f15f238c-ab0a-4a79-9f40-467340b52b7e",
 															"name": "200",
 															"originalRequest": {
 																"url": {
@@ -1630,7 +1630,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "55ab05c1-96b6-4f30-a479-e288f1c517dd",
+									"id": "7e148b12-5dd0-4586-bac8-698e983689ca",
 									"name": "List domains",
 									"request": {
 										"name": "List domains",
@@ -1647,7 +1647,7 @@
 									},
 									"response": [
 										{
-											"id": "7150df90-29d7-4347-b4f7-bbe05858e614",
+											"id": "7eaf278b-3e9e-4abb-a506-0fa45fe35d6a",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1672,7 +1672,7 @@
 									}
 								},
 								{
-									"id": "45c9ab08-8ab4-4de1-91d2-92038aa995f4",
+									"id": "b9980ce5-d6eb-48ea-9e4a-eab39d6b0be7",
 									"name": "Create domain",
 									"request": {
 										"name": "Create domain",
@@ -1704,7 +1704,7 @@
 									},
 									"response": [
 										{
-											"id": "99414874-ee97-4c2b-a1c5-ceab7b3e091c",
+											"id": "e0d48aec-2c7a-483b-a824-437fe9db8e39",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -1748,7 +1748,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "22881e71-ef86-458e-b525-30f3c86010ea",
+											"id": "1d04c7b1-9923-411f-9dc0-6931d8d857f6",
 											"name": "Get domain by ID",
 											"request": {
 												"name": "Get domain by ID",
@@ -1776,7 +1776,7 @@
 											},
 											"response": [
 												{
-													"id": "e869e062-1ff5-42bc-a3b4-e0d17a8ec5ba",
+													"id": "8f02012e-bf3b-4e5b-886b-41928c1cc37a",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1812,7 +1812,7 @@
 											}
 										},
 										{
-											"id": "df489fe7-a3c3-4289-b46b-209aa1e55075",
+											"id": "9b7dc2da-25b3-4cf8-a8e8-89d46042e87e",
 											"name": "Update domain",
 											"request": {
 												"name": "Update domain",
@@ -1855,7 +1855,7 @@
 											},
 											"response": [
 												{
-													"id": "3ecdf22c-dbde-44e0-a02f-76a704ae99e4",
+													"id": "b9a453a2-a5cc-4701-b15c-4cb187a8260d",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1906,7 +1906,7 @@
 											}
 										},
 										{
-											"id": "1b58d1c0-4ff8-46c7-bf1f-338d2b72d77e",
+											"id": "57ebe9e6-c5b2-48ec-8f59-aeeb8f8794b7",
 											"name": "Delete domain",
 											"request": {
 												"name": "Delete domain",
@@ -1934,7 +1934,7 @@
 											},
 											"response": [
 												{
-													"id": "4309e5a9-e12c-4085-a1a2-74d0148119aa",
+													"id": "fc38dc47-6d76-42a7-b99e-30e5b76cb605",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -1978,7 +1978,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "834ec428-f940-4ec6-ad60-c74805d05744",
+									"id": "aac667a0-9f68-4c7b-bf98-3ed15f41fc41",
 									"name": "Create invite",
 									"request": {
 										"name": "Create invite",
@@ -2010,7 +2010,7 @@
 									},
 									"response": [
 										{
-											"id": "59ae78de-e6a5-4dcd-bc4c-c4f519936fe1",
+											"id": "a85ce7a6-9d0f-4c69-96c2-d2a260b1a098",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2050,7 +2050,7 @@
 									}
 								},
 								{
-									"id": "385a10ef-a437-4d27-893a-82142d0001cf",
+									"id": "c2e680aa-ecf2-4078-bf21-a366580bfda6",
 									"name": "List invites",
 									"request": {
 										"name": "List invites",
@@ -2113,7 +2113,7 @@
 									},
 									"response": [
 										{
-											"id": "33a8af54-437c-407a-9c1e-438cf2c9d423",
+											"id": "b827c360-dd89-4cbd-bdb2-600d841546b7",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2184,7 +2184,7 @@
 									}
 								},
 								{
-									"id": "84233eeb-1550-480d-b267-4ec70c892618",
+									"id": "11343b33-34dd-4980-8716-5734f3c15a66",
 									"name": "Delete invite",
 									"request": {
 										"name": "Delete invite",
@@ -2216,7 +2216,7 @@
 									},
 									"response": [
 										{
-											"id": "77846f15-f602-453b-9458-c8518bd84793",
+											"id": "8a85379f-5803-45fe-922b-231021a82f35",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2260,7 +2260,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "9283c4d8-a7ae-445a-9778-155b46a4f983",
+											"id": "807581da-f82b-431c-8d11-aa82b6beb85b",
 											"name": "Get invite by ID",
 											"request": {
 												"name": "Get invite by ID",
@@ -2288,7 +2288,7 @@
 											},
 											"response": [
 												{
-													"id": "66a027a6-86d0-46c2-9ba8-0201a3578a52",
+													"id": "ec86a2db-db46-4436-9273-479f52bad836",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2324,7 +2324,7 @@
 											}
 										},
 										{
-											"id": "ea7ca465-8ca0-4950-99bd-18aecbdfd798",
+											"id": "4eeba2ed-1fbc-40f3-ae49-e40a41351f3f",
 											"name": "patch Api Admin Invites By Id",
 											"request": {
 												"name": "patch Api Admin Invites By Id",
@@ -2367,7 +2367,7 @@
 											},
 											"response": [
 												{
-													"id": "5f2391db-22b7-431f-b074-57e900e514eb",
+													"id": "e2abb5ae-4eda-47f2-9534-e57e9e294b54",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2426,7 +2426,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "07e97b44-a08d-4530-a8a8-d3024d58724f",
+									"id": "4a0524bb-b25c-4897-bda1-39a37bacb98c",
 									"name": "List users",
 									"request": {
 										"name": "List users",
@@ -2489,7 +2489,7 @@
 									},
 									"response": [
 										{
-											"id": "bd04444b-0cc3-4c98-89e5-4a0d6502f30b",
+											"id": "d408ab58-649b-4018-9c87-e323d67f1fce",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2564,7 +2564,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "4469316b-935c-4196-a87e-c141233bcb8a",
+											"id": "f05feb0b-220d-4834-ab93-d01fadfd4113",
 											"name": "Get user by ID",
 											"request": {
 												"name": "Get user by ID",
@@ -2592,7 +2592,7 @@
 											},
 											"response": [
 												{
-													"id": "fcd9c87b-4a46-4a03-97ec-cf11bd0c2fc1",
+													"id": "fe22dfda-ee09-4520-91da-26f0eb3f9624",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2628,7 +2628,7 @@
 											}
 										},
 										{
-											"id": "50c6f75a-0cd7-427f-b1ab-f3ab0f2e1c7a",
+											"id": "7b23b37f-115b-4fab-8de7-f09dcbf18d12",
 											"name": "Update user",
 											"request": {
 												"name": "Update user",
@@ -2671,7 +2671,7 @@
 											},
 											"response": [
 												{
-													"id": "ed7941c4-dd53-4f63-8682-00ad7ab0db90",
+													"id": "b7936914-4536-4b0c-b996-81fc940531c4",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2722,7 +2722,7 @@
 											}
 										},
 										{
-											"id": "e148d7af-5e5d-44bb-9adf-5b0555ecc901",
+											"id": "0ad885f6-f1e1-49d4-a9d7-68899f221d6b",
 											"name": "Delete user",
 											"request": {
 												"name": "Delete user",
@@ -2750,7 +2750,7 @@
 											},
 											"response": [
 												{
-													"id": "d49ed6f8-f578-4900-98bd-29e43894dfcc",
+													"id": "830d7358-7e2e-4b99-8511-cc1213b882c6",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -2790,7 +2790,7 @@
 											"description": "",
 											"item": [
 												{
-													"id": "884b4742-6c7f-44c1-9d91-c3175294800c",
+													"id": "d35b6702-b818-40c0-9ec1-1c4652ebeb8e",
 													"name": "Assign user role",
 													"request": {
 														"name": "Assign user role",
@@ -2833,7 +2833,7 @@
 													},
 													"response": [
 														{
-															"id": "176eccc9-fe19-40f5-bb33-6fcae807793d",
+															"id": "80f9abdf-93fe-49dd-8363-f069da5a77a4",
 															"name": "200",
 															"originalRequest": {
 																"url": {
@@ -2900,7 +2900,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "10a73e7b-eb48-4cd9-a765-0a5337eb6c85",
+									"id": "ae54d173-6ba2-4fb4-8176-4e5a433f94da",
 									"name": "List active sessions",
 									"request": {
 										"name": "List active sessions",
@@ -2917,7 +2917,7 @@
 									},
 									"response": [
 										{
-											"id": "2beaa565-ed7b-425c-b2fa-81e3cb51b5c4",
+											"id": "5b68d6c8-5344-460a-8754-3b9ef97d065e",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -2946,7 +2946,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "b3a11f96-7893-4f66-be9c-6222d2c12ae4",
+											"id": "4fb5ddf8-6da1-43f1-b4a2-6c9ec78d2848",
 											"name": "Revoke a session",
 											"request": {
 												"name": "Revoke a session",
@@ -2978,7 +2978,7 @@
 											},
 											"response": [
 												{
-													"id": "157e075d-08c6-4394-a36c-06315e2c46fe",
+													"id": "2bfa0e4c-236b-4168-8fa9-7d84e81117ea",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3024,7 +3024,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "2914a04f-1497-4943-96bc-57b6b556491d",
+											"id": "a50ee205-3c67-4d6f-b92c-c8a51d8e1a9d",
 											"name": "Revoke all other sessions",
 											"request": {
 												"name": "Revoke all other sessions",
@@ -3041,7 +3041,7 @@
 											},
 											"response": [
 												{
-													"id": "7444b704-6ee1-46c8-b461-8b9c7b53d8a5",
+													"id": "f52bb92e-9f65-44cb-87c1-518f8e44fe39",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3077,7 +3077,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "a6237cdc-baaa-4f5b-9b70-12e140720c5a",
+											"id": "839060ea-e7f3-4965-9666-66a4308127c6",
 											"name": "Sign out current session",
 											"request": {
 												"name": "Sign out current session",
@@ -3094,7 +3094,7 @@
 											},
 											"response": [
 												{
-													"id": "6be8c8b0-ec29-4b30-be4b-52d169f20952",
+													"id": "4790e7b0-351e-47b6-a5bc-e6e53c154c53",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3127,7 +3127,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "48170d2c-1830-4e9f-a667-dfa550730f4d",
+									"id": "120f0f23-abbb-46a1-a7b4-101675bd577c",
 									"name": "List API keys",
 									"request": {
 										"name": "List API keys",
@@ -3181,7 +3181,7 @@
 									},
 									"response": [
 										{
-											"id": "8cfd7c7a-0c30-4768-8dc4-098227086996",
+											"id": "8d6584ee-fd76-46d9-8dd2-78bc0a497b1f",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3243,7 +3243,7 @@
 									}
 								},
 								{
-									"id": "09bb7abc-0744-4cdd-aadc-744000b67aa5",
+									"id": "35266e5b-f238-452f-ba23-2eecf8bba45b",
 									"name": "Create API key",
 									"request": {
 										"name": "Create API key",
@@ -3275,7 +3275,7 @@
 									},
 									"response": [
 										{
-											"id": "2bd6cb67-e6df-4e1d-9487-1aa4e99b14cc",
+											"id": "5f9a49b4-4871-478e-a126-145347de3be5",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3319,7 +3319,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "2c68c4df-7bc2-4469-bff4-8dda088b70ab",
+											"id": "10a9d313-fbf2-406d-85f5-d8a8ac71c73d",
 											"name": "Update API key",
 											"request": {
 												"name": "Update API key",
@@ -3362,7 +3362,7 @@
 											},
 											"response": [
 												{
-													"id": "9ecd83c5-95e6-4125-af89-453be054c282",
+													"id": "5761b4fe-03bf-44fe-8b99-1fae02c53ef1",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3413,7 +3413,7 @@
 											}
 										},
 										{
-											"id": "c43a4ebf-5b61-4a43-aa8c-62616b507905",
+											"id": "3aba497f-dbb1-423a-8479-65ae43da60ed",
 											"name": "Delete API key",
 											"request": {
 												"name": "Delete API key",
@@ -3441,7 +3441,7 @@
 											},
 											"response": [
 												{
-													"id": "a98aa0f4-e9bd-4f08-81ce-d44b8790c62e",
+													"id": "9459b664-386c-462b-994b-24df492a731b",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3485,7 +3485,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "a51ea4b5-918c-47e8-8b98-3cab22a9a60b",
+									"id": "9b46a7e3-77a6-41a0-af57-4ab9bbf0688c",
 									"name": "Suggest a slug from URL",
 									"request": {
 										"name": "Suggest a slug from URL",
@@ -3512,7 +3512,7 @@
 									},
 									"response": [
 										{
-											"id": "56d704c9-eb49-42c4-9f1f-1997005b462c",
+											"id": "68eac9da-65cd-4d8f-9d9d-d176802a8917",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3553,7 +3553,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "e051b520-16a0-41d7-b7cf-a02214ba3c9f",
+									"id": "a27d7c55-f0b2-41bc-8c69-e26996632f65",
 									"name": "List all permissions and groups",
 									"request": {
 										"name": "List all permissions and groups",
@@ -3570,7 +3570,7 @@
 									},
 									"response": [
 										{
-											"id": "533c666e-02c7-4198-8951-03e0003ee132",
+											"id": "869c9b6c-5c3b-47f2-9b51-6c23d9c9177e",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3605,7 +3605,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "9f60c480-64d2-4049-9242-4b853c54cf86",
+											"id": "9d415113-e209-4838-9305-7eb9c1d75a03",
 											"name": "List assignable roles",
 											"request": {
 												"name": "List assignable roles",
@@ -3622,7 +3622,7 @@
 											},
 											"response": [
 												{
-													"id": "f9dde411-2b68-4c1f-a214-4a7e71ffbfe3",
+													"id": "e68de6ab-cac9-46d6-a917-163b2eeed9d2",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3649,7 +3649,7 @@
 									]
 								},
 								{
-									"id": "9b04b760-d27f-49be-a685-0f99cb673cbe",
+									"id": "1b405e5b-3016-4bc6-8a6d-84bb54754d66",
 									"name": "List roles",
 									"request": {
 										"name": "List roles",
@@ -3694,7 +3694,7 @@
 									},
 									"response": [
 										{
-											"id": "af198264-7062-41f6-adb6-42e0751fa123",
+											"id": "3da6a89e-ddba-4469-82b9-e0edafe648e6",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3747,7 +3747,7 @@
 									}
 								},
 								{
-									"id": "89a11a72-3ab2-44b0-985c-5b023801b898",
+									"id": "358f3cf3-6aeb-4782-b003-3330f49ecaeb",
 									"name": "Create role",
 									"request": {
 										"name": "Create role",
@@ -3779,7 +3779,7 @@
 									},
 									"response": [
 										{
-											"id": "3ded985f-0981-4aea-91f4-2a180dba64aa",
+											"id": "9b381fb2-5eef-4723-8e40-8639b113ff5c",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -3823,7 +3823,7 @@
 									"description": "",
 									"item": [
 										{
-											"id": "0bc6fab0-5057-4c8d-8406-290680c67b49",
+											"id": "2cd0229d-83d4-40d9-9529-2ec69360e74a",
 											"name": "Get role by ID",
 											"request": {
 												"name": "Get role by ID",
@@ -3851,7 +3851,7 @@
 											},
 											"response": [
 												{
-													"id": "816b6e8c-e5d2-4911-8550-c3177e1fb58d",
+													"id": "0a1f8e9a-e252-4799-9615-b85bbdd50a17",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3887,7 +3887,7 @@
 											}
 										},
 										{
-											"id": "5d83b6e2-6185-4a39-a20c-f33b9eaf6284",
+											"id": "455024ad-65b2-458d-ae83-be46ed928b49",
 											"name": "Update role",
 											"request": {
 												"name": "Update role",
@@ -3930,7 +3930,7 @@
 											},
 											"response": [
 												{
-													"id": "562b1004-12dd-4ff5-90d5-9917f24847f3",
+													"id": "d93cc238-de01-4336-9e1a-4c78484e539c",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -3981,7 +3981,7 @@
 											}
 										},
 										{
-											"id": "554f9c7f-24c6-4f8d-aa1d-1d430637da48",
+											"id": "ac6e147e-e2c8-466e-939e-dcc4bd1a097a",
 											"name": "Delete role",
 											"request": {
 												"name": "Delete role",
@@ -4009,7 +4009,7 @@
 											},
 											"response": [
 												{
-													"id": "c3fe2059-1887-4d69-a10f-287b0b528a95",
+													"id": "35da0b55-2ed2-4227-85be-eed46cf11ce5",
 													"name": "200",
 													"originalRequest": {
 														"url": {
@@ -4059,7 +4059,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "5a1b2f81-98c4-4344-a469-0d6336cdda7e",
+									"id": "055a4c43-ec96-4a80-a6fd-11fac8d8d7ce",
 									"name": "Lookup invite by token",
 									"request": {
 										"name": "Lookup invite by token",
@@ -4087,7 +4087,7 @@
 									},
 									"response": [
 										{
-											"id": "9a8457f1-69d8-4058-adbf-9256af5cdf97",
+											"id": "9a31ffd5-1473-4ae3-a905-7dca00c46ed1",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -4135,7 +4135,7 @@
 							"description": "",
 							"item": [
 								{
-									"id": "3be059eb-f9e9-40cd-b5fb-d13a4c89e106",
+									"id": "5c81400f-5df5-4b55-832a-e8ea950edf08",
 									"name": "Accept onboarding invite",
 									"request": {
 										"name": "Accept onboarding invite",
@@ -4167,7 +4167,7 @@
 									},
 									"response": [
 										{
-											"id": "684659b7-5b8f-45c4-a7a4-046842e58d1c",
+											"id": "8c367467-ec51-4e50-a4b0-277163a20891",
 											"name": "200",
 											"originalRequest": {
 												"url": {
@@ -4221,7 +4221,7 @@
 		}
 	],
 	"info": {
-		"_postman_id": "3d124a4d-1d64-4d37-b65b-e1a0f04effb4",
+		"_postman_id": "7e14eb3e-2565-4589-a693-835b59bd992e",
 		"name": "Shorty Link API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"description": {

@@ -2,13 +2,11 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { SsoProviderForm } from "@/components/sso-provider-form";
+import { ssoProviderToFormValues } from "@/components/sso-provider-form-codec";
 import { Card, Notice, PageHeader } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import { getTreaty, unwrap } from "@/lib/eden";
-import {
-	DEFAULT_SAML_ATTRIBUTE_MAPPING,
-	type SsoProviderRead,
-} from "@/lib/sso-types";
+import type { SsoProviderRead } from "@/lib/sso-types";
 
 export const Route = createFileRoute("/admin/access/sso/$providerId")({
 	component: EditSsoProvider,
@@ -54,33 +52,7 @@ function EditSsoProvider() {
 			<SsoProviderForm
 				acsUrl={provider.acsUrl}
 				callbackUrl={provider.callbackUrl}
-				initialValues={{
-					allowIdpInitiated: provider.allowIdpInitiated,
-					clientId: provider.oidcConfig?.clientId ?? "",
-					defaultRoleId: provider.defaultRoleId ?? "",
-					displayName: provider.displayName,
-					domain: provider.domains.join(","),
-					enabled: provider.enabled,
-					enforceSso: provider.enforceSso,
-					groupClaim: provider.groupClaim,
-					groupRoleMappings: provider.groupRoleMappings
-						.map((mapping) => `${mapping.group}=${mapping.roleId}`)
-						.join("\n"),
-					idpMetadata: provider.samlConfig?.idpMetadata?.metadata ?? "",
-					issuer: provider.issuer,
-					jitEnabled: provider.jitEnabled,
-					protocol: provider.protocol,
-					providerId: provider.providerId,
-					samlEmailAttribute:
-						provider.samlConfig?.mapping?.email ||
-						DEFAULT_SAML_ATTRIBUTE_MAPPING.email,
-					samlEmailVerifiedAttribute:
-						provider.samlConfig?.mapping?.emailVerified ||
-						DEFAULT_SAML_ATTRIBUTE_MAPPING.emailVerified,
-					samlNameAttribute:
-						provider.samlConfig?.mapping?.name ||
-						DEFAULT_SAML_ATTRIBUTE_MAPPING.name,
-				}}
+				initialValues={ssoProviderToFormValues(provider)}
 				mode="edit"
 				onSaved={() => {
 					void router.navigate({ to: "/admin/access/sso" });
