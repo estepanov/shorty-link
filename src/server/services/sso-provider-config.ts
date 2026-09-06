@@ -92,6 +92,20 @@ function configBoolean(
 	return typeof value === "boolean" ? value : undefined;
 }
 
+function configCertificate(
+	record: Record<string, unknown> | null,
+	key: string,
+): string | string[] | undefined {
+	const value = record?.[key];
+	if (typeof value === "string") {
+		return value;
+	}
+	return Array.isArray(value) &&
+		value.every((certificate) => typeof certificate === "string")
+		? value
+		: undefined;
+}
+
 function nestedConfig(
 	record: Record<string, unknown> | null,
 	key: string,
@@ -527,6 +541,9 @@ export function toSamlReadConfig(
 	const mapping = nestedConfig(config, "mapping");
 	return {
 		callbackUrl: configString(config, "callbackUrl"),
+		cert:
+			configCertificate(config, "cert") ??
+			configCertificate(idpMetadata, "cert"),
 		entryPoint: configString(config, "entryPoint"),
 		idpMetadata: {
 			entityID: configString(idpMetadata, "entityID"),

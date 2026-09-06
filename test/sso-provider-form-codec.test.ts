@@ -6,7 +6,10 @@ import {
 	toSsoProviderCreate,
 	toSsoProviderPatch,
 } from "../src/components/sso-provider-form-codec";
-import type { SsoProviderRead } from "../src/lib/sso-types";
+import {
+	DEFAULT_SAML_ATTRIBUTE_MAPPING,
+	type SsoProviderRead,
+} from "../src/lib/sso-types";
 
 describe("SSO provider form codec", () => {
 	it("builds protocol-specific OIDC create payloads", () => {
@@ -105,6 +108,47 @@ describe("SSO provider form codec", () => {
 			skipDiscovery: true,
 			tokenEndpoint: "https://idp.example.test/token",
 			userInfoEndpoint: "https://idp.example.test/userinfo",
+		});
+	});
+
+	it("round-trips a manual SAML certificate into an editable patch", () => {
+		const provider: SsoProviderRead = {
+			acsUrl: "https://shorty.test/acs",
+			allowIdpInitiated: false,
+			callbackUrl: "https://shorty.test/callback",
+			defaultRoleId: null,
+			displayName: "Workforce SAML",
+			domains: ["acme.test"],
+			enabled: true,
+			enforceSso: true,
+			groupClaim: "groups",
+			groupRoleMappings: [],
+			hasClientSecret: true,
+			issuer: "https://shorty.test/saml",
+			jitEnabled: false,
+			oidcConfig: null,
+			protocol: "saml",
+			providerId: "workforce",
+			samlConfig: {
+				cert: ["certificate-one", "certificate-two"],
+				entryPoint: "https://idp.example.test/sso",
+				idpMetadata: { entityID: "https://idp.example.test" },
+				mapping: DEFAULT_SAML_ATTRIBUTE_MAPPING,
+			},
+			spMetadataUrl: "https://shorty.test/metadata",
+		};
+
+		const formValues = ssoProviderToFormValues(provider);
+		const patch = toSsoProviderPatch(formValues, "saml");
+
+		expect(formValues.cert).toBe("certificate-one\n\ncertificate-two");
+		expect(patch).toMatchObject({
+			protocol: "saml",
+			samlConfig: {
+				cert: "certificate-one\n\ncertificate-two",
+				entryPoint: "https://idp.example.test/sso",
+				idpMetadata: { entityID: "https://idp.example.test" },
+			},
 		});
 	});
 });
