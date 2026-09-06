@@ -3,8 +3,8 @@ import { sso } from "@better-auth/sso";
 import type { AppDb } from "../db/client";
 import {
 	applySsoAdmission,
-	prepareSsoAdmission,
 	type PreparedSsoAdmission,
+	prepareSsoAdmission,
 } from "../services/sso-provisioning";
 
 type SsoValidationInput = {

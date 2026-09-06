@@ -19,6 +19,6 @@ export {
 } from "./sso-provider-repository";
 export {
 	applySsoAdmission,
-	prepareSsoAdmission,
 	type PreparedSsoAdmission,
+	prepareSsoAdmission,
 } from "./sso-provisioning";

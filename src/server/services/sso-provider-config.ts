@@ -28,8 +28,8 @@ import type { AppDb } from "../db/client";
 import {
 	roles,
 	SYSTEM_ROLE_OWNER,
-	ssoProvider,
-	ssoProviderSettings,
+	type ssoProvider,
+	type ssoProviderSettings,
 } from "../db/schema";
 import { now } from "./links";
 import {

@@ -10,6 +10,11 @@ import type {
 import type { AppDb } from "../db/client";
 import { account, ssoProvider, ssoProviderSettings } from "../db/schema";
 import {
+	normalizeProtocol,
+	normalizeProviderId,
+	parseProviderDomains,
+} from "./sso-admission";
+import {
 	assertRoleReferences,
 	buildOidcJson,
 	buildSamlJson,
@@ -25,11 +30,6 @@ import {
 	toOidcReadConfig,
 	toSamlReadConfig,
 } from "./sso-provider-config";
-import {
-	normalizeProtocol,
-	normalizeProviderId,
-	parseProviderDomains,
-} from "./sso-admission";
 
 const OIDC_TRUSTED_URL_KEYS = [
 	"authorizationEndpoint",

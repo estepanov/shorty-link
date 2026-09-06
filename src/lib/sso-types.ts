@@ -7,10 +7,10 @@ import type {
 	SsoSamlWriteConfig,
 } from "./sso-contract";
 
-export type { SsoProtocol };
 export type {
 	SsoGroupRoleMapping,
 	SsoOidcWriteConfig,
+	SsoProtocol,
 	SsoProviderPatch,
 	SsoProviderWrite,
 	SsoSamlWriteConfig,
