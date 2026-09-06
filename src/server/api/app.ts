@@ -73,13 +73,6 @@ import {
 } from "../services/roles";
 import { listPublicSsoProviders } from "../services/sso-providers";
 import {
-	requireAuthOrError,
-	requirePermissionOrError,
-	requireSecurePermissionOrError,
-	requireSignedOutInviteRequest,
-} from "./guards";
-import { ssoAdminRoutes } from "./sso-routes";
-import {
 	assignUserRole,
 	deleteInvite,
 	deleteUser,
@@ -89,6 +82,13 @@ import {
 	listUsers,
 	updateUser,
 } from "../services/users";
+import {
+	requireAuthOrError,
+	requirePermissionOrError,
+	requireSecurePermissionOrError,
+	requireSignedOutInviteRequest,
+} from "./guards";
+import { ssoAdminRoutes } from "./sso-routes";
 
 type AiBinding = {
 	run: (model: string, input: Record<string, unknown>) => Promise<unknown>;

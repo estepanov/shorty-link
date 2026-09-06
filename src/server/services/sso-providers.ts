@@ -19,7 +19,7 @@ import {
 	redactSsoConfigJson,
 	ssoConfigHasSecret,
 } from "../auth/sso-secrets";
-import { type AppDb } from "../db/client";
+import type { AppDb } from "../db/client";
 import {
 	adminInvites,
 	SYSTEM_ROLE_OWNER,
@@ -29,13 +29,13 @@ import {
 } from "../db/schema";
 import { now } from "./links";
 import {
-	type SsoProtocol,
-	type SsoProviderSettingsView,
 	normalizeProtocol,
 	normalizeProviderId,
 	parseGroupRoleMappings,
 	parseProviderDomains,
 	resolveSsoAdmission,
+	type SsoProtocol,
+	type SsoProviderSettingsView,
 } from "./sso-admission";
 
 export type {
