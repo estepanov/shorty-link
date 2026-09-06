@@ -221,6 +221,7 @@ export const adminInvites = sqliteTable(
 		invitedBy: text("invited_by"),
 		expiresAt: integer("expires_at").notNull(),
 		acceptedAt: integer("accepted_at"),
+		ssoClaimId: text("sso_claim_id"),
 		createdAt: integer("created_at").notNull(),
 	},
 	(table) => [index("admin_invite_email_idx").on(table.email)],

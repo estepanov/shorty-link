@@ -25,6 +25,8 @@ import {
 	applySsoAdmission,
 	assertPasskeyAllowed,
 	loadSsoSettingsView,
+	type PreparedSsoAdmission,
+	prepareSsoAdmission,
 } from "../services/sso-providers";
 import {
 	completePasskeyRegistrationUser,
@@ -112,6 +114,7 @@ function fallbackUrl(request?: Request) {
 
 export function createAuth(request?: Request) {
 	const db = createDb();
+	let preparedSsoAdmission: PreparedSsoAdmission | null = null;
 	const allowedHosts = splitTrustedHosts(runtimeEnv.BETTER_AUTH_ALLOWED_HOSTS);
 	const configuredFallback = runtimeEnv.BETTER_AUTH_FALLBACK_URL ?? null;
 	const trustedRequestOrigin = request
@@ -156,6 +159,14 @@ export function createAuth(request?: Request) {
 			getAuthSecret(request),
 		),
 		account: {
+			additionalFields: {
+				issuer: {
+					type: "string",
+					required: true,
+					defaultValue: "local:unknown",
+					input: false,
+				},
+			},
 			accountLinking: {
 				enabled: true,
 			},
@@ -165,6 +176,17 @@ export function createAuth(request?: Request) {
 		},
 		user: {
 			additionalFields: {
+				invitedBy: {
+					type: "string",
+					required: false,
+					input: false,
+				},
+				isActive: {
+					type: "boolean",
+					required: false,
+					defaultValue: true,
+					input: false,
+				},
 				locale: {
 					type: "string",
 					required: false,
@@ -179,6 +201,87 @@ export function createAuth(request?: Request) {
 			},
 			changeEmail: {
 				enabled: false,
+			},
+			validateUserInfo: async ({ user: providerUser, source }) => {
+				if (source.method !== "sso-oidc" && source.method !== "sso-saml") {
+					return;
+				}
+				const providerId = source.sso?.providerId;
+				const email =
+					typeof providerUser.email === "string" ? providerUser.email : "";
+				const emailVerified = providerUser.emailVerified === true;
+				if (!providerId) {
+					return {
+						error: "errors.ssoNotProvisioned",
+						errorDescription: "errors.ssoNotProvisioned",
+					};
+				}
+				const settings = await loadSsoSettingsView(db, providerId);
+				const groups = extractIdpGroups(
+					source.sso?.profile,
+					settings?.groupClaim ?? "groups",
+				);
+				try {
+					const prepared = await prepareSsoAdmission(db, {
+						email,
+						emailVerified,
+						groups,
+						providerId,
+					});
+					const isNewUser = source.action === "create-user";
+					const isNewUserDecision =
+						prepared.decision.action === "invite" ||
+						prepared.decision.action === "jit";
+					if (isNewUser !== isNewUserDecision) {
+						throw new Error("errors.ssoNotProvisioned");
+					}
+					preparedSsoAdmission = prepared;
+				} catch (error) {
+					const message =
+						error instanceof Error ? error.message : "errors.ssoNotProvisioned";
+					return { error: message, errorDescription: message };
+				}
+			},
+		},
+		databaseHooks: {
+			account: {
+				create: {
+					before: async (newAccount) => {
+						const prepared = preparedSsoAdmission;
+						if (!prepared || newAccount.providerId !== prepared.providerId) {
+							return;
+						}
+						return {
+							data: {
+								issuer: `local:${prepared.providerId}`,
+							},
+						};
+					},
+				},
+			},
+			user: {
+				create: {
+					before: async (newUser) => {
+						const prepared = preparedSsoAdmission;
+						if (
+							!prepared ||
+							newUser.email.trim().toLowerCase() !== prepared.email ||
+							prepared.decision.action === "sign_in"
+						) {
+							return;
+						}
+						return {
+							data: {
+								invitedBy:
+									prepared.decision.action === "invite"
+										? prepared.decision.invitedBy
+										: null,
+								isActive: prepared.decision.action === "jit",
+								roleId: prepared.decision.roleId,
+							},
+						};
+					},
+				},
 			},
 		},
 		hooks: {
@@ -316,39 +419,21 @@ export function createAuth(request?: Request) {
 				userLocaleField: "locale",
 			}),
 			sso({
-				disableImplicitSignUp: true,
+				disableImplicitSignUp: false,
 				domainVerification: { enabled: false },
 				organizationProvisioning: { disabled: true },
 				provisionUserOnEveryLogin: true,
-				resolveUser: async (input) => {
-					const settings = await loadSsoSettingsView(db, input.providerId);
-					const claim = settings?.groupClaim ?? "groups";
-					const groups =
-						input.protocol === "oidc"
-							? extractIdpGroups(
-									{
-										...input.verifiedIdTokenClaims,
-										...input.providerClaims,
-									},
-									claim,
-								)
-							: extractIdpGroups(input.providerAttributes, claim);
-					try {
-						const { userId } = await applySsoAdmission(db, {
-							email: input.providerUser.email,
-							emailVerified: input.providerUser.emailVerified,
-							providerId: input.providerId,
-							groups,
-							name: input.providerUser.name || input.providerUser.email,
-						});
-						return { action: "link", userId, profile: "preserve" };
-					} catch (error) {
-						const message =
-							error instanceof Error
-								? error.message
-								: "errors.ssoNotProvisioned";
-						return { action: "reject", code: message, message };
+				trustEmailVerified: true,
+				provisionUser: async ({ provider, user: authenticatedUser }) => {
+					const prepared = preparedSsoAdmission;
+					if (
+						!prepared ||
+						prepared.providerId !== provider.providerId ||
+						prepared.email !== authenticatedUser.email.trim().toLowerCase()
+					) {
+						throw new Error("errors.ssoNotProvisioned");
 					}
+					await applySsoAdmission(db, prepared, authenticatedUser.id);
 				},
 			}),
 			tanstackStartCookies(),

@@ -34,6 +34,7 @@ import {
 	parseGroupRoleMappings,
 	parseProviderDomains,
 	resolveSsoAdmission,
+	type SsoAdmissionResult,
 	type SsoProtocol,
 	type SsoProviderSettingsView,
 } from "./sso-admission";
@@ -543,32 +544,33 @@ export async function loadSsoSettingsView(db: AppDb, providerId: string) {
 	return view;
 }
 
-export async function applySsoAdmission(
+export type PreparedSsoAdmission = {
+	decision: Exclude<SsoAdmissionResult, { ok: false }>;
+	email: string;
+	providerId: string;
+};
+
+export async function prepareSsoAdmission(
 	db: AppDb,
 	input: {
 		email: string;
 		emailVerified: boolean;
 		groups: string[];
-		name: string;
 		providerId: string;
 	},
 ) {
+	const email = input.email.trim().toLowerCase();
 	const settings = await loadSsoSettingsView(db, input.providerId);
 	const existingRows = await db
 		.select()
 		.from(user)
-		.where(eq(user.email, input.email.trim().toLowerCase()))
+		.where(eq(user.email, email))
 		.limit(1);
 	const existing = existingRows[0] ?? null;
 	const inviteRows = await db
 		.select()
 		.from(adminInvites)
-		.where(
-			and(
-				eq(adminInvites.email, input.email.trim().toLowerCase()),
-				isNull(adminInvites.acceptedAt),
-			),
-		)
+		.where(and(eq(adminInvites.email, email), isNull(adminInvites.acceptedAt)))
 		.limit(1);
 	const pendingInvite = inviteRows[0];
 	const invite =
@@ -603,8 +605,25 @@ export async function applySsoAdmission(
 		throw new Error(decision.error);
 	}
 
+	return {
+		decision,
+		email,
+		providerId: input.providerId,
+	} satisfies PreparedSsoAdmission;
+}
+
+export async function applySsoAdmission(
+	db: AppDb,
+	prepared: PreparedSsoAdmission,
+	authenticatedUserId: string,
+) {
+	const { decision, email } = prepared;
+
 	switch (decision.action) {
 		case "sign_in": {
+			if (decision.userId !== authenticatedUserId) {
+				throw new Error("errors.ssoNotProvisioned");
+			}
 			if (decision.roleChanged) {
 				await db
 					.update(user)
@@ -614,59 +633,84 @@ export async function applySsoAdmission(
 			return { userId: decision.userId };
 		}
 		case "invite": {
-			const email = input.email.trim().toLowerCase();
-			const timestamp = Math.floor(Date.now() / 1000);
-			const id = nanoid();
 			const acceptedAt = now();
-			const claimed = await db.$client
+			const claimId = crypto.randomUUID();
+			const claimStatement = db.$client
 				.prepare(`
 				update "admin_invite"
-				set "accepted_at" = ?
+				set "accepted_at" = ?, "sso_claim_id" = ?
 				where "token" = ?
 					and "email" = ?
 					and "accepted_at" is null
 					and "expires_at" > ?
 			`)
-				.bind(acceptedAt, decision.token, email, acceptedAt)
-				.run();
-			if (claimed.meta.changes !== 1) {
-				throw new Error("errors.ssoNotProvisioned");
-			}
-			await db.$client
+				.bind(acceptedAt, claimId, decision.token, email, acceptedAt);
+			const activateStatement = db.$client
 				.prepare(`
-				insert into "user" (
-					"id", "name", "email", "email_verified", "image",
-					"role_id", "locale", "is_active", "invited_by",
-					"created_at", "updated_at"
-				) values (?, ?, ?, 1, null, ?, 'en', 1, ?, ?, ?)
+				update "user"
+				set "role_id" = ?, "invited_by" = ?, "is_active" = 1,
+					"updated_at" = ?
+				where "id" = ?
+					and "email" = ?
+					and "is_active" = 0
+					and exists (
+						select 1 from "admin_invite"
+						where "token" = ?
+							and "email" = ?
+							and "sso_claim_id" = ?
+					)
 			`)
 				.bind(
-					id,
-					input.name,
-					email,
 					decision.roleId,
 					decision.invitedBy,
-					timestamp,
-					timestamp,
-				)
-				.run();
-			return { userId: id };
+					Math.floor(Date.now() / 1000),
+					authenticatedUserId,
+					email,
+					decision.token,
+					email,
+					claimId,
+				);
+			const [claimed, activated] = await db.$client.batch([
+				claimStatement,
+				activateStatement,
+			]);
+			if (claimed.meta.changes !== 1 || activated.meta.changes !== 1) {
+				const restoreInvite = db.$client
+					.prepare(`
+						update "admin_invite"
+						set "accepted_at" = null, "sso_claim_id" = null
+						where "token" = ? and "sso_claim_id" = ?
+					`)
+					.bind(decision.token, claimId);
+				const removeStagedUser = db.$client
+					.prepare(`
+						delete from "user"
+						where "id" = ? and "email" = ? and "is_active" = 0
+					`)
+					.bind(authenticatedUserId, email);
+				await db.$client.batch([restoreInvite, removeStagedUser]);
+				throw new Error("errors.ssoNotProvisioned");
+			}
+			return { userId: authenticatedUserId };
 		}
 		case "jit": {
-			const email = input.email.trim().toLowerCase();
-			const timestamp = Math.floor(Date.now() / 1000);
-			const id = nanoid();
-			await db.$client
+			const activated = await db.$client
 				.prepare(`
-			insert into "user" (
-				"id", "name", "email", "email_verified", "image",
-				"role_id", "locale", "is_active", "invited_by",
-				"created_at", "updated_at"
-			) values (?, ?, ?, 1, null, ?, 'en', 1, null, ?, ?)
-		`)
-				.bind(id, input.name, email, decision.roleId, timestamp, timestamp)
+					update "user"
+					set "role_id" = ?, "is_active" = 1, "updated_at" = ?
+					where "id" = ? and "email" = ?
+				`)
+				.bind(
+					decision.roleId,
+					Math.floor(Date.now() / 1000),
+					authenticatedUserId,
+					email,
+				)
 				.run();
-			return { userId: id };
+			if (activated.meta.changes !== 1) {
+				throw new Error("errors.ssoNotProvisioned");
+			}
+			return { userId: authenticatedUserId };
 		}
 		default: {
 			const _exhaustive: never = decision;
