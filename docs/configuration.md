@@ -93,6 +93,8 @@ pnpm cf-typegen
 
 The application still treats the binding as optional at runtime, so default deploys without this block keep working.
 
+To try the queue locally, uncomment the same block and restart `pnpm dev`. Miniflare simulates the queue; you do not need `wrangler queues create`. See [Validate locally](/analytics/#validate-locally).
+
 ### `ANALYTICS`
 
 Optional Workers Analytics Engine dataset binding. When present, `recordClick` first enqueues or persists to D1, then writes one Analytics Engine data point (not awaited). The admin dashboard does not query Analytics Engine; D1 remains the source of truth. See [Analytics](/analytics/#analytics-engine) before enabling this.
@@ -136,6 +138,8 @@ Add this block to `wrangler.jsonc`:
 
 The schedule is operator-owned. The default deploy works without a cron. Overlapping invocations take a D1 row lease so additive rollup upserts cannot double-count.
 
+Locally, while `pnpm dev` is running, `GET /cdn-cgi/local/scheduled?format=json` on the Vite port (3000). See [Validate locally](/analytics/#validate-locally).
+
 ## Required Secrets
 
 ### `BETTER_AUTH_SECRET`
@@ -160,7 +164,7 @@ Example:
 links.example.com,admin.example.com
 ```
 
-For local development, `.dev.vars.example` includes `localhost:3000`, `localhost:8787`, and `*.workers.dev`.
+For local development, `.dev.vars.example` includes the Vite host, `localhost:8787`, and `*.workers.dev`.
 
 ### `BETTER_AUTH_FALLBACK_URL`
 
@@ -204,7 +208,9 @@ For local development:
 cp .dev.vars.example .dev.vars
 ```
 
-Then set a local `BETTER_AUTH_SECRET` in `.dev.vars`.
+Then set a local `BETTER_AUTH_SECRET` in `.dev.vars`. `pnpm dev` serves on port **3000**. Add host `localhost` with that port to `BETTER_AUTH_ALLOWED_HOSTS` if you use the admin UI there.
+
+Optional analytics pieces stay commented until you uncomment them. Queue and cron can be validated locally without creating Cloudflare account resources. Analytics Engine cannot. See [Validate locally](/analytics/#validate-locally).
 
 ## Binding Type Generation
 
