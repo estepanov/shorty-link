@@ -81,7 +81,7 @@ Duplicates Better Auth session and account handling.
 IdP-initiated:
 
 - OIDC: `oidcConfig.allowIdpInitiated: true`; bounce uses `baseURL` then `/admin`.
-- SAML: IdP POSTs to `/api/auth/sso/saml2/sp/acs/{providerId}`; `samlConfig.callbackUrl` is `/admin`. The Better Auth global SAML capability is enabled, while `src/server.ts` rejects unsolicited responses unless that specific enabled SAML provider has `allow_idp_initiated = 1`. Correlated responses continue to Better Auth's `InResponseTo` validation.
+- SAML: IdP POSTs to `/api/auth/sso/saml2/sp/acs/{providerId}`; `samlConfig.callbackUrl` is `/admin`. For each ACS request, Shorty enables Better Auth's IdP-initiated capability only when that specific enabled SAML provider has `allow_idp_initiated = 1`. Better Auth remains the sole parser and enforces response-size, XML, signature, replay, and `InResponseTo` validation.
 
 Admin configuration (authenticated, `sso.write`):
 
@@ -102,8 +102,13 @@ Keep this as one Worker. No new binding. Outbound `fetch` to the IdP is allowed.
 | Better Auth 1.7 + `sso` plugin | OIDC/SAML protocol and callbacks; reads providers through the encrypted adapter | D1 tables, `trustedOrigins`, `account.issuer` |
 | `src/server/auth/sso-secrets.ts` | AES-256-GCM encrypt/decrypt of known secret JSON fields | `BETTER_AUTH_SECRET` |
 | `src/server/auth/sso-adapter.ts` | Encrypt provider configs on adapter writes and decrypt them on reads | Drizzle adapter, `sso-secrets.ts` |
+| `src/server/auth/sso-integration.ts` | One-shot admission coordination across Better Auth validation, database, and provisioning hooks | `sso-provisioning.ts` |
+| `src/server/auth/saml-acs-policy.ts` | Select Better Auth's IdP-initiated policy for the ACS provider without parsing SAML | provider settings |
 | `src/server/services/sso-admission.ts` | Admission decisions, group mapping, and provider-domain enforcement | invites, roles, settings |
-| `src/server/services/sso-providers.ts` | Provider CRUD, discovery, settings, redacted DTOs, and admission persistence | D1, `sso-admission.ts`, `sso-secrets.ts` |
+| `src/server/services/sso-provider-config.ts` | Protocol validation, discovery, secret persistence, and typed redacted DTOs | Better Auth SSO, `sso-secrets.ts` |
+| `src/server/services/sso-provider-repository.ts` | Atomic provider CRUD, concurrency checks, public catalog, and endpoint trust | D1, provider config |
+| `src/server/services/sso-provisioning.ts` | Batched admission lookup and atomic invite/JIT application | D1, `sso-admission.ts` |
+| `src/server/services/sso-passkey-policy.ts` | Enforced-domain passkey policy | public provider catalog |
 | `/api/admin/sso-providers` | Permissioned CRUD + public catalog + SP metadata | CSRF, Eden |
 | Access → SSO UI | Create/edit OIDC or SAML providers | Eden, `sso.*` permissions |
 | Login + invite cards | Passkey and/or SSO buttons, email-first when enforcement exists | Public catalog |
@@ -328,7 +333,7 @@ EN and ES strings in `src/lib/i18n.ts`.
 3. Admin API: permissions, CSRF, redaction, public catalog, reserved ids, blank-secret PATCH.
 4. Auth hook: raw `/api/auth/sso/register` is 403; enforced-domain passkey is rejected; bootstrap passkey still works.
 5. Real Better Auth + D1 OIDC callback tests: verified JIT and invite admission succeed without native transactions; unverified and cross-domain identities fail without creating users.
-6. SAML ACS gate tests: malformed and oversized requests fail closed; unsolicited responses require the enabled provider's opt-in; correlated responses continue to Better Auth.
+6. SAML ACS policy tests: only an enabled SAML provider with explicit opt-in enables Better Auth's IdP-initiated mode; all response parsing and correlation validation remain inside Better Auth.
 7. Permission migration: system roles gain `sso.*`; custom roles do not.
 8. Existing passkey, invite, and API-key tests still pass after the 1.7 upgrade.
 

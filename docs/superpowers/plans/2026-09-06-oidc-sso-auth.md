@@ -25,7 +25,7 @@
 **Files:**
 - Create: `src/server/auth/sso-secrets.ts`
 - Create: `src/server/auth/sso-adapter.ts`
-- Create: `src/server/services/sso-admission.ts`, `src/server/services/sso-providers.ts`
+- Create: `src/server/services/sso-admission.ts`, `src/server/services/sso-provisioning.ts`, `src/server/services/sso-passkey-policy.ts`
 - Test: `test/sso-secrets.test.ts`, `test/sso-admission.test.ts`
 
 **Interfaces:**
@@ -46,6 +46,7 @@
 **Files:**
 - Modify: `package.json` / lockfile
 - Modify: `src/server/auth/auth.ts`, `src/lib/auth-client.ts`, `src/server.ts`
+- Create: `src/server/auth/sso-integration.ts`, `src/server/auth/sso-request-security.ts`, `src/server/auth/saml-acs-policy.ts`
 
 - [ ] Upgrade packages together to 1.7.3. Add `account.issuer`, `sso()`, and `ssoClient()`. Block raw SSO admin paths unconditionally. Reject enforced-domain passkeys except bootstrap.
 
@@ -53,7 +54,7 @@
 
 **Files:**
 - Create: `src/server/api/sso-routes.ts`
-- Create: `src/server/services/sso-providers.ts`
+- Create: `src/lib/sso-contract.ts`, `src/server/services/sso-provider-config.ts`, `src/server/services/sso-provider-repository.ts`
 - Modify: `src/server/api/app.ts`
 - Test: `test/admin-api-wrappers.test.ts` (extend)
 
