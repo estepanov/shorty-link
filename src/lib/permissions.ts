@@ -18,6 +18,9 @@ export const PERMISSIONS = [
 	"roles.read",
 	"roles.update",
 	"roles.delete",
+	"sso.read",
+	"sso.write",
+	"sso.delete",
 	"analytics.read",
 ] as const;
 
@@ -37,6 +40,9 @@ export const PERMISSION_GROUPS: Record<string, readonly Permission[]> = {
 		"roles.read",
 		"roles.update",
 		"roles.delete",
+		"sso.read",
+		"sso.write",
+		"sso.delete",
 	],
 	analytics: ["analytics.read"],
 };

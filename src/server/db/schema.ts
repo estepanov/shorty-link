@@ -81,10 +81,17 @@ export const account = sqliteTable(
 		}),
 		scope: text("scope"),
 		password: text("password"),
+		issuer: text("issuer").notNull().default("local:unknown"),
 		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 	},
-	(table) => [index("account_user_id_idx").on(table.userId)],
+	(table) => [
+		index("account_user_id_idx").on(table.userId),
+		uniqueIndex("account_issuer_account_id_idx").on(
+			table.issuer,
+			table.accountId,
+		),
+	],
 );
 
 export const verification = sqliteTable("verification", {
@@ -312,6 +319,51 @@ export const redirectEvents = sqliteTable(
 	],
 );
 
+export const ssoProvider = sqliteTable(
+	"ssoProvider",
+	{
+		id: text("id").primaryKey(),
+		issuer: text("issuer").notNull(),
+		domain: text("domain").notNull(),
+		oidcConfig: text("oidcConfig"),
+		samlConfig: text("samlConfig"),
+		userId: text("userId")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		providerId: text("providerId").notNull().unique(),
+		organizationId: text("organizationId"),
+	},
+	(table) => [
+		index("ssoProvider_userId_idx").on(table.userId),
+		index("ssoProvider_domain_idx").on(table.domain),
+	],
+);
+
+export const ssoProviderSettings = sqliteTable("sso_provider_settings", {
+	providerId: text("provider_id")
+		.primaryKey()
+		.references(() => ssoProvider.providerId, { onDelete: "cascade" }),
+	protocol: text("protocol").notNull(),
+	displayName: text("display_name").notNull(),
+	enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+	jitEnabled: integer("jit_enabled", { mode: "boolean" })
+		.notNull()
+		.default(false),
+	defaultRoleId: text("default_role_id").references(() => roles.id, {
+		onDelete: "restrict",
+	}),
+	enforceSso: integer("enforce_sso", { mode: "boolean" })
+		.notNull()
+		.default(false),
+	allowIdpInitiated: integer("allow_idp_initiated", { mode: "boolean" })
+		.notNull()
+		.default(false),
+	groupClaim: text("group_claim").notNull().default("groups"),
+	groupRoleMappings: text("group_role_mappings").notNull().default("[]"),
+	createdAt: integer("created_at").notNull(),
+	updatedAt: integer("updated_at").notNull(),
+});
+
 export const schema = {
 	account,
 	adminInvites,
@@ -325,6 +377,8 @@ export const schema = {
 	roles,
 	session,
 	shortLinks,
+	ssoProvider,
+	ssoProviderSettings,
 	user,
 	verification,
 };
