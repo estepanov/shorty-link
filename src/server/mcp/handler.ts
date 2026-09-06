@@ -12,6 +12,7 @@ import {
 	assertMcpUserAllowed,
 } from "../services/mcp-settings";
 import { mcpOptionsResponse, mcpWwwAuthenticate, withMcpCors } from "./cors";
+import { getMcpBearerSession } from "./session";
 import {
 	initializeResult,
 	isJsonRpcFailure,
@@ -24,12 +25,6 @@ import {
 import { callMcpTool, listMcpTools } from "./tools";
 
 const log = getLogger(["mcp"]);
-
-type McpSession = {
-	userId?: string | null;
-	scopes?: string;
-	clientId?: string;
-};
 
 function requestOrigin(request: Request) {
 	return new URL(request.url).origin;
@@ -96,10 +91,7 @@ async function handleJsonRpc(request: Request) {
 		);
 	}
 
-	const auth = createAuth(request);
-	const session = (await auth.api.getMcpSession({
-		headers: request.headers,
-	})) as McpSession | null;
+	const session = await getMcpBearerSession(db, request);
 	if (!session?.userId) {
 		return unauthorizedResponse(request);
 	}

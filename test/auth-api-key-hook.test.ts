@@ -152,4 +152,38 @@ describe("api key auth hook", () => {
 			"better-auth.session_token=session-token",
 		);
 	});
+
+	it("does not treat MCP OAuth bearer tokens as API keys", () => {
+		createAuth(new Request("http://localhost/api/auth/session"));
+		const lastCall = mocks.apiKey.mock.calls.at(-1) as
+			| [
+					{
+						customAPIKeyGetter?: (ctx: {
+							headers?: Headers;
+							request?: Request;
+						}) => string | null;
+					},
+			  ]
+			| undefined;
+		const apiKeyOptions = lastCall?.[0];
+		expect(apiKeyOptions).toBeDefined();
+		if (!apiKeyOptions) {
+			return;
+		}
+		expect(apiKeyOptions.customAPIKeyGetter).toBeTypeOf("function");
+		expect(
+			apiKeyOptions.customAPIKeyGetter?.({
+				headers: new Headers({
+					authorization: "Bearer AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+				}),
+			}),
+		).toBeNull();
+		expect(
+			apiKeyOptions.customAPIKeyGetter?.({
+				headers: new Headers({
+					authorization: "Bearer sl_admin_key",
+				}),
+			}),
+		).toBe("sl_admin_key");
+	});
 });

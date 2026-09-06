@@ -17,6 +17,7 @@ import {
 	assertMcpServerEnabled,
 	assertMcpUserAllowed,
 } from "../services/mcp-settings";
+import { resolveApiKeyFromHeaders } from "./api-key-headers";
 import {
 	completePasskeyRegistrationUser,
 	resolvePasskeyRegistrationUser,
@@ -222,6 +223,15 @@ export function createAuth(request?: Request) {
 			apiKey({
 				apiKeyHeaders: ["x-api-key", "authorization"],
 				defaultPrefix: "sl_",
+				customAPIKeyGetter: (ctx) => {
+					const headers = ctx.headers ?? ctx.request?.headers;
+					if (!headers) {
+						return null;
+					}
+					return resolveApiKeyFromHeaders(
+						headers instanceof Headers ? headers : new Headers(headers),
+					);
+				},
 				enableSessionForAPIKeys: true,
 				requireName: true,
 				rateLimit: {
@@ -272,7 +282,6 @@ export function createAuth(request?: Request) {
 				localeCookie: "shorty_locale",
 				userLocaleField: "locale",
 			}),
-			tanstackStartCookies(),
 			mcp({
 				loginPage: "/admin",
 				resource: `${origin}/mcp`,
@@ -282,6 +291,7 @@ export function createAuth(request?: Request) {
 					consentPage: "/admin/mcp/consent",
 				},
 			}),
+			tanstackStartCookies(),
 		],
 	});
 }
