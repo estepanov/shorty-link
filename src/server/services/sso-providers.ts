@@ -10,6 +10,7 @@ import {
 	isSsoEnforcedForEmail,
 	type SsoPublicCatalog,
 } from "@/lib/sso-catalog";
+import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "@/lib/sso-types";
 import type {
 	SsoAdminProvider,
 	SsoProviderPatch,
@@ -348,6 +349,27 @@ async function buildSamlJson(
 		!Array.isArray(current.idpMetadata)
 			? (current.idpMetadata as Record<string, unknown>)
 			: null;
+	const currentMapping =
+		typeof current?.mapping === "object" &&
+		current.mapping !== null &&
+		!Array.isArray(current.mapping)
+			? (current.mapping as Record<string, unknown>)
+			: null;
+	const requestedMapping = input.samlConfig?.mapping;
+	const mapping = {
+		email:
+			requestedMapping?.email?.trim() ||
+			configString(currentMapping, "email")?.trim() ||
+			DEFAULT_SAML_ATTRIBUTE_MAPPING.email,
+		emailVerified:
+			requestedMapping?.emailVerified?.trim() ||
+			configString(currentMapping, "emailVerified")?.trim() ||
+			DEFAULT_SAML_ATTRIBUTE_MAPPING.emailVerified,
+		name:
+			requestedMapping?.name?.trim() ||
+			configString(currentMapping, "name")?.trim() ||
+			DEFAULT_SAML_ATTRIBUTE_MAPPING.name,
+	};
 	const record: Record<string, unknown> = {
 		...(current ?? {}),
 		allowIdpInitiated: input.allowIdpInitiated ?? current?.allowIdpInitiated,
@@ -358,6 +380,7 @@ async function buildSamlJson(
 			...(currentIdpMetadata ?? {}),
 			...(input.samlConfig?.idpMetadata ?? {}),
 		},
+		mapping,
 	};
 	assertSamlConfig(record);
 	return JSON.stringify(record);

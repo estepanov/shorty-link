@@ -16,12 +16,25 @@ export type SsoOidcWriteConfig = {
 	userInfoEndpoint?: string;
 };
 
+export const DEFAULT_SAML_ATTRIBUTE_MAPPING = {
+	email: "email",
+	emailVerified: "email_verified",
+	name: "displayName",
+} as const;
+
+export type SsoSamlAttributeMapping = {
+	email?: string;
+	emailVerified?: string;
+	name?: string;
+};
+
 export type SsoSamlWriteConfig = {
 	entryPoint?: string;
 	idpMetadata?: {
 		entityID?: string;
 		metadata?: string;
 	};
+	mapping?: SsoSamlAttributeMapping;
 };
 
 export type SsoProviderWrite = {

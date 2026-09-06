@@ -38,6 +38,13 @@ const samlConfigBody = t.Object({
 			metadata: t.Optional(t.String()),
 		}),
 	),
+	mapping: t.Optional(
+		t.Object({
+			email: t.Optional(t.String({ minLength: 1 })),
+			emailVerified: t.Optional(t.String({ minLength: 1 })),
+			name: t.Optional(t.String({ minLength: 1 })),
+		}),
+	),
 });
 
 const ssoProviderBody = t.Object({

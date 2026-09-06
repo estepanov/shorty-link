@@ -5,7 +5,10 @@ import { SsoProviderForm } from "@/components/sso-provider-form";
 import { Card, Notice, PageHeader } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import { getTreaty, unwrap } from "@/lib/eden";
-import type { SsoProviderRead } from "@/lib/sso-types";
+import {
+	DEFAULT_SAML_ATTRIBUTE_MAPPING,
+	type SsoProviderRead,
+} from "@/lib/sso-types";
 
 export const Route = createFileRoute("/admin/access/sso/$providerId")({
 	component: EditSsoProvider,
@@ -84,6 +87,17 @@ function EditSsoProvider() {
 					jitEnabled: provider.jitEnabled,
 					protocol: provider.protocol,
 					providerId: provider.providerId,
+					samlEmailAttribute:
+						readConfigString(provider.samlConfig, ["mapping", "email"]) ||
+						DEFAULT_SAML_ATTRIBUTE_MAPPING.email,
+					samlEmailVerifiedAttribute:
+						readConfigString(provider.samlConfig, [
+							"mapping",
+							"emailVerified",
+						]) || DEFAULT_SAML_ATTRIBUTE_MAPPING.emailVerified,
+					samlNameAttribute:
+						readConfigString(provider.samlConfig, ["mapping", "name"]) ||
+						DEFAULT_SAML_ATTRIBUTE_MAPPING.name,
 				}}
 				mode="edit"
 				onSaved={() => {

@@ -5,7 +5,10 @@ import { drizzle } from "drizzle-orm/d1";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 
-import type { SsoProviderWrite } from "../src/lib/sso-types";
+import {
+	DEFAULT_SAML_ATTRIBUTE_MAPPING,
+	type SsoProviderWrite,
+} from "../src/lib/sso-types";
 import {
 	roles,
 	SYSTEM_ROLE_ADMIN,
@@ -105,6 +108,8 @@ describe("D1 SSO provider persistence", () => {
 
 		expect(updated.allowIdpInitiated).toBe(true);
 		expect(updated.oidcConfig?.allowIdpInitiated).toBe(true);
+		expect(updated.oidcConfig).not.toHaveProperty("mapping");
+		expect(updated.samlConfig).toBeNull();
 	});
 
 	it("validates role references before creating or updating a provider", async () => {
@@ -227,6 +232,54 @@ describe("D1 SSO provider persistence", () => {
 			REQUEST,
 		);
 		expect(await db.select().from(ssoProvider)).toHaveLength(2);
+	});
+
+	it("persists secure SAML attribute defaults and configurable mappings", async () => {
+		const created = await createSsoProvider(
+			db,
+			{
+				displayName: "Mapped SAML",
+				domain: "mapped.test",
+				issuer: "https://shorty.test/saml/mapped",
+				protocol: "saml",
+				providerId: "mapped-saml",
+				samlConfig: { idpMetadata: { metadata: validSamlMetadata } },
+			},
+			"owner",
+			ORIGIN,
+			REQUEST,
+		);
+		expect(created.samlConfig?.mapping).toEqual(DEFAULT_SAML_ATTRIBUTE_MAPPING);
+
+		const mapped = await updateSsoProvider(
+			db,
+			"mapped-saml",
+			{
+				samlConfig: {
+					mapping: {
+						email: "mail",
+						emailVerified: "mail_confirmed",
+						name: "full_name",
+					},
+				},
+			},
+			ORIGIN,
+			REQUEST,
+		);
+		expect(mapped.samlConfig?.mapping).toEqual({
+			email: "mail",
+			emailVerified: "mail_confirmed",
+			name: "full_name",
+		});
+
+		const renamed = await updateSsoProvider(
+			db,
+			"mapped-saml",
+			{ displayName: "Renamed SAML" },
+			ORIGIN,
+			REQUEST,
+		);
+		expect(renamed.samlConfig?.mapping).toEqual(mapped.samlConfig?.mapping);
 	});
 
 	it("rejects invalid or incomplete SAML configuration", async () => {

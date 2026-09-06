@@ -283,6 +283,11 @@ export const messages = {
 		"sso.clientId": "Client ID",
 		"sso.clientSecret": "Client secret",
 		"sso.idpMetadata": "IdP metadata XML",
+		"sso.samlEmailAttribute": "SAML email attribute",
+		"sso.samlEmailVerifiedAttribute": "SAML verified-email attribute",
+		"sso.samlEmailVerifiedHint":
+			"This attribute must be present and assert true for sign-in to succeed.",
+		"sso.samlNameAttribute": "SAML name attribute",
 		"sso.defaultRole": "JIT default role ID",
 		"sso.groupClaim": "Group claim",
 		"sso.groupMappings": "Group to role mappings",
@@ -750,6 +755,11 @@ export const messages = {
 		"sso.clientId": "Client ID",
 		"sso.clientSecret": "Client secret",
 		"sso.idpMetadata": "XML de metadatos del IdP",
+		"sso.samlEmailAttribute": "Atributo SAML de email",
+		"sso.samlEmailVerifiedAttribute": "Atributo SAML de email verificado",
+		"sso.samlEmailVerifiedHint":
+			"Este atributo debe estar presente y afirmar true para permitir el acceso.",
+		"sso.samlNameAttribute": "Atributo SAML de nombre",
 		"sso.defaultRole": "ID de rol JIT por defecto",
 		"sso.groupClaim": "Claim de grupos",
 		"sso.groupMappings": "Asignacion de grupos a roles",

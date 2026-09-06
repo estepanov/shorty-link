@@ -423,6 +423,9 @@ export function createAuth(request?: Request) {
 				domainVerification: { enabled: false },
 				organizationProvisioning: { disabled: true },
 				provisionUserOnEveryLogin: true,
+				saml: {
+					allowIdpInitiated: true,
+				},
 				trustEmailVerified: true,
 				provisionUser: async ({ provider, user: authenticatedUser }) => {
 					const prepared = preparedSsoAdmission;

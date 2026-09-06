@@ -54,7 +54,9 @@ const mocks = vi.hoisted(() => {
 		getSession,
 		i18n: vi.fn(() => ({ id: "i18n-plugin" })),
 		passkey: vi.fn(() => ({ id: "passkey-plugin" })),
-		sso: vi.fn(() => ({ id: "sso-plugin" })),
+		sso: vi.fn((_options: Record<string, unknown>) => ({
+			id: "sso-plugin",
+		})),
 		tanstackStartCookies: vi.fn(() => ({ id: "tanstack-start-cookies" })),
 	};
 });
@@ -198,5 +200,15 @@ describe("api key auth hook", () => {
 		);
 		expect(origins).toContain("http://localhost:8787");
 		expect(origins).not.toContain("https://evil.example");
+	});
+
+	it("enables the plugin capability for gated IdP-initiated SAML", async () => {
+		createAuth(new Request("http://localhost:8787/api/auth/session"));
+		const pluginOptions = mocks.sso.mock.calls.at(-1)?.[0] as {
+			saml?: { allowIdpInitiated?: boolean };
+			trustEmailVerified?: boolean;
+		};
+		expect(pluginOptions.saml?.allowIdpInitiated).toBe(true);
+		expect(pluginOptions.trustEmailVerified).toBe(true);
 	});
 });

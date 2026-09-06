@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/field";
 import { getTreaty, unwrap } from "@/lib/eden";
 import type { MessageKey } from "@/lib/i18n";
+import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "@/lib/sso-types";
 
 export type SsoFormValues = {
 	allowIdpInitiated: boolean;
@@ -30,6 +31,9 @@ export type SsoFormValues = {
 	jitEnabled: boolean;
 	protocol: "oidc" | "saml";
 	providerId: string;
+	samlEmailAttribute: string;
+	samlEmailVerifiedAttribute: string;
+	samlNameAttribute: string;
 };
 
 const emptyValues: SsoFormValues = {
@@ -48,6 +52,9 @@ const emptyValues: SsoFormValues = {
 	jitEnabled: false,
 	protocol: "oidc",
 	providerId: "",
+	samlEmailAttribute: DEFAULT_SAML_ATTRIBUTE_MAPPING.email,
+	samlEmailVerifiedAttribute: DEFAULT_SAML_ATTRIBUTE_MAPPING.emailVerified,
+	samlNameAttribute: DEFAULT_SAML_ATTRIBUTE_MAPPING.name,
 };
 
 function parseMappings(value: string) {
@@ -104,7 +111,14 @@ export function SsoProviderForm({
 					providerId: value.providerId,
 					samlConfig:
 						value.protocol === "saml"
-							? { idpMetadata: { metadata: value.idpMetadata } }
+							? {
+									idpMetadata: { metadata: value.idpMetadata },
+									mapping: {
+										email: value.samlEmailAttribute,
+										emailVerified: value.samlEmailVerifiedAttribute,
+										name: value.samlNameAttribute,
+									},
+								}
 							: undefined,
 				};
 				if (mode === "create") {
@@ -166,6 +180,7 @@ export function SsoProviderForm({
 								<FieldLabel>{t("sso.protocol")}</FieldLabel>
 								<select
 									className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+									disabled={mode === "edit"}
 									onChange={(event) =>
 										field.handleChange(
 											event.target.value === "saml" ? "saml" : "oidc",
@@ -239,20 +254,69 @@ export function SsoProviderForm({
 									</form.Field>
 								</>
 							) : (
-								<form.Field name="idpMetadata">
-									{(field) => (
-										<Field>
-											<FieldLabel>{t("sso.idpMetadata")}</FieldLabel>
-											<TextArea
-												onChange={(event) =>
-													field.handleChange(event.target.value)
-												}
-												rows={8}
-												value={field.state.value}
-											/>
-										</Field>
-									)}
-								</form.Field>
+								<>
+									<form.Field name="idpMetadata">
+										{(field) => (
+											<Field>
+												<FieldLabel>{t("sso.idpMetadata")}</FieldLabel>
+												<TextArea
+													onChange={(event) =>
+														field.handleChange(event.target.value)
+													}
+													rows={8}
+													value={field.state.value}
+												/>
+											</Field>
+										)}
+									</form.Field>
+									<form.Field name="samlEmailAttribute">
+										{(field) => (
+											<Field>
+												<FieldLabel>{t("sso.samlEmailAttribute")}</FieldLabel>
+												<Input
+													onChange={(event) =>
+														field.handleChange(event.target.value)
+													}
+													required
+													value={field.state.value}
+												/>
+											</Field>
+										)}
+									</form.Field>
+									<form.Field name="samlEmailVerifiedAttribute">
+										{(field) => (
+											<Field>
+												<FieldLabel>
+													{t("sso.samlEmailVerifiedAttribute")}
+												</FieldLabel>
+												<FieldDescription>
+													{t("sso.samlEmailVerifiedHint")}
+												</FieldDescription>
+												<Input
+													onChange={(event) =>
+														field.handleChange(event.target.value)
+													}
+													required
+													value={field.state.value}
+												/>
+											</Field>
+										)}
+									</form.Field>
+									<form.Field name="samlNameAttribute">
+										{(field) => (
+											<Field>
+												<FieldLabel>{t("sso.samlNameAttribute")}</FieldLabel>
+												<Input
+													onChange={(event) =>
+														field.handleChange(event.target.value)
+													}
+													required
+													value={field.state.value}
+												/>
+											</Field>
+										)}
+									</form.Field>
+								</>
 							)
 						}
 					</form.Subscribe>
