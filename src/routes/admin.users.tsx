@@ -16,7 +16,13 @@ import {
 	SelectValue,
 } from "@/components/ui";
 import { useAdminAuthGuard, useAuthContext } from "@/lib/admin-auth";
-import type { AdminInvite, AdminUser, AssignableRole } from "@/lib/admin-types";
+import type {
+	AdminInvite,
+	AdminUser,
+	AssignableRole,
+	InviteListData,
+	UserListData,
+} from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/users")({
@@ -42,13 +48,13 @@ function UsersPage() {
 		setError(null);
 		try {
 			const api = getTreaty();
-			const [nextUsers, nextInvites, nextRoles] = await Promise.all([
-				unwrap<AdminUser[]>(await api.admin.users.get()),
-				unwrap<AdminInvite[]>(await api.admin.invites.get()),
+			const [userData, inviteData, nextRoles] = await Promise.all([
+				unwrap<UserListData>(await api.admin.users.get()),
+				unwrap<InviteListData>(await api.admin.invites.get()),
 				unwrap<AssignableRole[]>(await api.admin.roles.assignable.get()),
 			]);
-			setUsers(nextUsers);
-			setInvites(nextInvites);
+			setUsers(userData.items);
+			setInvites(inviteData.items);
 			setRoles(nextRoles);
 		} catch (nextError) {
 			setError(

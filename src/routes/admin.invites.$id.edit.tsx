@@ -26,7 +26,7 @@ import {
 	FieldLabel,
 } from "@/components/ui/field";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
-import type { AdminInvite, AssignableRole } from "@/lib/admin-types";
+import type { AdminInviteDetail, AssignableRole } from "@/lib/admin-types";
 import { getTreaty, unwrap } from "@/lib/eden";
 
 export const Route = createFileRoute("/admin/invites/$id/edit")({
@@ -39,7 +39,7 @@ function EditInvite() {
 	const { session, isPending, t } = useAdminAuthGuard();
 	const { isAuthorized, isPending: isAuthPending } =
 		useRequirePermission("invites.update");
-	const [invite, setInvite] = useState<AdminInvite | null>(null);
+	const [invite, setInvite] = useState<AdminInviteDetail | null>(null);
 	const [roles, setRoles] = useState<AssignableRole[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +54,7 @@ function EditInvite() {
 			try {
 				const api = getTreaty();
 				const [nextInvite, nextRoles] = await Promise.all([
-					unwrap<AdminInvite>(await api.admin.invites({ id }).get()),
+					unwrap<AdminInviteDetail>(await api.admin.invites({ id }).get()),
 					unwrap<AssignableRole[]>(await api.admin.roles.assignable.get()),
 				]);
 				setInvite(nextInvite);
@@ -115,7 +115,7 @@ function InviteEditor({
 	roles,
 	t,
 }: {
-	invite: AdminInvite;
+	invite: AdminInviteDetail;
 	onSaved: () => Promise<void>;
 	roles: AssignableRole[];
 	t: ReturnType<typeof import("@/lib/i18n").createTranslator>;

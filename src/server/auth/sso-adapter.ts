@@ -43,11 +43,19 @@ function wrapTransactionAdapter(
 ): DBTransactionAdapter {
 	const encrypt = (json: string) => encryptSsoConfigJson(json, secret);
 	const decrypt = (json: string) => decryptSsoConfigJson(json, secret);
-	const create: DBAdapter["create"] = async (args) => {
+	const create: DBAdapter["create"] = async <
+		T extends Record<string, unknown>,
+		R = T,
+	>(args: {
+		model: string;
+		data: Omit<T, "id">;
+		select?: string[];
+		forceAllowId?: boolean;
+	}): Promise<R> => {
 		if (args.model !== "ssoProvider") {
-			return adapter.create(args);
+			return adapter.create<T, R>(args);
 		}
-		const row = await adapter.create({
+		const row = await adapter.create<T, R>({
 			...args,
 			data: await mapSsoConfigs(args.data, encrypt),
 		});
@@ -71,11 +79,13 @@ function wrapTransactionAdapter(
 		}
 		return mapSsoConfigs(row, decrypt);
 	};
-	const update: DBAdapter["update"] = async (args) => {
+	const update: DBAdapter["update"] = async <T>(
+		args: Parameters<DBAdapter["update"]>[0],
+	): Promise<T | null> => {
 		if (args.model !== "ssoProvider") {
-			return adapter.update(args);
+			return adapter.update<T>(args);
 		}
-		const row = await adapter.update({
+		const row = await adapter.update<T>({
 			...args,
 			update: await mapSsoConfigs(args.update, encrypt),
 		});
@@ -90,12 +100,16 @@ function wrapTransactionAdapter(
 					}
 				: args,
 		);
-	const consumeOne: DBAdapter["consumeOne"] = async (args) => {
-		const row = await adapter.consumeOne(args);
+	const consumeOne: DBAdapter["consumeOne"] = async <T>(
+		args: Parameters<DBAdapter["consumeOne"]>[0],
+	): Promise<T | null> => {
+		const row = await adapter.consumeOne<T>(args);
 		return args.model === "ssoProvider" ? mapSsoConfigs(row, decrypt) : row;
 	};
-	const incrementOne: DBAdapter["incrementOne"] = async (args) => {
-		const row = await adapter.incrementOne(
+	const incrementOne: DBAdapter["incrementOne"] = async <T>(
+		args: Parameters<DBAdapter["incrementOne"]>[0],
+	): Promise<T | null> => {
+		const row = await adapter.incrementOne<T>(
 			args.model === "ssoProvider" && args.set
 				? {
 						...args,
