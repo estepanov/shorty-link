@@ -128,7 +128,7 @@ describe("api key auth hook", () => {
 					: null,
 		);
 
-		await createAuth(new Request("https://shorty.test/api/auth/session"));
+		await createAuth(new Request("http://localhost:8787/api/auth/session"));
 
 		const options = mocks.betterAuth.mock.calls[0]?.[0] as {
 			hooks: {
@@ -147,7 +147,7 @@ describe("api key auth hook", () => {
 					cookie: "better-auth.session_token=session-token",
 				}),
 				path: "/api-key/create",
-				request: new Request("https://shorty.test/api/auth/api-key/create", {
+				request: new Request("http://localhost:8787/api/auth/api-key/create", {
 					method: "POST",
 				}),
 			}),
