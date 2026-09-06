@@ -14,20 +14,6 @@ export const Route = createFileRoute("/admin/access/sso/$providerId")({
 	component: EditSsoProvider,
 });
 
-function readConfigString(
-	config: Record<string, unknown> | null,
-	path: readonly string[],
-) {
-	let current: unknown = config;
-	for (const key of path) {
-		if (!current || typeof current !== "object" || Array.isArray(current)) {
-			return "";
-		}
-		current = (current as Record<string, unknown>)[key];
-	}
-	return typeof current === "string" ? current : "";
-}
-
 function EditSsoProvider() {
 	const { providerId } = Route.useParams();
 	const { session, isPending, t } = useAdminAuthGuard();
@@ -69,7 +55,7 @@ function EditSsoProvider() {
 				callbackUrl={provider.callbackUrl}
 				initialValues={{
 					allowIdpInitiated: provider.allowIdpInitiated,
-					clientId: readConfigString(provider.oidcConfig, ["clientId"]),
+					clientId: provider.oidcConfig?.clientId ?? "",
 					defaultRoleId: provider.defaultRoleId ?? "",
 					displayName: provider.displayName,
 					domain: provider.domains.join(","),
@@ -79,24 +65,19 @@ function EditSsoProvider() {
 					groupRoleMappings: provider.groupRoleMappings
 						.map((mapping) => `${mapping.group}=${mapping.roleId}`)
 						.join("\n"),
-					idpMetadata: readConfigString(provider.samlConfig, [
-						"idpMetadata",
-						"metadata",
-					]),
+					idpMetadata: provider.samlConfig?.idpMetadata?.metadata ?? "",
 					issuer: provider.issuer,
 					jitEnabled: provider.jitEnabled,
 					protocol: provider.protocol,
 					providerId: provider.providerId,
 					samlEmailAttribute:
-						readConfigString(provider.samlConfig, ["mapping", "email"]) ||
+						provider.samlConfig?.mapping?.email ||
 						DEFAULT_SAML_ATTRIBUTE_MAPPING.email,
 					samlEmailVerifiedAttribute:
-						readConfigString(provider.samlConfig, [
-							"mapping",
-							"emailVerified",
-						]) || DEFAULT_SAML_ATTRIBUTE_MAPPING.emailVerified,
+						provider.samlConfig?.mapping?.emailVerified ||
+						DEFAULT_SAML_ATTRIBUTE_MAPPING.emailVerified,
 					samlNameAttribute:
-						readConfigString(provider.samlConfig, ["mapping", "name"]) ||
+						provider.samlConfig?.mapping?.name ||
 						DEFAULT_SAML_ATTRIBUTE_MAPPING.name,
 				}}
 				mode="edit"

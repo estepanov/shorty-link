@@ -1,19 +1,19 @@
 import type { SsoProtocol, SsoPublicProvider } from "./sso-catalog";
+import type {
+	SsoGroupRoleMapping,
+	SsoOidcWriteConfig,
+	SsoProviderPatch,
+	SsoProviderWrite,
+	SsoSamlWriteConfig,
+} from "./sso-contract";
 
 export type { SsoProtocol };
-
-export type SsoGroupRoleMapping = {
-	group: string;
-	roleId: string;
-};
-
-export type SsoOidcWriteConfig = {
-	authorizationEndpoint?: string;
-	discoveryEndpoint?: string;
-	jwksEndpoint?: string;
-	skipDiscovery?: boolean;
-	tokenEndpoint?: string;
-	userInfoEndpoint?: string;
+export type {
+	SsoGroupRoleMapping,
+	SsoOidcWriteConfig,
+	SsoProviderPatch,
+	SsoProviderWrite,
+	SsoSamlWriteConfig,
 };
 
 export const DEFAULT_SAML_ATTRIBUTE_MAPPING = {
@@ -21,42 +21,6 @@ export const DEFAULT_SAML_ATTRIBUTE_MAPPING = {
 	emailVerified: "email_verified",
 	name: "displayName",
 } as const;
-
-export type SsoSamlAttributeMapping = {
-	email?: string;
-	emailVerified?: string;
-	name?: string;
-};
-
-export type SsoSamlWriteConfig = {
-	entryPoint?: string;
-	idpMetadata?: {
-		entityID?: string;
-		metadata?: string;
-	};
-	mapping?: SsoSamlAttributeMapping;
-};
-
-export type SsoProviderWrite = {
-	allowIdpInitiated?: boolean;
-	clientId?: string;
-	clientSecret?: string;
-	defaultRoleId?: string | null;
-	displayName: string;
-	domain: string;
-	enabled?: boolean;
-	enforceSso?: boolean;
-	groupClaim?: string;
-	groupRoleMappings?: SsoGroupRoleMapping[];
-	issuer: string;
-	jitEnabled?: boolean;
-	oidcConfig?: SsoOidcWriteConfig;
-	protocol: SsoProtocol;
-	providerId: string;
-	samlConfig?: SsoSamlWriteConfig;
-};
-
-export type SsoProviderPatch = Partial<SsoProviderWrite>;
 
 export type SsoAdminProvider = SsoPublicProvider & {
 	acsUrl: string;
@@ -72,7 +36,22 @@ export type SsoAdminProvider = SsoPublicProvider & {
 	spMetadataUrl: string;
 };
 
+export type SsoOidcReadConfig = SsoOidcWriteConfig & {
+	allowIdpInitiated?: boolean;
+	clientId?: string;
+	clientSecret?: string;
+	issuer?: string;
+	pkce?: boolean;
+	tokenEndpointAuthentication?: string;
+};
+
+export type SsoSamlReadConfig = SsoSamlWriteConfig & {
+	allowIdpInitiated?: boolean;
+	callbackUrl?: string;
+	issuer?: string;
+};
+
 export type SsoProviderRead = SsoAdminProvider & {
-	oidcConfig: Record<string, unknown> | null;
-	samlConfig: Record<string, unknown> | null;
+	oidcConfig: SsoOidcReadConfig | null;
+	samlConfig: SsoSamlReadConfig | null;
 };
