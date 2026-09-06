@@ -65,6 +65,8 @@ Open **Access → SSO** and add an OpenID Connect or SAML provider. You will nee
 - Client ID and secret, or IdP metadata XML
 - Email domains that should match this provider
 
+The email-domain list is an authorization boundary, not just a login-page filter. A provider can authenticate a verified email only when its domain matches that list, whether the person already has a Shorty account, is claiming an invite, or is being provisioned through JIT.
+
 Paste the shown callback URL or SAML ACS URL into the identity provider. Client secrets stay in D1, encrypted with `BETTER_AUTH_SECRET`. On admin save, Shorty discovers OIDC metadata from the issuer using a scoped issuer-origin allowlist and stores the hydrated endpoints. Login does not add IdP hosts to Better Auth `trustedOrigins`.
 
 Optional per provider:

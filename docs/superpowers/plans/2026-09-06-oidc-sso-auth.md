@@ -4,7 +4,7 @@
 
 **Goal:** Add admin-configured OIDC and SAML SSO on Better Auth 1.7, with encrypted D1 secrets, IdP-initiated flows, group-to-role mapping, and SSO-enforced domains.
 
-**Architecture:** `@better-auth/sso` owns protocol and callbacks. Shorty owns `/api/admin/sso-providers`, `sso_provider_settings`, AES-GCM encryption of secret JSON fields, `resolveSsoAdmission`, and passkey enforcement.
+**Architecture:** `@better-auth/sso` owns protocol and callbacks. Shorty owns `/api/admin/sso-providers`, direct provider persistence, `sso_provider_settings`, AES-GCM encryption of secret JSON fields, `resolveSsoAdmission`, and passkey enforcement. The selected provider's email-domain allowlist applies to existing users, invite claims, and JIT provisioning.
 
 **Tech Stack:** Better Auth 1.7.x, `@better-auth/sso`, Elysia, Drizzle/D1, TanStack Form, Eden, Vitest.
 
@@ -24,11 +24,12 @@
 
 **Files:**
 - Create: `src/server/auth/sso-secrets.ts`
-- Create: `src/server/services/sso.ts`
+- Create: `src/server/auth/sso-adapter.ts`
+- Create: `src/server/services/sso-admission.ts`, `src/server/services/sso-providers.ts`
 - Test: `test/sso-secrets.test.ts`, `test/sso-admission.test.ts`
 
 **Interfaces:**
-- Produces: `encryptSsoConfigJson`, `decryptSsoConfigJson`, `resolveSsoAdmission`, `isSsoEnforcedForEmail`, `emailDomain`
+- Produces: `encryptSsoConfigJson`, `decryptSsoConfigJson`, `withSsoConfigCrypto`, `resolveSsoAdmission`, provider CRUD, `isSsoEnforcedForEmail`, `emailDomain`
 
 - [ ] Write failing tests, then implement helpers described in the spec.
 
@@ -46,15 +47,17 @@
 - Modify: `package.json` / lockfile
 - Modify: `src/server/auth/auth.ts`, `src/lib/auth-client.ts`, `src/server.ts`
 
-- [ ] Upgrade packages together to 1.7.2. Set `account.identityStrategy: "provider-id"`. Add `sso()` and `ssoClient()`. Block raw SSO admin paths. Reject enforced-domain passkeys except bootstrap.
+- [ ] Upgrade packages together to 1.7.3. Add `account.issuer`, `sso()`, and `ssoClient()`. Block raw SSO admin paths unconditionally. Reject enforced-domain passkeys except bootstrap.
 
 ### Task 4: Admin API
 
 **Files:**
+- Create: `src/server/api/sso-routes.ts`
+- Create: `src/server/services/sso-providers.ts`
 - Modify: `src/server/api/app.ts`
 - Test: `test/admin-api-wrappers.test.ts` (extend)
 
-- [ ] CRUD + public catalog + SP metadata. Encrypt on write. Redact on read.
+- [ ] Shorty-owned CRUD + public catalog + SP metadata. Encrypt before the first D1 write. Redact on read.
 
 ### Task 5: Admin and login UI
 

@@ -26,12 +26,12 @@ Constraints that the current codebase already imposes:
 1. **Approach A.** Better Auth `@better-auth/sso` plus Shorty-owned admin CRUD, settings, and provisioning.
 2. **Bootstrap stays passkey-only.** The first owner cannot depend on SSO. There is no admin yet to register a provider.
 3. **OIDC and SAML in this cycle.** Admins pick a protocol per provider. IdP-initiated SSO is supported for both.
-4. **Upgrade to Better Auth 1.7.x** (all `@better-auth/*` packages together, currently 1.7.2). Set `account.identityStrategy: "provider-id"` and add the required `account.issuer` column with a deterministic `local:{providerId}` backfill for existing rows.
+4. **Upgrade to Better Auth 1.7.x** (all `@better-auth/*` packages together, currently 1.7.3). Add the required `account.issuer` column with a deterministic `local:{providerId}` backfill for existing rows. Better Auth 1.7.3 does not expose `account.identityStrategy` in its configuration types.
 5. **Do not enable the Better Auth organization plugin.** Role assignment stays on `user.role_id`.
 6. **Passkeys stay available except on SSO-enforced domains.** When a provider has `enforceSso` and the user's email domain matches, passkey sign-in and passkey registration are rejected. Bootstrap remains passkey-only even if that email domain is later enforced.
-7. **No open registration.** A new SSO identity becomes a Shorty user only when (a) a pending invite matches the verified email, or (b) the provider has JIT enabled and the email domain is on that provider's allowlist.
+7. **Provider domains are an authorization boundary.** Every SSO admission path requires the verified email domain to match the selected provider's allowlist, including existing users, invite claims, and JIT provisioning. A new SSO identity becomes a Shorty user only when (a) a pending invite matches the verified email, or (b) the provider has JIT enabled.
 8. **JIT and group mapping never grant `system_owner`.** Owner remains the bootstrap user (or an explicit later role assignment by an existing owner). Group mapping never demotes an existing owner.
-9. **Better Auth's raw SSO register/update/delete endpoints are not a public admin API.** The browser talks to `/api/admin/sso-providers`. A `before` hook rejects `/sso/register`, `/sso/update`, and `/sso/delete` unless the request is the server-side admin wrapper.
+9. **Better Auth's raw SSO register/update/delete endpoints are not a public admin API.** The browser talks to `/api/admin/sso-providers`. A `before` hook unconditionally rejects `/sso/register`, `/sso/update-provider`, and `/sso/delete-provider`; Shorty's admin service owns provider writes.
 10. **Client secrets and SAML private keys stay in D1 `oidcConfig` / `samlConfig`**, encrypted at rest with AES-256-GCM keyed from `BETTER_AUTH_SECRET`. Treat D1 access plus that secret as equivalent to secret access. Do not add a second secrets store.
 11. **Skip Better Auth `domainVerification` DNS TXT.** This app is single-tenant and the admin already pasted the issuer and client secret. Email-domain allowlisting is our trust boundary.
 12. **IdP group mapping is first-match, ordered, on every SSO login.** Claim name is configurable (default `groups`). Unmapped groups leave the current role (or the invite / JIT default for new users).
@@ -88,8 +88,8 @@ Admin configuration (authenticated, `sso.write`):
 ```text
 /admin/access/sso
   Eden -> /api/admin/sso-providers
-       -> auth.api.registerSSOProvider / update / delete (server-side)
-       -> encrypt secret fields in oidcConfig / samlConfig
+       -> validate and hydrate provider config
+       -> encrypt secret fields and write ssoProvider directly
        -> upsert sso_provider_settings
 ```
 
@@ -99,9 +99,11 @@ Keep this as one Worker. No new binding. Outbound `fetch` to the IdP is allowed.
 
 | Unit | Does | Depends on |
 | --- | --- | --- |
-| Better Auth 1.7 + `sso` plugin | Discovery, OIDC/SAML protocol, callbacks, `ssoProvider` persistence | D1 tables, `trustedOrigins`, `account.issuer` |
+| Better Auth 1.7 + `sso` plugin | OIDC/SAML protocol and callbacks; reads providers through the encrypted adapter | D1 tables, `trustedOrigins`, `account.issuer` |
 | `src/server/auth/sso-secrets.ts` | AES-256-GCM encrypt/decrypt of known secret JSON fields | `BETTER_AUTH_SECRET` |
-| `src/server/services/sso.ts` | Admission, group mapping, domain enforcement, admin DTOs | invites, roles, settings |
+| `src/server/auth/sso-adapter.ts` | Encrypt provider configs on adapter writes and decrypt them on reads | Drizzle adapter, `sso-secrets.ts` |
+| `src/server/services/sso-admission.ts` | Admission decisions, group mapping, and provider-domain enforcement | invites, roles, settings |
+| `src/server/services/sso-providers.ts` | Provider CRUD, discovery, settings, redacted DTOs, and admission persistence | D1, `sso-admission.ts`, `sso-secrets.ts` |
 | `/api/admin/sso-providers` | Permissioned CRUD + public catalog + SP metadata | CSRF, Eden |
 | Access → SSO UI | Create/edit OIDC or SAML providers | Eden, `sso.*` permissions |
 | Login + invite cards | Passkey and/or SSO buttons, email-first when enforcement exists | Public catalog |
@@ -114,10 +116,11 @@ Upgrade `better-auth`, `@better-auth/api-key`, `@better-auth/drizzle-adapter`, `
 Configuration changes in `createAuth`:
 
 ```ts
-account: { identityStrategy: "provider-id" }
 user.additionalFields.roleId
 plugins: [passkey(...), apiKey(...), i18n(...), sso({...}), tanstackStartCookies()]
 ```
+
+The Drizzle adapter is wrapped with `withSsoConfigCrypto(...)` so the SSO plugin receives decrypted provider configs without putting plaintext back into D1.
 
 D1 migration for existing installs:
 
@@ -197,7 +200,7 @@ Module: `src/server/auth/sso-secrets.ts`.
 - Admin GET responses never include decrypted secrets; they show `********` when a secret is present.
 - PATCH with a blank secret keeps the existing ciphertext.
 
-Drizzle custom types are allowed as a second line of defense on `oidcConfig` and `samlConfig`, but the service-layer encrypt/decrypt is the source of truth so Better Auth adapter reads cannot see plaintext if they bypass column types. After `registerSSOProvider` / update, the admin service immediately rewrites the row with encrypted secret fields. Before `createAuth` builds the plugin, it decrypts provider rows into memory for `sso({ providers })` when the 1.7 plugin accepts config providers; otherwise it decrypts, writes a request-scoped decrypted copy only in memory, and the plugin reads through a decrypting wrapper around those two columns.
+The Shorty admin service is the single provider-write path and encrypts secret fields before the first D1 write. Better Auth's adapter is wrapped by `withSsoConfigCrypto(...)`, which decrypts `ssoProvider` rows in memory for plugin reads and encrypts any plugin writes defensively. Decryption failure is fatal; ciphertext is never passed through as provider configuration.
 
 Tests cover: round-trip, wrong secret fails, already-encrypted idempotence, nested SAML keys, blank PATCH preserve.
 
@@ -217,12 +220,13 @@ The client must never send `requestSignUp: true`.
 
 1. Provider missing or `enabled = false` → `errors.ssoProviderDisabled`.
 2. Email missing or unverified → `errors.ssoEmailUnverified`.
-3. Existing user and `is_active = false` → `errors.ssoUserDisabled`.
-4. Existing user and active → allow. Do not change role except via group mapping (step 7). Never change `system_owner` via mapping.
-5. No user + pending unexpired invite for that email → claim invite atomically, create user with invite `role_id` and `invited_by`.
-6. No user + JIT on + domain in provider list + `default_role_id` is not owner → create user with that role.
-7. Apply group mappings in list order: first matching group whose `roleId` exists and is not `system_owner` wins. For new users this overrides invite/JIT role. For existing non-owner users this updates `role_id`. Unmapped groups keep the role from steps 4–6.
-8. Otherwise reject (`errors.ssoNotProvisioned`).
+3. Verified email domain not in the selected provider's allowlist → `errors.ssoNotProvisioned`. This check applies before existing-user, invite, and JIT branches.
+4. Existing user and `is_active = false` → `errors.ssoUserDisabled`.
+5. Existing user and active → allow. Do not change role except via group mapping (step 8). Never change `system_owner` via mapping.
+6. No user + pending unexpired invite for that email → claim invite atomically, create user with invite `role_id` and `invited_by`.
+7. No user + JIT on + `default_role_id` is not owner → create user with that role.
+8. Apply group mappings in list order: first matching group whose `roleId` exists and is not `system_owner` wins. For new users this overrides invite/JIT role. For existing non-owner users this updates `role_id`. Unmapped groups keep the role from steps 5–7.
+9. Otherwise reject (`errors.ssoNotProvisioned`).
 
 Account linking: `accountLinking.enabled` with `trustedProviders` loaded from stored `providerId`s. Verified email only.
 
@@ -291,7 +295,7 @@ Better Auth `/sso/register`, `/sso/update-provider`, and `/sso/delete-provider` 
 - Reserved provider ids: `credential`, `passkey`, `apikey`, and built-in social ids.
 - Secret redaction on every admin read DTO. No secrets in logs, OpenAPI examples, or Server-Timing.
 - Inactive users rejected at provisioning.
-- JIT and enforcement domain checks are exact lowercase suffix after `@`.
+- Provider admission and passkey-enforcement domain checks use the exact lowercase suffix after `@`.
 - Group mapping cannot assign `system_owner` and cannot change an existing owner.
 - Agent browser login stays local-dev only.
 
@@ -315,7 +319,7 @@ EN and ES strings in `src/lib/i18n.ts`.
 ## Testing
 
 1. `sso-secrets` unit tests.
-2. `resolveSsoAdmission` and `isSsoEnforcedForEmail` unit tests, including group mapping and owner protection.
+2. `resolveSsoAdmission` and `isSsoEnforcedForEmail` unit tests, including existing-user/invite/JIT domain boundaries, group mapping, and owner protection.
 3. Admin API: permissions, CSRF, redaction, public catalog, reserved ids, blank-secret PATCH.
 4. Auth hook: raw `/api/auth/sso/register` is 403; enforced-domain passkey is rejected; bootstrap passkey still works.
 5. Permission migration: system roles gain `sso.*`; custom roles do not.
