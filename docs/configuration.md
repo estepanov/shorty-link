@@ -136,7 +136,7 @@ Add this block to `wrangler.jsonc`:
 }
 ```
 
-The schedule is operator-owned. The default deploy works without a cron. Overlapping invocations take a D1 row lease so additive rollup upserts cannot double-count.
+The schedule is operator-owned. The default deploy works without a cron. Overlapping invocations take a D1 row lease and renew it each batch so additive rollup upserts cannot double-count.
 
 Locally, while `pnpm dev` is running, `GET /cdn-cgi/local/scheduled?format=json` on the Vite port (3000). See [Validate locally](/analytics/#validate-locally).
 

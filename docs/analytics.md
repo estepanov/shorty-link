@@ -68,7 +68,7 @@ Use this when `redirect_event` is large enough that dashboard scans hurt. The Wo
 
 3. Deploy. The first successful run writes rollups. New clicks stay visible immediately because stats add the unaggregated tail.
 
-Overlapping cron runs take a D1 row lease so additive upserts cannot double-count.
+Overlapping cron runs take a D1 row lease and renew it each batch so additive upserts cannot double-count.
 
 See [Cloudflare Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) and the [Configuration](/configuration/#analytics-aggregator-cron) snippet.
 

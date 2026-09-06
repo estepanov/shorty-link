@@ -98,6 +98,28 @@ async function tryAcquireAggregationLease(
 	return claimed[0]?.lockedUntil ?? null;
 }
 
+/**
+ * Extends a held lease. Returns null when another run stole it after expiry.
+ */
+export async function renewAggregationLease(
+	db: AppDb,
+	heldUntil: number,
+): Promise<number | null> {
+	const lockedUntil = Date.now() + AGGREGATION_LEASE_MS;
+	const claimed = await db
+		.update(analyticsAggregationState)
+		.set({ lockedUntil })
+		.where(
+			and(
+				eq(analyticsAggregationState.id, ANALYTICS_AGGREGATION_STATE_ID),
+				eq(analyticsAggregationState.lockedUntil, heldUntil),
+			),
+		)
+		.returning({ lockedUntil: analyticsAggregationState.lockedUntil });
+
+	return claimed[0]?.lockedUntil ?? null;
+}
+
 async function releaseAggregationLease(
 	db: AppDb,
 	now: number,
@@ -121,7 +143,12 @@ async function releaseAggregationLease(
  */
 export async function aggregateAnalytics(
 	db: AppDb,
-	options: { now: number; retainDays?: number; batchSize?: number },
+	options: {
+		now: number;
+		retainDays?: number;
+		batchSize?: number;
+		afterBatch?: () => Promise<void>;
+	},
 ) {
 	const batchSize = Math.max(
 		1,
@@ -142,6 +169,12 @@ export async function aggregateAnalytics(
 			}
 
 			while (true) {
+				const renewed = await renewAggregationLease(db, leaseUntil);
+				if (renewed === null) {
+					return;
+				}
+				leaseUntil = renewed;
+
 				const events = await db
 					.select()
 					.from(redirectEvents)
@@ -198,6 +231,7 @@ export async function aggregateAnalytics(
 				await db.batch(
 					statements as [(typeof statements)[0], ...typeof statements],
 				);
+				await options.afterBatch?.();
 			}
 		}
 

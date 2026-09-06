@@ -12,7 +12,10 @@ import {
 	schema,
 	shortLinks,
 } from "../src/server/db/schema";
-import { aggregateAnalytics } from "../src/server/services/analytics/aggregate";
+import {
+	aggregateAnalytics,
+	renewAggregationLease,
+} from "../src/server/services/analytics/aggregate";
 import {
 	ANALYTICS_AGGREGATION_STATE_ID,
 	startOfUtcDay,
@@ -448,6 +451,71 @@ describe("analytics rollups and retention", () => {
 
 		expect(event?.aggregated).toBe(false);
 		expect(daily).toHaveLength(0);
+	});
+
+	it("stops folding when the aggregation lease is stolen between batches", async () => {
+		const now = Date.now();
+		const linkId = await saveLink(db, {
+			slug: "stolen",
+			targetUrl: "https://example.com/stolen",
+		});
+		await db.insert(redirectEvents).values([
+			{
+				id: "stolen-1",
+				linkId,
+				hostname: "__default__",
+				slug: "stolen",
+				targetUrl: "https://example.com/stolen",
+				statusCode: 302,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: now,
+			},
+			{
+				id: "stolen-2",
+				linkId,
+				hostname: "__default__",
+				slug: "stolen",
+				targetUrl: "https://example.com/stolen",
+				statusCode: 302,
+				eventSchemaVersion: REDIRECT_EVENT_SCHEMA_VERSION,
+				createdAt: now + 1,
+			},
+		]);
+
+		await aggregateAnalytics(db, {
+			now,
+			batchSize: 1,
+			afterBatch: async () => {
+				await db
+					.update(analyticsAggregationState)
+					.set({ lockedUntil: now + 86_400_000 })
+					.where(
+						eq(analyticsAggregationState.id, ANALYTICS_AGGREGATION_STATE_ID),
+					);
+			},
+		});
+
+		const events = await db.select().from(redirectEvents);
+		const daily = await db.select().from(redirectEventDaily);
+		const aggregated = events.filter((event) => event.aggregated);
+
+		expect(aggregated).toHaveLength(1);
+		expect(daily).toEqual([expect.objectContaining({ linkId, total: 1 })]);
+	});
+
+	it("extends a held aggregation lease", async () => {
+		const now = Date.now();
+		await db.insert(analyticsAggregationState).values({
+			id: ANALYTICS_AGGREGATION_STATE_ID,
+			lastSuccessAt: 0,
+			lockedUntil: now + 60_000,
+		});
+
+		const renewed = await renewAggregationLease(db, now + 60_000);
+		expect(renewed).toBeGreaterThan(now + 60_000);
+
+		const stolen = await renewAggregationLease(db, now + 60_000);
+		expect(stolen).toBeNull();
 	});
 });
 
