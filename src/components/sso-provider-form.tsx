@@ -87,6 +87,7 @@ export function SsoProviderForm({
 	t: (key: MessageKey | string) => string;
 }) {
 	const [error, setError] = useState<string | null>(null);
+	const originalProtocol = initialValues?.protocol ?? emptyValues.protocol;
 	const form = useForm({
 		defaultValues: { ...emptyValues, ...initialValues },
 		onSubmit: async ({ value }) => {
@@ -94,6 +95,7 @@ export function SsoProviderForm({
 			try {
 				const api = getTreaty();
 				const mappings = parseMappings(value.groupRoleMappings);
+				const protocol = mode === "edit" ? originalProtocol : value.protocol;
 				const payload = {
 					allowIdpInitiated: value.allowIdpInitiated,
 					clientId: value.clientId || undefined,
@@ -107,12 +109,18 @@ export function SsoProviderForm({
 					groupRoleMappings: mappings,
 					issuer: value.issuer,
 					jitEnabled: value.jitEnabled,
-					protocol: value.protocol,
+					protocol,
 					providerId: value.providerId,
 					samlConfig:
-						value.protocol === "saml"
+						protocol === "saml"
 							? {
-									idpMetadata: { metadata: value.idpMetadata },
+									...(value.idpMetadata.trim()
+										? {
+												idpMetadata: {
+													metadata: value.idpMetadata,
+												},
+											}
+										: {}),
 									mapping: {
 										email: value.samlEmailAttribute,
 										emailVerified: value.samlEmailVerifiedAttribute,
@@ -231,6 +239,7 @@ export function SsoProviderForm({
 													onChange={(event) =>
 														field.handleChange(event.target.value)
 													}
+													required
 													value={field.state.value}
 												/>
 											</Field>
@@ -246,6 +255,7 @@ export function SsoProviderForm({
 														field.handleChange(event.target.value)
 													}
 													placeholder={mode === "edit" ? "********" : undefined}
+													required={mode === "create"}
 													type="password"
 													value={field.state.value}
 												/>
@@ -263,6 +273,7 @@ export function SsoProviderForm({
 													onChange={(event) =>
 														field.handleChange(event.target.value)
 													}
+													required={mode === "create"}
 													rows={8}
 													value={field.state.value}
 												/>

@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { useRouter } from "@tanstack/react-router";
+import { useLocation, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
@@ -19,6 +19,7 @@ import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, defaultLocale, supportedLocales } from "@/lib/i18n";
 import type { SsoPublicCatalog } from "@/lib/sso-catalog";
 import { isSsoEnforcedForEmail, visibleSsoProviders } from "@/lib/sso-catalog";
+import { mapSsoErrorCode, parseSsoCallbackError } from "@/lib/sso-errors";
 
 export type BootstrapState = {
 	canBootstrap: boolean;
@@ -73,6 +74,7 @@ function mapPasskeyError(raw: unknown): string {
 }
 
 export function PasskeyLogin() {
+	const location = useLocation();
 	const router = useRouter();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -95,6 +97,8 @@ export function PasskeyLogin() {
 	const visibleProviders = catalog
 		? visibleSsoProviders(catalog, normalizedEmail)
 		: [];
+	const callbackError = parseSsoCallbackError(location.search);
+	const visibleError = error ?? callbackError;
 
 	async function signInSso(providerId: string) {
 		setBusy(true);
@@ -103,15 +107,18 @@ export function PasskeyLogin() {
 			const result = await authClient.signIn.sso({
 				providerId,
 				callbackURL: "/admin",
+				errorCallbackURL: "/admin",
 				email: normalizedEmail || undefined,
 				loginHint: normalizedEmail || undefined,
 			});
 			if (result.error) {
-				setError(result.error.message ?? "errors.ssoCancelled");
+				setError(mapSsoErrorCode(result.error.message ?? result.error.code));
 			}
 		} catch (nextError) {
 			setError(
-				nextError instanceof Error ? nextError.message : "errors.unknown",
+				mapSsoErrorCode(
+					nextError instanceof Error ? nextError.message : undefined,
+				),
 			);
 		} finally {
 			setBusy(false);
@@ -181,10 +188,10 @@ export function PasskeyLogin() {
 					))}
 				</div>
 			) : null}
-			{error ? (
+			{visibleError ? (
 				<div className="mt-4">
 					<Notice tone="error">
-						<p className="font-bold">{t(error)}</p>
+						<p className="font-bold">{t(visibleError)}</p>
 						{enforced ? null : (
 							<>
 								<p className="mt-1">{t("auth.passkeyRemediation")}</p>

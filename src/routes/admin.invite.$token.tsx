@@ -1,5 +1,9 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	useLocation,
+	useRouter,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
@@ -18,6 +22,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { getTreaty } from "@/lib/eden";
 import { createTranslator, defaultLocale, supportedLocales } from "@/lib/i18n";
+import { mapSsoErrorCode, parseSsoCallbackError } from "@/lib/sso-errors";
 
 export const Route = createFileRoute("/admin/invite/$token")({
 	component: Invite,
@@ -25,6 +30,7 @@ export const Route = createFileRoute("/admin/invite/$token")({
 
 function Invite() {
 	const { token } = Route.useParams();
+	const location = useLocation();
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
 	const [email, setEmail] = useState<string | null>(null);
@@ -36,6 +42,8 @@ function Invite() {
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 	const t = createTranslator(defaultLocale);
+	const callbackError = parseSsoCallbackError(location.search);
+	const visibleError = error ?? callbackError;
 	const form = useForm({
 		defaultValues: {
 			locale: String(defaultLocale),
@@ -98,6 +106,36 @@ function Invite() {
 			() => setError("errors.inviteMissing"),
 		);
 	}, [session, token]);
+
+	async function signInSso() {
+		const providerId = sso?.providerId;
+		if (!providerId) {
+			return;
+		}
+
+		setBusy(true);
+		setError(null);
+		try {
+			const result = await authClient.signIn.sso({
+				callbackURL: "/admin",
+				email: email ?? undefined,
+				errorCallbackURL: `/admin/invite/${encodeURIComponent(token)}`,
+				loginHint: email ?? undefined,
+				providerId,
+			});
+			if (result.error) {
+				setError(mapSsoErrorCode(result.error.message ?? result.error.code));
+			}
+		} catch (nextError) {
+			setError(
+				mapSsoErrorCode(
+					nextError instanceof Error ? nextError.message : undefined,
+				),
+			);
+		} finally {
+			setBusy(false);
+		}
+	}
 
 	if (session) {
 		return (
@@ -174,13 +212,7 @@ function Invite() {
 							<Button
 								disabled={busy || !email}
 								onClick={() => {
-									setBusy(true);
-									void authClient.signIn.sso({
-										callbackURL: "/admin",
-										email: email ?? undefined,
-										loginHint: email ?? undefined,
-										providerId: sso.providerId ?? "",
-									});
+									void signInSso();
 								}}
 								type="button"
 							>
@@ -192,9 +224,9 @@ function Invite() {
 							</Button>
 						)}
 					</form>
-					{error ? (
+					{visibleError ? (
 						<div className="mt-4">
-							<Notice tone="error">{t(error)}</Notice>
+							<Notice tone="error">{t(visibleError)}</Notice>
 						</div>
 					) : null}
 				</Card>
