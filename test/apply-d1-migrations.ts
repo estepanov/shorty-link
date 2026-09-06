@@ -9,15 +9,8 @@ export async function applyD1Migrations(database: D1Database) {
 		.sort();
 	for (const file of files) {
 		const sql = readFileSync(join(dir, file), "utf8");
-		// Split only on `;` followed by optional whitespace and a newline. A naive `;`
-		// split would break migrations where `;` appears mid-line (e.g. SQL comments such
-		// as `frontend; the` in 0007) or multi-statement lines without that pattern.
-		const statements = sql
-			.split(/;\s*\n/)
-			.map((statement) => statement.trim())
-			.filter(Boolean);
-		for (const statement of statements) {
-			await database.prepare(statement).run();
-		}
+		// Execute the migration as one SQLite script. Statement splitting cannot
+		// distinguish top-level semicolons from those inside trigger BEGIN/END blocks.
+		await database.exec(sql);
 	}
 }
