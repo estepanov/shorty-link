@@ -1,3 +1,5 @@
+import { appendFileSync } from "node:fs";
+
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 
 import type { AppDb } from "../db/client";
@@ -184,6 +186,12 @@ export async function applySsoAdmission(
 			};
 			try {
 				const claimed = await claimStatement.run();
+				// #region agent log
+				appendFileSync(
+					"/opt/cursor/logs/debug.log",
+					`${JSON.stringify({ hypothesisId: "E,F", location: "src/server/services/sso-provisioning.ts:invite-claim-result", message: "invite claim completed", data: { changes: claimed.meta.changes, changedDb: claimed.meta.changed_db }, timestamp: Date.now() })}\n`,
+				);
+				// #endregion
 				if (claimed.meta.changes !== 1) {
 					throw new Error("errors.ssoNotProvisioned");
 				}
