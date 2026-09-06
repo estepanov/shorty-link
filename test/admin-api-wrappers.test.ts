@@ -158,6 +158,8 @@ describe("admin api auth wrappers", () => {
 		const response = await app.fetch(
 			new Request("https://shorty.test/api/admin/sso-providers", {
 				body: JSON.stringify({
+					clientId: "client-id",
+					clientSecret: "client-secret",
 					displayName: "Okta",
 					domain: "acme.com",
 					issuer: "https://idp.example.com",
