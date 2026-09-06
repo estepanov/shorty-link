@@ -37,7 +37,7 @@
 
 **Files:**
 - Modify: `src/lib/permissions.ts`, `src/server/db/schema.ts`
-- Create: `migrations/0010_sso_providers.sql`, `migrations/0011_sso_invite_claim.sql`
+- Create: `migrations/0011_sso_providers.sql`, `migrations/0012_sso_invite_claim.sql`
 
 - [ ] Add `sso.read|write|delete`, `ssoProvider`, `ssoProviderSettings`, `account.issuer` backfill, atomic invite-claim correlation, and the system-role permission JSON update.
 

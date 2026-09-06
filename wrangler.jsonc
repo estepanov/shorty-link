@@ -15,6 +15,9 @@
 		"BETTER_AUTH_ALLOWED_HOSTS": "localhost:3000,localhost:8787,*.workers.dev",
 		"BETTER_AUTH_FALLBACK_URL": "http://localhost:3000",
 		"PASSKEY_RP_NAME": "Shorty Link"
+		// Optional. Add a comma after PASSKEY_RP_NAME, then uncomment.
+		// Requires the aggregator cron. See docs/analytics.md.
+		// "ANALYTICS_RAW_EVENT_RETENTION_DAYS": "90"
 	},
 	"routes": [
 		// Self-hosters should change this to their own domain.
@@ -37,4 +40,32 @@
 	"ai": {
 		"binding": "AI"
 	}
+	// Add a comma after the `ai` object when uncommenting any optional block below.
+	// Optional analytics queue. Create the queues first, then uncomment:
+	// pnpm exec wrangler queues create shorty-link-analytics
+	// pnpm exec wrangler queues create shorty-link-analytics-dlq
+	// "queues": {
+	//   "producers": [
+	//     { "binding": "ANALYTICS_QUEUE", "queue": "shorty-link-analytics" }
+	//   ],
+	//   "consumers": [
+	//     {
+	//       "queue": "shorty-link-analytics",
+	//       "max_batch_size": 100,
+	//       "max_batch_timeout": 5,
+	//       "max_retries": 5,
+	//       "dead_letter_queue": "shorty-link-analytics-dlq"
+	//     }
+	//   ]
+	// }
+	// Optional daily-rollup cron. Uncomment to fold raw events into
+	// redirect_event_daily / redirect_event_dimension_daily:
+	// "triggers": {
+	//   "crons": ["*/5 * * * *"]
+	// }
+	// Optional Analytics Engine dataset. Writes are extra emit, not the admin
+	// source of truth. Create the dataset in the dashboard, then uncomment:
+	// "analytics_engine_datasets": [
+	//   { "binding": "ANALYTICS", "dataset": "shorty_link_clicks" }
+	// }
 }

@@ -62,3 +62,11 @@ These files are formatted with Biome. Regenerate with `pnpm docs:generate` (whic
 ### First-time local DB setup
 
 Run `pnpm db:migrate:local` to apply D1 migrations before the first `pnpm dev`. The migrations create all tables including the `system_owner` role.
+
+### Local analytics queue, cron, and retention
+
+Default `pnpm dev` writes clicks to D1 in `waitUntil`. Queue, cron, retention, and Analytics Engine stay commented in `wrangler.jsonc`.
+
+To enable them locally, add a comma after the `ai` object, uncomment the blocks you want, and restart `pnpm dev`. Do not run `wrangler queues create` for local work — Miniflare simulates the queue. Fire the aggregator with `GET /cdn-cgi/local/scheduled?format=json` on the Vite port (3000). Set `ANALYTICS_RAW_EVENT_RETENTION_DAYS` in `.dev.vars` only after the cron path works. Analytics Engine has no local sink.
+
+Full steps: `docs/analytics.md` → Validate locally. Do not commit uncommented optional blocks unless the deploy should enable them.

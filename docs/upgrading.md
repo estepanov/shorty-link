@@ -44,6 +44,10 @@ If a release changes `wrangler.jsonc`, compare your fork carefully. Self-hosters
 
 Do not overwrite your production values when pulling upstream changes.
 
+Optional analytics queues, Analytics Engine, and the aggregator cron are additive. If you do not add those bindings or a cron trigger, the Worker keeps writing click events to D1 during the redirect `waitUntil`. Dashboard and link-detail all-time totals already use rollups plus unaggregated events, so they stay correct with or without a cron. See the [Analytics opt-in guide](/analytics/). Queue and cron can be [validated locally](/analytics/#validate-locally) before you enable them on a deploy.
+
+Migration `0010_analytics_rollups.sql` creates empty rollup tables. Totals stay on raw unaggregated rows until the aggregator has run at least once.
+
 ## Database Migration Policy
 
 After public releases begin, migrations are append-only. If you are upgrading from a tagged release, apply all later migrations in order with:
@@ -54,9 +58,9 @@ pnpm db:migrate:remote
 
 Fresh installs apply the same migration history from the beginning.
 
-SSO support adds migration `0010_sso_providers.sql`: an `account.issuer` backfill for Better Auth 1.7, `ssoProvider` / `sso_provider_settings` tables, and `sso.*` permissions on the system owner and admin roles. Back up D1 before applying it on a populated database.
+SSO support adds migration `0011_sso_providers.sql`: an `account.issuer` backfill for Better Auth 1.7, `ssoProvider` / `sso_provider_settings` tables, and `sso.*` permissions on the system owner and admin roles. Back up D1 before applying it on a populated database.
 
-Migration `0011_sso_invite_claim.sql` adds an internal claim identifier used to atomically correlate an SSO invite claim with activation of the staged Better Auth user. It also repairs any SSO account rows that Better Auth initially wrote with the fallback `local:unknown` issuer.
+Migration `0012_sso_invite_claim.sql` adds an internal claim identifier used to atomically correlate an SSO invite claim with activation of the staged Better Auth user. It also repairs any SSO account rows that Better Auth initially wrote with the fallback `local:unknown` issuer.
 
 ## Rollback Expectations
 
