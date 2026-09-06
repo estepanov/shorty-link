@@ -192,7 +192,8 @@ export async function applySsoAdmission(
 					`${JSON.stringify({ hypothesisId: "E,F", location: "src/server/services/sso-provisioning.ts:invite-claim-result", message: "invite claim completed", data: { changes: claimed.meta.changes, changedDb: claimed.meta.changed_db }, timestamp: Date.now() })}\n`,
 				);
 				// #endregion
-				if (claimed.meta.changes !== 1) {
+				// D1 includes the invite row and the user row updated by the trigger.
+				if (claimed.meta.changes !== 2) {
 					throw new Error("errors.ssoNotProvisioned");
 				}
 			} catch (error) {
