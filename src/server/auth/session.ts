@@ -45,14 +45,9 @@ export async function getSession(request: Request) {
 	});
 }
 
-export async function loadAuthContext(
-	request: Request,
+export async function loadAuthContextForUser(
+	userId: string,
 ): Promise<AuthContext | null> {
-	const session = await getSession(request);
-	if (!session) {
-		return null;
-	}
-
 	const db = createDb();
 	const rows = await db
 		.select({
@@ -61,6 +56,7 @@ export async function loadAuthContext(
 			name: user.name,
 			locale: user.locale,
 			isActive: user.isActive,
+			mcpAccessEnabled: user.mcpAccessEnabled,
 			roleId: user.roleId,
 			roleName: roles.name,
 			rolePermissions: roles.permissions,
@@ -68,7 +64,7 @@ export async function loadAuthContext(
 		})
 		.from(user)
 		.innerJoin(roles, eq(user.roleId, roles.id))
-		.where(eq(user.id, session.user.id))
+		.where(eq(user.id, userId))
 		.limit(1);
 
 	const row = rows[0];
@@ -111,6 +107,16 @@ export async function loadAuthContext(
 		domainScope,
 		linkScope,
 	};
+}
+
+export async function loadAuthContext(
+	request: Request,
+): Promise<AuthContext | null> {
+	const session = await getSession(request);
+	if (!session) {
+		return null;
+	}
+	return loadAuthContextForUser(session.user.id);
 }
 
 export async function requireAuth(request: Request): Promise<AuthContext> {

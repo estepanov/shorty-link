@@ -21,6 +21,7 @@ import {
 	session,
 	user,
 } from "../db/schema";
+import { revokeUserMcpTokens } from "./mcp-settings";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export async function listUsers(
@@ -68,6 +69,7 @@ export async function listUsers(
 		roleIsSystem: roles.isSystem,
 		locale: user.locale,
 		isActive: user.isActive,
+		mcpAccessEnabled: user.mcpAccessEnabled,
 		invitedBy: user.invitedBy,
 		invitedByName: inviter.name,
 		invitedByEmail: inviter.email,
@@ -115,6 +117,7 @@ export async function toggleUserActive(
 
 	if (!isActive) {
 		await db.delete(session).where(eq(session.userId, userId));
+		await revokeUserMcpTokens(db, userId);
 	}
 }
 
@@ -137,6 +140,7 @@ export async function getUserById(db: AppDb, userId: string) {
 			roleIsSystem: roles.isSystem,
 			locale: user.locale,
 			isActive: user.isActive,
+			mcpAccessEnabled: user.mcpAccessEnabled,
 			invitedBy: user.invitedBy,
 			invitedByName: inviter.name,
 			invitedByEmail: inviter.email,
@@ -163,6 +167,7 @@ export async function updateUser(
 		email?: string;
 		locale?: string;
 		isActive?: boolean;
+		mcpAccessEnabled?: boolean;
 	},
 ) {
 	if (input.email) {
@@ -188,11 +193,17 @@ export async function updateUser(
 	if (input.locale !== undefined)
 		updates.locale = normalizeLocale(input.locale);
 	if (input.isActive !== undefined) updates.isActive = input.isActive;
+	if (input.mcpAccessEnabled !== undefined) {
+		updates.mcpAccessEnabled = input.mcpAccessEnabled;
+	}
 
 	await db.update(user).set(updates).where(eq(user.id, userId));
 
 	if (input.isActive === false) {
 		await db.delete(session).where(eq(session.userId, userId));
+		await revokeUserMcpTokens(db, userId);
+	} else if (input.mcpAccessEnabled === false) {
+		await revokeUserMcpTokens(db, userId);
 	}
 }
 
