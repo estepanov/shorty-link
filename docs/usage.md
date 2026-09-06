@@ -65,7 +65,7 @@ Open **Access → SSO** and add an OpenID Connect or SAML provider. You will nee
 - Client ID and secret, or IdP metadata XML
 - Email domains that should match this provider
 
-Paste the shown callback URL or SAML ACS URL into the identity provider. Client secrets stay in D1, encrypted with `BETTER_AUTH_SECRET`.
+Paste the shown callback URL or SAML ACS URL into the identity provider. Client secrets stay in D1, encrypted with `BETTER_AUTH_SECRET`. Better Auth 1.7 discovers OIDC metadata from the issuer; Shorty adds that issuer origin to `trustedOrigins` so discovery is not blocked as an untrusted host.
 
 Optional per provider:
 

@@ -58,7 +58,7 @@ Shorty Link is designed to be forked and deployed to your own Cloudflare account
 
 8. Open `/admin` on your deployed hostname and create the first admin with a passkey.
 
-9. Optional: after bootstrap, open **Access → SSO** to register an OIDC or SAML provider. Add the callback URL `{origin}/api/auth/sso/callback/{providerId}` or the SAML ACS URL `{origin}/api/auth/sso/saml2/sp/acs/{providerId}` at your identity provider. `BETTER_AUTH_SECRET` also encrypts stored SSO client secrets.
+9. Optional: after bootstrap, open **Access → SSO** to register an OIDC or SAML provider. Add the callback URL `{origin}/api/auth/sso/callback/{providerId}` or the SAML ACS URL `{origin}/api/auth/sso/saml2/sp/acs/{providerId}` at your identity provider. `BETTER_AUTH_SECRET` also encrypts stored SSO client secrets. OIDC discovery fetches the issuer's `/.well-known/openid-configuration`; Shorty trusts that issuer origin automatically.
 
 ## Automated Deploys
 

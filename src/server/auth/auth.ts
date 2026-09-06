@@ -23,9 +23,11 @@ import {
 import {
 	applySsoAdmission,
 	assertPasskeyAllowed,
+	collectIssuerOrigins,
 	extractIdpGroups,
 	loadDefaultSsoProviders,
 	loadSsoSettingsView,
+	readSsoIssuerOriginsFromRequest,
 	SSO_ADMIN_HEADER,
 } from "../services/sso";
 import {
@@ -141,14 +143,46 @@ export async function createAuth(request?: Request) {
 				}
 			: origin,
 		secret: getAuthSecret(request),
-		trustedOrigins: (incomingRequest) => {
+		trustedOrigins: async (incomingRequest) => {
 			const nextRequestOrigin = incomingRequest
 				? resolveTrustedRequestOrigin(incomingRequest, {
 						allowedHosts,
 						fallbackOrigin: configuredFallback,
 					})
 				: origin;
-			return [...new Set([nextRequestOrigin, fallback].filter(Boolean))];
+			const storedIdpOrigins = defaultSSO.flatMap((provider) =>
+				collectIssuerOrigins([
+					provider.issuer,
+					typeof provider.oidcConfig?.issuer === "string"
+						? provider.oidcConfig.issuer
+						: null,
+					typeof provider.oidcConfig?.discoveryEndpoint === "string"
+						? provider.oidcConfig.discoveryEndpoint
+						: null,
+					typeof provider.oidcConfig?.authorizationEndpoint === "string"
+						? provider.oidcConfig.authorizationEndpoint
+						: null,
+					typeof provider.oidcConfig?.tokenEndpoint === "string"
+						? provider.oidcConfig.tokenEndpoint
+						: null,
+					typeof provider.oidcConfig?.jwksEndpoint === "string"
+						? provider.oidcConfig.jwksEndpoint
+						: null,
+				]),
+			);
+			const requestIdpOrigins = await readSsoIssuerOriginsFromRequest(
+				incomingRequest ?? request,
+			);
+			return [
+				...new Set(
+					[
+						nextRequestOrigin,
+						fallback,
+						...storedIdpOrigins,
+						...requestIdpOrigins,
+					].filter(Boolean),
+				),
+			];
 		},
 		database: drizzleAdapter(db, {
 			provider: "sqlite",

@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { SYSTEM_ROLE_ADMIN, SYSTEM_ROLE_OWNER } from "../src/server/db/schema";
 import {
+	collectIssuerOrigins,
 	emailDomain,
 	isSsoEnforcedForEmail,
+	originFromAbsoluteUrl,
+	readSsoIssuerOriginsFromRequest,
 	resolveSsoAdmission,
 } from "../src/server/services/sso";
 
@@ -21,6 +24,31 @@ describe("sso admission", () => {
 	it("extracts the email domain", () => {
 		expect(emailDomain("Ada@Acme.com")).toBe("acme.com");
 		expect(emailDomain("not-an-email")).toBeNull();
+	});
+
+	it("collects https issuer origins for OIDC discovery trust", async () => {
+		expect(originFromAbsoluteUrl("https://idp.acme.com/oauth2/default")).toBe(
+			"https://idp.acme.com",
+		);
+		expect(originFromAbsoluteUrl("not-a-url")).toBeNull();
+		expect(
+			collectIssuerOrigins([
+				"https://idp.acme.com/oauth2/default",
+				"https://idp.acme.com/oauth2/aus1",
+				"ftp://files.acme.com",
+			]),
+		).toEqual(["https://idp.acme.com"]);
+		await expect(
+			readSsoIssuerOriginsFromRequest(
+				new Request("http://localhost:8787/api/admin/sso-providers", {
+					body: JSON.stringify({
+						issuer: "https://login.microsoftonline.com/tenant/v2.0",
+					}),
+					headers: { "content-type": "application/json" },
+					method: "POST",
+				}),
+			),
+		).resolves.toEqual(["https://login.microsoftonline.com"]);
 	});
 
 	it("enforces SSO only for enabled providers matching the domain", () => {

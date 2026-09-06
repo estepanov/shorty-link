@@ -113,6 +113,85 @@ export function emailDomain(email: string): string | null {
 	return trimmed.slice(at + 1);
 }
 
+export function originFromAbsoluteUrl(
+	value: string | null | undefined,
+): string | null {
+	if (!value) {
+		return null;
+	}
+	try {
+		const url = new URL(value);
+		if (url.protocol !== "https:" && url.protocol !== "http:") {
+			return null;
+		}
+		return url.origin;
+	} catch {
+		return null;
+	}
+}
+
+export function collectIssuerOrigins(
+	values: readonly (string | null | undefined)[],
+): string[] {
+	return [
+		...new Set(
+			values
+				.map((value) => originFromAbsoluteUrl(value))
+				.filter((origin): origin is string => Boolean(origin)),
+		),
+	];
+}
+
+export async function readSsoIssuerOriginsFromRequest(
+	request?: Request,
+): Promise<string[]> {
+	if (!request || !["POST", "PUT", "PATCH"].includes(request.method)) {
+		return [];
+	}
+	try {
+		const body = (await request.clone().json()) as {
+			issuer?: unknown;
+			oidcConfig?: {
+				authorizationEndpoint?: unknown;
+				discoveryEndpoint?: unknown;
+				issuer?: unknown;
+				jwksEndpoint?: unknown;
+				tokenEndpoint?: unknown;
+				userInfoEndpoint?: unknown;
+			};
+			samlConfig?: {
+				entryPoint?: unknown;
+			};
+		};
+		return collectIssuerOrigins([
+			typeof body.issuer === "string" ? body.issuer : null,
+			typeof body.oidcConfig?.issuer === "string"
+				? body.oidcConfig.issuer
+				: null,
+			typeof body.oidcConfig?.discoveryEndpoint === "string"
+				? body.oidcConfig.discoveryEndpoint
+				: null,
+			typeof body.oidcConfig?.authorizationEndpoint === "string"
+				? body.oidcConfig.authorizationEndpoint
+				: null,
+			typeof body.oidcConfig?.tokenEndpoint === "string"
+				? body.oidcConfig.tokenEndpoint
+				: null,
+			typeof body.oidcConfig?.jwksEndpoint === "string"
+				? body.oidcConfig.jwksEndpoint
+				: null,
+			typeof body.oidcConfig?.userInfoEndpoint === "string"
+				? body.oidcConfig.userInfoEndpoint
+				: null,
+			typeof body.samlConfig?.entryPoint === "string"
+				? body.samlConfig.entryPoint
+				: null,
+		]);
+	} catch {
+		return [];
+	}
+}
+
 export function parseProviderDomains(domain: string): string[] {
 	return domain
 		.split(",")
@@ -558,6 +637,7 @@ export async function loadDefaultSsoProviders(request?: Request) {
 			const samlJson = await decryptConfigField(row.samlConfig, request);
 			defaults.push({
 				domain: row.domain,
+				issuer: row.issuer,
 				providerId: row.providerId,
 				oidcConfig: oidcJson
 					? (JSON.parse(oidcJson) as Record<string, unknown>)
