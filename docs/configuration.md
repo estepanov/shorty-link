@@ -112,7 +112,7 @@ For local development:
 cp .dev.vars.example .dev.vars
 ```
 
-Then set a local `BETTER_AUTH_SECRET` in `.dev.vars`.
+Then set a local `BETTER_AUTH_SECRET` in `.dev.vars`. The same secret signs auth tokens and encrypts SSO client secrets and SAML private keys stored in D1.
 
 ## Binding Type Generation
 

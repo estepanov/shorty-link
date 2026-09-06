@@ -54,6 +54,8 @@ pnpm db:migrate:remote
 
 Fresh installs apply the same migration history from the beginning.
 
+SSO support adds migration `0010_sso_providers.sql`: an `account.issuer` backfill for Better Auth 1.7, `ssoProvider` / `sso_provider_settings` tables, and `sso.*` permissions on the system owner and admin roles. Back up D1 before applying it on a populated database.
+
 ## Rollback Expectations
 
 Worker code can usually be rolled back by checking out the previous tag and redeploying.

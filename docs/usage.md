@@ -4,9 +4,11 @@ This page covers day-to-day use after Shorty Link is deployed and you have an ad
 
 ## Sign in
 
-Open `/admin` on your deployed hostname. Sign in with the passkey you registered during onboarding.
+Open `/admin` on your deployed hostname. Sign in with the passkey you registered during onboarding, or with an SSO provider an admin has configured.
 
-If a teammate sent you an invite link, follow the invite URL first to register your passkey, then return to `/admin`.
+If a teammate sent you an invite link, follow the invite URL first to register your passkey or complete SSO, then return to `/admin`.
+
+If an admin turned on **Require SSO** for your email domain, passkey sign-in is rejected and you must use that provider.
 
 ## Create a link
 
@@ -53,7 +55,24 @@ To add a new hostname:
 
 ## Invite a teammate
 
-Open **Users → Invites** and click **New invite**. Send the invite link to your teammate. They open the link, register a passkey, and become an admin.
+Open **Users → Invites** and click **New invite**. Send the invite link to your teammate. They open the link, register a passkey or sign in with SSO, and become an admin.
+
+## Configure SSO
+
+Open **Access → SSO** and add an OpenID Connect or SAML provider. You will need:
+
+- Issuer (OIDC) or SP entity ID (SAML)
+- Client ID and secret, or IdP metadata XML
+- Email domains that should match this provider
+
+Paste the shown callback URL or SAML ACS URL into the identity provider. Client secrets stay in D1, encrypted with `BETTER_AUTH_SECRET`.
+
+Optional per provider:
+
+- Just-in-time provisioning with a default role (never owner)
+- Group claim mapping onto Shorty roles
+- Require SSO for those email domains
+- Allow IdP-initiated sign-in
 
 To revoke an unused invite, delete it from the invites list.
 

@@ -79,6 +79,18 @@ Supported redirect status codes for link create, update, and filtering are `301`
 - `PATCH /api/admin/api-keys/:id`
 - `DELETE /api/admin/api-keys/:id`
 
+### SSO providers
+
+- `GET /api/admin/sso-providers/public` — enabled providers for the login page (no secrets)
+- `GET /api/admin/sso-providers` — requires `sso.read`
+- `GET /api/admin/sso-providers/:providerId` — requires `sso.read`
+- `GET /api/admin/sso-providers/:providerId/sp-metadata` — SAML SP metadata
+- `POST /api/admin/sso-providers` — requires `sso.write`
+- `PATCH /api/admin/sso-providers/:providerId` — requires `sso.write`
+- `DELETE /api/admin/sso-providers/:providerId` — requires `sso.delete`
+
+Client secrets and SAML private keys are stored in D1 `oidcConfig` / `samlConfig`, encrypted at rest with `BETTER_AUTH_SECRET`. Admin GET responses redact them.
+
 ## Examples
 
 Create an API key:
