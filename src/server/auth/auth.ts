@@ -3,7 +3,7 @@ import { apiKey } from "@better-auth/api-key";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { i18n } from "@better-auth/i18n";
 import { passkey } from "@better-auth/passkey";
-import { type OIDCConfig, type SAMLConfig, sso } from "@better-auth/sso";
+import { sso } from "@better-auth/sso";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -20,16 +20,12 @@ import {
 	schema,
 	user,
 } from "../db/schema";
+import { extractIdpGroups } from "../services/sso-admission";
 import {
 	applySsoAdmission,
 	assertPasskeyAllowed,
-	collectIssuerOrigins,
-	extractIdpGroups,
-	loadDefaultSsoProviders,
 	loadSsoSettingsView,
-	readSsoIssuerOriginsFromRequest,
-	SSO_ADMIN_HEADER,
-} from "../services/sso";
+} from "../services/sso-providers";
 import {
 	completePasskeyRegistrationUser,
 	readOnboardingContext,
@@ -37,6 +33,7 @@ import {
 } from "./onboarding";
 import { getAuthSecret } from "./secret";
 import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
+import { withSsoConfigCrypto } from "./sso-adapter";
 
 const APIKEY_CREATE_PERMISSION: Permission = "apikeys.manage";
 const SSO_ADMIN_PATHS = new Set([
@@ -113,7 +110,7 @@ function fallbackUrl(request?: Request) {
 	return "[REDACTED]";
 }
 
-export async function createAuth(request?: Request) {
+export function createAuth(request?: Request) {
 	const db = createDb();
 	const allowedHosts = splitTrustedHosts(runtimeEnv.BETTER_AUTH_ALLOWED_HOSTS);
 	const configuredFallback = runtimeEnv.BETTER_AUTH_FALLBACK_URL ?? null;
@@ -130,7 +127,6 @@ export async function createAuth(request?: Request) {
 
 	const origin = trustedRequestOrigin ?? fallbackUrl(request);
 	const fallback = configuredFallback ?? origin;
-	const defaultSSO = await loadDefaultSsoProviders(request);
 
 	return betterAuth({
 		appName: "Shorty Link",
@@ -143,55 +139,25 @@ export async function createAuth(request?: Request) {
 				}
 			: origin,
 		secret: getAuthSecret(request),
-		trustedOrigins: async (incomingRequest) => {
+		trustedOrigins: (incomingRequest) => {
 			const nextRequestOrigin = incomingRequest
 				? resolveTrustedRequestOrigin(incomingRequest, {
 						allowedHosts,
 						fallbackOrigin: configuredFallback,
 					})
 				: origin;
-			const storedIdpOrigins = defaultSSO.flatMap((provider) =>
-				collectIssuerOrigins([
-					provider.issuer,
-					typeof provider.oidcConfig?.issuer === "string"
-						? provider.oidcConfig.issuer
-						: null,
-					typeof provider.oidcConfig?.discoveryEndpoint === "string"
-						? provider.oidcConfig.discoveryEndpoint
-						: null,
-					typeof provider.oidcConfig?.authorizationEndpoint === "string"
-						? provider.oidcConfig.authorizationEndpoint
-						: null,
-					typeof provider.oidcConfig?.tokenEndpoint === "string"
-						? provider.oidcConfig.tokenEndpoint
-						: null,
-					typeof provider.oidcConfig?.jwksEndpoint === "string"
-						? provider.oidcConfig.jwksEndpoint
-						: null,
-				]),
-			);
-			const requestIdpOrigins = await readSsoIssuerOriginsFromRequest(
-				incomingRequest ?? request,
-			);
-			return [
-				...new Set(
-					[
-						nextRequestOrigin,
-						fallback,
-						...storedIdpOrigins,
-						...requestIdpOrigins,
-					].filter(Boolean),
-				),
-			];
+			return [...new Set([nextRequestOrigin, fallback].filter(Boolean))];
 		},
-		database: drizzleAdapter(db, {
-			provider: "sqlite",
-			schema,
-		}),
+		database: withSsoConfigCrypto(
+			drizzleAdapter(db, {
+				provider: "sqlite",
+				schema,
+			}),
+			getAuthSecret(request),
+		),
 		account: {
 			accountLinking: {
 				enabled: true,
-				trustedProviders: defaultSSO.map((provider) => provider.providerId),
 			},
 		},
 		emailAndPassword: {
@@ -219,12 +185,9 @@ export async function createAuth(request?: Request) {
 			before: createAuthMiddleware(async (ctx) => {
 				const headers = resolveHookHeaders(ctx);
 				if (SSO_ADMIN_PATHS.has(ctx.path)) {
-					if (headers.get(SSO_ADMIN_HEADER) !== "1") {
-						throw new APIError("FORBIDDEN", {
-							message: "errors.permissionDenied",
-						});
-					}
-					return;
+					throw new APIError("FORBIDDEN", {
+						message: "errors.permissionDenied",
+					});
 				}
 				if (ctx.path !== "/api-key/create") {
 					return;
@@ -232,7 +195,7 @@ export async function createAuth(request?: Request) {
 				const authRequest =
 					ctx.request ??
 					new Request(`${origin}/api/auth/api-key/create`, { headers });
-				const session = await (await createAuth(authRequest)).api.getSession({
+				const session = await createAuth(authRequest).api.getSession({
 					headers,
 				});
 				if (!session) {
@@ -357,12 +320,6 @@ export async function createAuth(request?: Request) {
 				domainVerification: { enabled: false },
 				organizationProvisioning: { disabled: true },
 				provisionUserOnEveryLogin: true,
-				defaultSSO: defaultSSO.map((provider) => ({
-					domain: provider.domain,
-					providerId: provider.providerId,
-					oidcConfig: provider.oidcConfig as OIDCConfig | undefined,
-					samlConfig: provider.samlConfig as SAMLConfig | undefined,
-				})),
 				resolveUser: async (input) => {
 					const settings = await loadSsoSettingsView(db, input.providerId);
 					const claim = settings?.groupClaim ?? "groups";
@@ -399,5 +356,5 @@ export async function createAuth(request?: Request) {
 	});
 }
 
-export type Auth = Awaited<ReturnType<typeof createAuth>>;
+export type Auth = ReturnType<typeof createAuth>;
 export type AuthSession = Awaited<ReturnType<Auth["api"]["getSession"]>>;

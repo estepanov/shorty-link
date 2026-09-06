@@ -5,35 +5,25 @@ import { SsoProviderForm } from "@/components/sso-provider-form";
 import { Card, Notice, PageHeader } from "@/components/ui";
 import { useAdminAuthGuard, useRequirePermission } from "@/lib/admin-auth";
 import { getTreaty, unwrap } from "@/lib/eden";
+import type { SsoProviderRead } from "@/lib/sso-types";
 
 export const Route = createFileRoute("/admin/access/sso/$providerId")({
 	component: EditSsoProvider,
 });
 
-type SsoProviderDetail = {
-	acsUrl: string;
-	allowIdpInitiated: boolean;
-	callbackUrl: string;
-	defaultRoleId: string | null;
-	displayName: string;
-	domains: string[];
-	enabled: boolean;
-	enforceSso: boolean;
-	groupClaim: string;
-	groupRoleMappings: Array<{ group: string; roleId: string }>;
-	issuer: string;
-	jitEnabled: boolean;
-	oidcConfig?: {
-		clientId?: string;
-	} | null;
-	protocol: "oidc" | "saml";
-	providerId: string;
-	samlConfig?: {
-		idpMetadata?: {
-			metadata?: string;
-		};
-	} | null;
-};
+function readConfigString(
+	config: Record<string, unknown> | null,
+	path: readonly string[],
+) {
+	let current: unknown = config;
+	for (const key of path) {
+		if (!current || typeof current !== "object" || Array.isArray(current)) {
+			return "";
+		}
+		current = (current as Record<string, unknown>)[key];
+	}
+	return typeof current === "string" ? current : "";
+}
 
 function EditSsoProvider() {
 	const { providerId } = Route.useParams();
@@ -41,7 +31,7 @@ function EditSsoProvider() {
 	const { isAuthorized, isPending: isAuthPending } =
 		useRequirePermission("sso.write");
 	const router = useRouter();
-	const [provider, setProvider] = useState<SsoProviderDetail | null>(null);
+	const [provider, setProvider] = useState<SsoProviderRead | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refresh stable; refetch when session or provider id changes.
@@ -49,7 +39,7 @@ function EditSsoProvider() {
 		if (!session) {
 			return;
 		}
-		void unwrap<SsoProviderDetail>(
+		void unwrap<SsoProviderRead>(
 			getTreaty().admin["sso-providers"]({ providerId }).get(),
 		).then(setProvider, (nextError: unknown) => {
 			setError(
@@ -76,7 +66,7 @@ function EditSsoProvider() {
 				callbackUrl={provider.callbackUrl}
 				initialValues={{
 					allowIdpInitiated: provider.allowIdpInitiated,
-					clientId: provider.oidcConfig?.clientId ?? "",
+					clientId: readConfigString(provider.oidcConfig, ["clientId"]),
 					defaultRoleId: provider.defaultRoleId ?? "",
 					displayName: provider.displayName,
 					domain: provider.domains.join(","),
@@ -86,7 +76,10 @@ function EditSsoProvider() {
 					groupRoleMappings: provider.groupRoleMappings
 						.map((mapping) => `${mapping.group}=${mapping.roleId}`)
 						.join("\n"),
-					idpMetadata: provider.samlConfig?.idpMetadata?.metadata ?? "",
+					idpMetadata: readConfigString(provider.samlConfig, [
+						"idpMetadata",
+						"metadata",
+					]),
 					issuer: provider.issuer,
 					jitEnabled: provider.jitEnabled,
 					protocol: provider.protocol,

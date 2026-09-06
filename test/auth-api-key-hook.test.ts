@@ -98,12 +98,13 @@ vi.mock("../src/server/auth/onboarding", () => ({
 	resolvePasskeyRegistrationUser: vi.fn(),
 }));
 
-vi.mock("../src/server/services/sso", () => ({
-	SSO_ADMIN_HEADER: "x-shorty-sso-admin",
+vi.mock("../src/server/services/sso-admission", () => ({
+	extractIdpGroups: vi.fn(() => []),
+}));
+
+vi.mock("../src/server/services/sso-providers", () => ({
 	applySsoAdmission: vi.fn(),
 	assertPasskeyAllowed: vi.fn(),
-	extractIdpGroups: vi.fn(() => []),
-	loadDefaultSsoProviders: vi.fn(async () => []),
 	loadSsoSettingsView: vi.fn(),
 }));
 
@@ -163,5 +164,39 @@ describe("api key auth hook", () => {
 				"cookie",
 			),
 		).toBe("better-auth.session_token=session-token");
+	});
+
+	it("rejects Better Auth SSO admin routes unconditionally", async () => {
+		createAuth(new Request("http://localhost:8787/api/auth/session"));
+		const options = mocks.betterAuth.mock.calls.at(-1)?.[0] as {
+			hooks: {
+				before: (context: { path: string }) => Promise<unknown>;
+			};
+		};
+		await expect(
+			options.hooks.before({ path: "/sso/register" }),
+		).rejects.toMatchObject({ status: "FORBIDDEN" });
+		await expect(
+			options.hooks.before({ path: "/sso/update-provider" }),
+		).rejects.toMatchObject({ status: "FORBIDDEN" });
+		await expect(
+			options.hooks.before({ path: "/sso/delete-provider" }),
+		).rejects.toMatchObject({ status: "FORBIDDEN" });
+	});
+
+	it("keeps trustedOrigins limited to Shorty hosts", async () => {
+		createAuth(new Request("http://localhost:8787/api/auth/session"));
+		const options = mocks.betterAuth.mock.calls.at(-1)?.[0] as {
+			trustedOrigins: (request?: Request) => string[];
+		};
+		const origins = options.trustedOrigins(
+			new Request("http://localhost:8787/api/auth/sign-in/sso", {
+				body: JSON.stringify({ issuer: "https://evil.example" }),
+				headers: { "content-type": "application/json" },
+				method: "POST",
+			}),
+		);
+		expect(origins).toContain("http://localhost:8787");
+		expect(origins).not.toContain("https://evil.example");
 	});
 });

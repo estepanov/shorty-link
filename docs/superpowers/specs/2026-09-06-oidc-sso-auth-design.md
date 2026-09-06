@@ -281,11 +281,12 @@ Elysia `t` validation. Do not accept `organizationId` from the client.
 
 Invite GET grows optional `sso` admission hints; no extra permission.
 
-Incoming client `x-shorty-sso-admin` is stripped in `src/server.ts` before `/api/auth/*`. Only the Elysia wrapper may set it.
+Better Auth `/sso/register`, `/sso/update-provider`, and `/sso/delete-provider` are rejected unconditionally. Shorty owns provider writes in the admin service.
 
 ## Security
 
 - CSRF on admin writes.
+- `trustedOrigins` is Shorty hosts only. OIDC discovery runs on admin write with an issuer-origin allowlist; hydrated endpoints are stored for login.
 - Redirect URIs must stay inside `trustedOrigins`.
 - Reserved provider ids: `credential`, `passkey`, `apikey`, and built-in social ids.
 - Secret redaction on every admin read DTO. No secrets in logs, OpenAPI examples, or Server-Timing.

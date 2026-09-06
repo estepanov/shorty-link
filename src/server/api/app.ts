@@ -15,6 +15,7 @@ import {
 	isRedirectStatusCode,
 	type RedirectStatusCode,
 } from "@/lib/redirect-status";
+import { isSsoEnforcedForEmail, matchingSsoProvider } from "@/lib/sso-catalog";
 import pkg from "../../../package.json";
 import { createAgentLoginResponse } from "../auth/agent-login";
 import { createAuth } from "../auth/auth";
@@ -30,10 +31,6 @@ import {
 	assertLinkInScope,
 	buildDomainScopeForCtx,
 	buildLinkScopeForCtx,
-	getSession,
-	requireAuth,
-	requirePermissionContext,
-	requireSecurePermission,
 } from "../auth/session";
 import { createDb } from "../db/client";
 import { DEFAULT_HOSTNAME, SYSTEM_ROLE_ADMIN, user } from "../db/schema";
@@ -74,21 +71,14 @@ import {
 	listRoles,
 	updateRole,
 } from "../services/roles";
+import { listPublicSsoProviders } from "../services/sso-providers";
 import {
-	deleteSsoProviderRows,
-	encryptStoredSsoConfigs,
-	getAdminSsoProvider,
-	isSsoEnforcedForEmail,
-	listAdminSsoProviders,
-	listEnforcementProviders,
-	listPublicSsoProviders,
-	normalizeProtocol,
-	normalizeProviderId,
-	SSO_ADMIN_HEADER,
-	type SsoGroupRoleMapping,
-	type SsoProtocol,
-	upsertSsoSettings,
-} from "../services/sso";
+	requireAuthOrError,
+	requirePermissionOrError,
+	requireSecurePermissionOrError,
+	requireSignedOutInviteRequest,
+} from "./guards";
+import { ssoAdminRoutes } from "./sso-routes";
 import {
 	assignUserRole,
 	deleteInvite,
@@ -172,82 +162,6 @@ const roleBody = t.Object({
 	domainScopeIds: t.Optional(t.Array(t.String({ minLength: 1 }))),
 	linkScopeIds: t.Optional(t.Array(t.String({ minLength: 1 }))),
 });
-
-const ssoGroupMappingBody = t.Object({
-	group: t.String({ minLength: 1 }),
-	roleId: t.String({ minLength: 1 }),
-});
-
-const ssoProviderBody = t.Object({
-	allowIdpInitiated: t.Optional(t.Boolean()),
-	clientId: t.Optional(t.String()),
-	clientSecret: t.Optional(t.String()),
-	defaultRoleId: t.Optional(t.Union([t.String(), t.Null()])),
-	displayName: t.String({ minLength: 1 }),
-	domain: t.String({ minLength: 1 }),
-	enabled: t.Optional(t.Boolean()),
-	enforceSso: t.Optional(t.Boolean()),
-	groupClaim: t.Optional(t.String()),
-	groupRoleMappings: t.Optional(t.Array(ssoGroupMappingBody)),
-	issuer: t.String({ minLength: 1 }),
-	jitEnabled: t.Optional(t.Boolean()),
-	oidcConfig: t.Optional(t.Record(t.String(), t.Unknown())),
-	protocol: t.Union([t.Literal("oidc"), t.Literal("saml")]),
-	providerId: t.String({ minLength: 1 }),
-	samlConfig: t.Optional(t.Record(t.String(), t.Unknown())),
-});
-
-const ssoProviderPatchBody = t.Object({
-	allowIdpInitiated: t.Optional(t.Boolean()),
-	clientId: t.Optional(t.String()),
-	clientSecret: t.Optional(t.String()),
-	defaultRoleId: t.Optional(t.Union([t.String(), t.Null()])),
-	displayName: t.Optional(t.String({ minLength: 1 })),
-	domain: t.Optional(t.String({ minLength: 1 })),
-	enabled: t.Optional(t.Boolean()),
-	enforceSso: t.Optional(t.Boolean()),
-	groupClaim: t.Optional(t.String()),
-	groupRoleMappings: t.Optional(t.Array(ssoGroupMappingBody)),
-	issuer: t.Optional(t.String({ minLength: 1 })),
-	jitEnabled: t.Optional(t.Boolean()),
-	oidcConfig: t.Optional(t.Record(t.String(), t.Unknown())),
-	protocol: t.Optional(t.Union([t.Literal("oidc"), t.Literal("saml")])),
-	samlConfig: t.Optional(t.Record(t.String(), t.Unknown())),
-});
-
-function ssoAdminHeaders(request: Request) {
-	const headers = new Headers(request.headers);
-	headers.set(SSO_ADMIN_HEADER, "1");
-	return headers;
-}
-
-function settingsFromSsoBody(
-	providerId: string,
-	protocol: SsoProtocol,
-	body: {
-		allowIdpInitiated?: boolean;
-		defaultRoleId?: string | null;
-		displayName: string;
-		enabled?: boolean;
-		enforceSso?: boolean;
-		groupClaim?: string;
-		groupRoleMappings?: SsoGroupRoleMapping[];
-		jitEnabled?: boolean;
-	},
-) {
-	return {
-		allowIdpInitiated: body.allowIdpInitiated ?? false,
-		defaultRoleId: body.defaultRoleId ?? null,
-		displayName: body.displayName,
-		enabled: body.enabled ?? true,
-		enforceSso: body.enforceSso ?? false,
-		groupClaim: body.groupClaim ?? "groups",
-		groupRoleMappings: body.groupRoleMappings ?? [],
-		jitEnabled: body.jitEnabled ?? false,
-		protocol,
-		providerId,
-	};
-}
 
 function coercePermissionList(values: string[]): Permission[] {
 	return values.filter(isPermission);
@@ -363,51 +277,6 @@ async function jsonError(error: unknown, request: Request) {
 		},
 		{ status: 400 },
 	);
-}
-
-async function requireAuthOrError(request: Request) {
-	try {
-		return await requireAuth(request);
-	} catch (error) {
-		if (error instanceof Response) {
-			throw error;
-		}
-		throw new Response("errors.unauthorized", { status: 401 });
-	}
-}
-
-async function requirePermissionOrError(
-	request: Request,
-	permission: Permission | Permission[],
-) {
-	try {
-		return await requirePermissionContext(request, permission);
-	} catch (error) {
-		if (error instanceof Response) {
-			throw error;
-		}
-		throw new Response("errors.unauthorized", { status: 401 });
-	}
-}
-
-async function requireSecurePermissionOrError(
-	request: Request,
-	permission: Permission | Permission[],
-) {
-	try {
-		return await requireSecurePermission(request, permission);
-	} catch (error) {
-		if (error instanceof Response) {
-			throw error;
-		}
-		throw new Response("errors.unauthorized", { status: 401 });
-	}
-}
-
-async function requireSignedOutInviteRequest(request: Request) {
-	if (await getSession(request)) {
-		throw new Response("errors.inviteRequiresSignOut", { status: 403 });
-	}
 }
 
 async function suggestSlugWithAi(targetUrl: string) {
@@ -598,6 +467,7 @@ export const app = new Elysia({
 			}),
 		},
 	)
+	.use(ssoAdminRoutes)
 	.group("/api/admin", (admin) =>
 		admin
 			.get("/bootstrap", ({ db }) => getBootstrapState(db), {
@@ -1413,193 +1283,6 @@ export const app = new Elysia({
 					detail: { tags: ["Roles"], summary: "Delete role" },
 					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
-			)
-			.get(
-				"/sso-providers/public",
-				async ({ db }) => listPublicSsoProviders(db),
-				{
-					detail: {
-						tags: ["SSO"],
-						summary: "List enabled SSO providers for sign-in",
-					},
-				},
-			)
-			.get(
-				"/sso-providers",
-				async ({ db, request }) => {
-					await requirePermissionOrError(request, "sso.read");
-					return listAdminSsoProviders(db, new URL(request.url).origin);
-				},
-				{
-					detail: { tags: ["SSO"], summary: "List SSO providers" },
-				},
-			)
-			.get(
-				"/sso-providers/:providerId/sp-metadata",
-				async ({ params, request }) => {
-					await requirePermissionOrError(request, "sso.read");
-					const auth = await createAuth(request);
-					return auth.api.spMetadata({
-						query: { providerId: params.providerId },
-						headers: ssoAdminHeaders(request),
-					});
-				},
-				{
-					detail: { tags: ["SSO"], summary: "Get SAML SP metadata" },
-					params: t.Object({ providerId: t.String({ minLength: 1 }) }),
-				},
-			)
-			.get(
-				"/sso-providers/:providerId",
-				async ({ db, params, request }) => {
-					await requirePermissionOrError(request, "sso.read");
-					return getAdminSsoProvider(
-						db,
-						params.providerId,
-						new URL(request.url).origin,
-						request,
-					);
-				},
-				{
-					detail: { tags: ["SSO"], summary: "Get SSO provider" },
-					params: t.Object({ providerId: t.String({ minLength: 1 }) }),
-				},
-			)
-			.post(
-				"/sso-providers",
-				async ({ body, db, request }) => {
-					await requireSecurePermissionOrError(request, "sso.write");
-					const providerId = normalizeProviderId(body.providerId);
-					const protocol = normalizeProtocol(body.protocol);
-					const auth = await createAuth(request);
-					const headers = ssoAdminHeaders(request);
-					if (protocol === "oidc") {
-						await auth.api.registerSSOProvider({
-							body: {
-								providerId,
-								issuer: body.issuer,
-								domain: body.domain,
-								oidcConfig: {
-									clientId: body.clientId ?? "",
-									clientSecret: body.clientSecret ?? "",
-									pkce: true,
-									allowIdpInitiated: body.allowIdpInitiated ?? false,
-									...(body.oidcConfig ?? {}),
-								},
-							},
-							headers,
-						});
-					} else {
-						await auth.api.registerSSOProvider({
-							body: {
-								providerId,
-								issuer: body.issuer,
-								domain: body.domain,
-								samlConfig: {
-									callbackUrl: "/admin",
-									allowIdpInitiated: body.allowIdpInitiated ?? false,
-									...(body.samlConfig ?? {}),
-								},
-							},
-							headers,
-						});
-					}
-					await encryptStoredSsoConfigs(db, providerId, request);
-					await upsertSsoSettings(
-						db,
-						settingsFromSsoBody(providerId, protocol, body),
-					);
-					return { providerId };
-				},
-				{
-					detail: { tags: ["SSO"], summary: "Register SSO provider" },
-					body: ssoProviderBody,
-				},
-			)
-			.patch(
-				"/sso-providers/:providerId",
-				async ({ body, db, params, request }) => {
-					await requireSecurePermissionOrError(request, "sso.write");
-					const current = await getAdminSsoProvider(
-						db,
-						params.providerId,
-						new URL(request.url).origin,
-						request,
-					);
-					const protocol = body.protocol
-						? normalizeProtocol(body.protocol)
-						: current.protocol;
-					const auth = await createAuth(request);
-					await auth.api.updateSSOProvider({
-						body: {
-							providerId: params.providerId,
-							issuer: body.issuer ?? current.issuer,
-							domain: body.domain ?? current.domains.join(","),
-							...(protocol === "oidc"
-								? {
-										oidcConfig: {
-											clientId: body.clientId,
-											clientSecret: body.clientSecret || undefined,
-											allowIdpInitiated:
-												body.allowIdpInitiated ?? current.allowIdpInitiated,
-											...(body.oidcConfig ?? {}),
-										},
-									}
-								: {
-										samlConfig: {
-											callbackUrl: "/admin",
-											allowIdpInitiated:
-												body.allowIdpInitiated ?? current.allowIdpInitiated,
-											...(body.samlConfig ?? {}),
-										},
-									}),
-						} as never,
-						headers: ssoAdminHeaders(request),
-					});
-					if (body.clientSecret || body.samlConfig || body.oidcConfig) {
-						await encryptStoredSsoConfigs(db, params.providerId, request);
-					}
-					await upsertSsoSettings(db, {
-						allowIdpInitiated:
-							body.allowIdpInitiated ?? current.allowIdpInitiated,
-						defaultRoleId:
-							body.defaultRoleId === undefined
-								? current.defaultRoleId
-								: body.defaultRoleId,
-						displayName: body.displayName ?? current.displayName,
-						enabled: body.enabled ?? current.enabled,
-						enforceSso: body.enforceSso ?? current.enforceSso,
-						groupClaim: body.groupClaim ?? current.groupClaim,
-						groupRoleMappings:
-							body.groupRoleMappings ?? current.groupRoleMappings,
-						jitEnabled: body.jitEnabled ?? current.jitEnabled,
-						protocol,
-						providerId: params.providerId,
-					});
-					return { ok: true };
-				},
-				{
-					detail: { tags: ["SSO"], summary: "Update SSO provider" },
-					body: ssoProviderPatchBody,
-					params: t.Object({ providerId: t.String({ minLength: 1 }) }),
-				},
-			)
-			.delete(
-				"/sso-providers/:providerId",
-				async ({ db, params, request }) => {
-					await requireSecurePermissionOrError(request, "sso.delete");
-					const auth = await createAuth(request);
-					await auth.api.deleteSSOProvider({
-						body: { providerId: params.providerId },
-						headers: ssoAdminHeaders(request),
-					});
-					await deleteSsoProviderRows(db, params.providerId);
-					return { ok: true };
-				},
-				{
-					detail: { tags: ["SSO"], summary: "Delete SSO provider" },
-					params: t.Object({ providerId: t.String({ minLength: 1 }) }),
-				},
 			),
 	)
 	.get(
@@ -1610,16 +1293,9 @@ export const app = new Elysia({
 			if (!invite) {
 				throw new Error("errors.inviteMissing");
 			}
-			const publicProviders = await listPublicSsoProviders(db);
-			const enforced = isSsoEnforcedForEmail(
-				invite.email,
-				await listEnforcementProviders(db),
-			);
-			const match = publicProviders.providers.find((provider) =>
-				provider.domains.some((domain) =>
-					invite.email.toLowerCase().endsWith(`@${domain}`),
-				),
-			);
+			const catalog = await listPublicSsoProviders(db);
+			const match = matchingSsoProvider(catalog, invite.email);
+			const enforced = isSsoEnforcedForEmail(invite.email, catalog.providers);
 			return {
 				email: invite.email,
 				expiresAt: invite.expiresAt,

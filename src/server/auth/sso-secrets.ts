@@ -1,4 +1,4 @@
-const SECRET_JSON_KEYS = new Set([
+export const SECRET_JSON_KEYS = new Set([
 	"clientSecret",
 	"privateKey",
 	"privateKeyPass",
@@ -125,4 +125,56 @@ export async function decryptSsoConfigJson(json: string, secret: string) {
 	return JSON.stringify(
 		await walkSecrets(parsed, (value) => decryptSecretValue(value, secret)),
 	);
+}
+
+function walkHasSecret(value: unknown): boolean {
+	if (Array.isArray(value)) {
+		return value.some((item) => walkHasSecret(item));
+	}
+	if (!isRecord(value)) {
+		return false;
+	}
+	return Object.entries(value).some(([key, child]) => {
+		if (SECRET_JSON_KEYS.has(key) && typeof child === "string" && child) {
+			return true;
+		}
+		return walkHasSecret(child);
+	});
+}
+
+export function ssoConfigHasSecret(json: string | null | undefined) {
+	if (!json) {
+		return false;
+	}
+	try {
+		return walkHasSecret(JSON.parse(json));
+	} catch {
+		return false;
+	}
+}
+
+export function redactSsoConfigJson(json: string | null | undefined) {
+	if (!json) {
+		return null;
+	}
+	const parsed: unknown = JSON.parse(json);
+	const walk = (value: unknown): unknown => {
+		if (Array.isArray(value)) {
+			return value.map(walk);
+		}
+		if (!isRecord(value)) {
+			return value;
+		}
+		const next: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(value)) {
+			if (SECRET_JSON_KEYS.has(key) && typeof child === "string" && child) {
+				next[key] = "********";
+			} else {
+				next[key] = walk(child);
+			}
+		}
+		return next;
+	};
+	const redacted = walk(parsed);
+	return isRecord(redacted) ? redacted : null;
 }

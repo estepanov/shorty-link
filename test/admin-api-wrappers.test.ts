@@ -86,14 +86,11 @@ vi.mock("../src/server/db/client", () => ({
 	createDb: vi.fn(() => ({})),
 }));
 
-vi.mock("../src/server/services/sso", () => ({
-	SSO_ADMIN_HEADER: "x-shorty-sso-admin",
-	deleteSsoProviderRows: vi.fn(),
-	encryptStoredSsoConfigs: vi.fn(),
+vi.mock("../src/server/services/sso-providers", () => ({
+	createSsoProvider: vi.fn(),
+	deleteSsoProvider: vi.fn(),
 	getAdminSsoProvider: vi.fn(),
-	isSsoEnforcedForEmail: vi.fn(() => false),
 	listAdminSsoProviders: vi.fn(),
-	listEnforcementProviders: vi.fn(async () => []),
 	listPublicSsoProviders: vi.fn(async () => ({
 		hasEnforcedDomain: false,
 		providers: [
@@ -106,9 +103,7 @@ vi.mock("../src/server/services/sso", () => ({
 			},
 		],
 	})),
-	normalizeProtocol: vi.fn((value: string) => value),
-	normalizeProviderId: vi.fn((value: string) => value),
-	upsertSsoSettings: vi.fn(),
+	updateSsoProvider: vi.fn(),
 }));
 
 const { app } = await import("../src/server/api/app");

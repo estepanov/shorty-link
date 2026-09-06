@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
 	decryptSsoConfigJson,
 	encryptSsoConfigJson,
+	redactSsoConfigJson,
 	SSO_SECRET_PREFIX,
+	ssoConfigHasSecret,
 } from "../src/server/auth/sso-secrets";
 
 const SECRET = "test-better-auth-secret-for-sso";
@@ -85,6 +87,30 @@ describe("sso secret encryption", () => {
 		expect(
 			JSON.parse(await decryptSsoConfigJson(second, SECRET)).clientSecret,
 		).toBe("once");
+	});
+
+	it("reports whether a config blob contains a secret key", () => {
+		expect(
+			ssoConfigHasSecret(JSON.stringify({ clientId: "public", issuer: "x" })),
+		).toBe(false);
+		expect(ssoConfigHasSecret(JSON.stringify({ clientSecret: "hidden" }))).toBe(
+			true,
+		);
+		expect(ssoConfigHasSecret(null)).toBe(false);
+	});
+
+	it("redacts secret keys without dropping public fields", () => {
+		expect(
+			redactSsoConfigJson(
+				JSON.stringify({
+					clientId: "public-id",
+					clientSecret: "super-secret",
+				}),
+			),
+		).toEqual({
+			clientId: "public-id",
+			clientSecret: "********",
+		});
 	});
 
 	it("fails closed with the wrong secret", async () => {
