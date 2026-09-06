@@ -315,6 +315,10 @@ export const messages = {
 			"Provider IDs must be lowercase letters, numbers, and hyphens.",
 		"errors.ssoProviderIdReserved": "That provider ID is reserved.",
 		"errors.ssoProtocolInvalid": "Protocol must be oidc or saml.",
+		"errors.ssoProtocolImmutable":
+			"An SSO provider's protocol cannot be changed.",
+		"errors.ssoConfigurationInvalid":
+			"Complete the required configuration for this SSO protocol.",
 		"errors.ssoGroupMappingInvalid":
 			"Group mappings must use the group=roleId format.",
 		"errors.ssoSecretDecryptFailed":
@@ -779,6 +783,10 @@ export const messages = {
 			"Los ID de proveedor deben usar minusculas, numeros y guiones.",
 		"errors.ssoProviderIdReserved": "Ese ID de proveedor esta reservado.",
 		"errors.ssoProtocolInvalid": "El protocolo debe ser oidc o saml.",
+		"errors.ssoProtocolImmutable":
+			"No se puede cambiar el protocolo de un proveedor SSO.",
+		"errors.ssoConfigurationInvalid":
+			"Completa la configuracion requerida para este protocolo SSO.",
 		"errors.ssoGroupMappingInvalid":
 			"Las asignaciones de grupo deben usar el formato group=roleId.",
 		"errors.ssoSecretDecryptFailed":

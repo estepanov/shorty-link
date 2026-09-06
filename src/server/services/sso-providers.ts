@@ -1,5 +1,9 @@
-import { discoverOIDCConfig } from "@better-auth/sso";
-import { and, eq, isNull } from "drizzle-orm";
+import {
+	deriveSAMLIdentityProviderEntityID,
+	discoverOIDCConfig,
+	type SAMLConfig,
+} from "@better-auth/sso";
+import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import {
@@ -22,6 +26,7 @@ import {
 import type { AppDb } from "../db/client";
 import {
 	adminInvites,
+	roles,
 	SYSTEM_ROLE_OWNER,
 	ssoProvider,
 	ssoProviderSettings,
@@ -71,6 +76,68 @@ function originFromAbsoluteUrl(value: string | null | undefined) {
 	}
 }
 
+function isUsableHttpUrl(value: unknown): value is string {
+	if (typeof value !== "string" || !value.trim()) {
+		return false;
+	}
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" || url.protocol === "http:";
+	} catch {
+		return false;
+	}
+}
+
+function configString(
+	record: Record<string, unknown> | null,
+	key: string,
+): string | undefined {
+	const value = record?.[key];
+	return typeof value === "string" ? value : undefined;
+}
+
+function assertOidcEndpoints(config: Record<string, unknown>) {
+	if (
+		!isUsableHttpUrl(config.issuer) ||
+		!isUsableHttpUrl(config.authorizationEndpoint) ||
+		!isUsableHttpUrl(config.tokenEndpoint) ||
+		!isUsableHttpUrl(config.jwksEndpoint) ||
+		(config.userInfoEndpoint !== undefined &&
+			!isUsableHttpUrl(config.userInfoEndpoint))
+	) {
+		throw new Error("errors.ssoConfigurationInvalid");
+	}
+}
+
+function assertSamlConfig(config: Record<string, unknown>) {
+	const idpMetadata =
+		typeof config.idpMetadata === "object" &&
+		config.idpMetadata !== null &&
+		!Array.isArray(config.idpMetadata)
+			? (config.idpMetadata as Record<string, unknown>)
+			: null;
+	const metadata = configString(idpMetadata, "metadata");
+	if (metadata?.trim()) {
+		try {
+			const entityId = deriveSAMLIdentityProviderEntityID(
+				config as unknown as SAMLConfig,
+			);
+			if (!entityId?.trim()) {
+				throw new Error("Missing IdP entity ID");
+			}
+			return;
+		} catch {
+			throw new Error("errors.ssoSamlMetadataInvalid");
+		}
+	}
+	if (
+		!isUsableHttpUrl(config.entryPoint) ||
+		!configString(idpMetadata, "entityID")?.trim()
+	) {
+		throw new Error("errors.ssoConfigurationInvalid");
+	}
+}
+
 function settingsFromWrite(
 	providerId: string,
 	protocol: SsoProtocol,
@@ -104,6 +171,28 @@ function settingsFromWrite(
 	};
 }
 
+async function assertRoleReferences(
+	db: AppDb,
+	input: ReturnType<typeof settingsFromWrite>,
+) {
+	const referencedRoleIds = new Set(
+		[
+			input.defaultRoleId,
+			...input.groupRoleMappings.map((mapping) => mapping.roleId),
+		].filter((roleId): roleId is string => roleId !== null),
+	);
+	if (referencedRoleIds.size === 0) {
+		return;
+	}
+	const rows = await db
+		.select({ id: roles.id })
+		.from(roles)
+		.where(inArray(roles.id, [...referencedRoleIds]));
+	if (rows.length !== referencedRoleIds.size) {
+		throw new Error("errors.roleMissing");
+	}
+}
+
 async function persistConfigJson(
 	json: string | null,
 	request?: Request,
@@ -131,7 +220,7 @@ async function hydrateOidcConfig(
 	const allowIdpInitiated = input.allowIdpInitiated ?? false;
 	const existing = input.oidcConfig;
 	if (existing?.skipDiscovery) {
-		return {
+		const config = {
 			allowIdpInitiated,
 			authorizationEndpoint: existing.authorizationEndpoint,
 			clientId: input.clientId ?? "",
@@ -142,24 +231,32 @@ async function hydrateOidcConfig(
 			issuer,
 			jwksEndpoint: existing.jwksEndpoint,
 			pkce: true,
+			skipDiscovery: true,
 			tokenEndpoint: existing.tokenEndpoint,
 			userInfoEndpoint: existing.userInfoEndpoint,
 		};
+		assertOidcEndpoints(config);
+		return config;
 	}
 
 	const issuerOrigin = originFromAbsoluteUrl(issuer);
-	const hydrated = await discoverOIDCConfig({
-		existingConfig: {
-			authorizationEndpoint: existing?.authorizationEndpoint,
-			discoveryEndpoint: existing?.discoveryEndpoint,
-			jwksEndpoint: existing?.jwksEndpoint,
-			tokenEndpoint: existing?.tokenEndpoint,
-			userInfoEndpoint: existing?.userInfoEndpoint,
-		},
-		isTrustedOrigin: (url) => originFromAbsoluteUrl(url) === issuerOrigin,
-		issuer,
-	});
-	return {
+	let hydrated: Awaited<ReturnType<typeof discoverOIDCConfig>>;
+	try {
+		hydrated = await discoverOIDCConfig({
+			existingConfig: {
+				authorizationEndpoint: existing?.authorizationEndpoint,
+				discoveryEndpoint: existing?.discoveryEndpoint,
+				jwksEndpoint: existing?.jwksEndpoint,
+				tokenEndpoint: existing?.tokenEndpoint,
+				userInfoEndpoint: existing?.userInfoEndpoint,
+			},
+			isTrustedOrigin: (url) => originFromAbsoluteUrl(url) === issuerOrigin,
+			issuer,
+		});
+	} catch {
+		throw new Error("errors.ssoDiscoveryFailed");
+	}
+	const config = {
 		allowIdpInitiated,
 		authorizationEndpoint: hydrated.authorizationEndpoint,
 		clientId: input.clientId ?? "",
@@ -172,6 +269,8 @@ async function hydrateOidcConfig(
 		tokenEndpointAuthentication: hydrated.tokenEndpointAuthentication,
 		userInfoEndpoint: hydrated.userInfoEndpoint,
 	};
+	assertOidcEndpoints(config);
+	return config;
 }
 
 function parseConfigRecord(
@@ -187,41 +286,54 @@ function parseConfigRecord(
 	return parsed as Record<string, unknown>;
 }
 
-function mergeSecret(
-	next: Record<string, unknown>,
-	current: Record<string, unknown> | null,
-	key: string,
-	incoming?: string,
-) {
-	if (incoming) {
-		next[key] = incoming;
-		return;
-	}
-	const existing = current?.[key];
-	if (typeof existing === "string" && existing) {
-		next[key] = existing;
-	}
-}
-
 async function buildOidcJson(
 	input: SsoProviderWrite | SsoProviderPatch,
 	issuer: string,
 	currentJson: string | null,
 ) {
 	const current = parseConfigRecord(currentJson);
+	const clientId = input.clientId ?? configString(current, "clientId") ?? "";
+	const clientSecret =
+		input.clientSecret ?? configString(current, "clientSecret") ?? "";
+	if (!clientId.trim() || !clientSecret.trim()) {
+		throw new Error("errors.ssoConfigurationInvalid");
+	}
+	const currentSkipDiscovery =
+		typeof current?.skipDiscovery === "boolean"
+			? current.skipDiscovery
+			: undefined;
+	const oidcConfig = {
+		authorizationEndpoint:
+			input.oidcConfig?.authorizationEndpoint ??
+			configString(current, "authorizationEndpoint"),
+		discoveryEndpoint:
+			input.oidcConfig?.discoveryEndpoint ??
+			configString(current, "discoveryEndpoint"),
+		jwksEndpoint:
+			input.oidcConfig?.jwksEndpoint ?? configString(current, "jwksEndpoint"),
+		skipDiscovery:
+			input.oidcConfig?.skipDiscovery ?? currentSkipDiscovery ?? false,
+		tokenEndpoint:
+			input.oidcConfig?.tokenEndpoint ?? configString(current, "tokenEndpoint"),
+		userInfoEndpoint:
+			input.oidcConfig?.userInfoEndpoint ??
+			configString(current, "userInfoEndpoint"),
+	};
 	const hydrated = await hydrateOidcConfig(
 		{
 			...input,
-			clientId:
-				input.clientId ??
-				(typeof current?.clientId === "string" ? current.clientId : ""),
-			clientSecret: input.clientSecret || undefined,
+			allowIdpInitiated:
+				input.allowIdpInitiated ??
+				(typeof current?.allowIdpInitiated === "boolean"
+					? current.allowIdpInitiated
+					: false),
+			clientId,
+			clientSecret,
+			oidcConfig,
 		},
 		issuer,
 	);
-	const record = { ...hydrated } as Record<string, unknown>;
-	mergeSecret(record, current, "clientSecret", input.clientSecret);
-	return JSON.stringify(record);
+	return JSON.stringify(hydrated);
 }
 
 async function buildSamlJson(
@@ -230,13 +342,24 @@ async function buildSamlJson(
 	currentJson: string | null,
 ) {
 	const current = parseConfigRecord(currentJson);
+	const currentIdpMetadata =
+		typeof current?.idpMetadata === "object" &&
+		current.idpMetadata !== null &&
+		!Array.isArray(current.idpMetadata)
+			? (current.idpMetadata as Record<string, unknown>)
+			: null;
 	const record: Record<string, unknown> = {
 		...(current ?? {}),
 		allowIdpInitiated: input.allowIdpInitiated ?? current?.allowIdpInitiated,
 		callbackUrl: "/admin",
 		issuer,
 		...(input.samlConfig ?? {}),
+		idpMetadata: {
+			...(currentIdpMetadata ?? {}),
+			...(input.samlConfig?.idpMetadata ?? {}),
+		},
 	};
+	assertSamlConfig(record);
 	return JSON.stringify(record);
 }
 
@@ -414,6 +537,11 @@ export async function createSsoProvider(
 	if (existing[0]) {
 		throw new Error("errors.ssoProviderExists");
 	}
+	const settings = settingsFromWrite(providerId, protocol, {
+		...input,
+		providerId,
+	});
+	await assertRoleReferences(db, settings);
 
 	const oidcJson =
 		protocol === "oidc"
@@ -442,10 +570,7 @@ export async function createSsoProvider(
 	});
 
 	try {
-		await upsertSettings(
-			db,
-			settingsFromWrite(providerId, protocol, { ...input, providerId }),
-		);
+		await upsertSettings(db, settings);
 	} catch (error) {
 		await db.delete(ssoProvider).where(eq(ssoProvider.providerId, providerId));
 		throw error;
@@ -465,6 +590,9 @@ export async function updateSsoProvider(
 	const protocol = input.protocol
 		? normalizeProtocol(input.protocol)
 		: current.protocol;
+	if (protocol !== current.protocol) {
+		throw new Error("errors.ssoProtocolImmutable");
+	}
 	const issuer = input.issuer ?? current.issuer;
 	const rows = await db
 		.select()
@@ -477,6 +605,8 @@ export async function updateSsoProvider(
 	}
 	const currentOidc = await readConfigJson(row.oidcConfig, request);
 	const currentSaml = await readConfigJson(row.samlConfig, request);
+	const settings = settingsFromWrite(providerId, protocol, input, current);
+	await assertRoleReferences(db, settings);
 	const oidcJson =
 		protocol === "oidc"
 			? await persistConfigJson(
@@ -501,10 +631,24 @@ export async function updateSsoProvider(
 			samlConfig: samlJson,
 		})
 		.where(eq(ssoProvider.providerId, providerId));
-	await upsertSettings(
-		db,
-		settingsFromWrite(providerId, protocol, input, current),
-	);
+	try {
+		await upsertSettings(db, settings);
+	} catch (error) {
+		await db
+			.update(ssoProvider)
+			.set({
+				domain: row.domain,
+				id: row.id,
+				issuer: row.issuer,
+				oidcConfig: row.oidcConfig,
+				organizationId: row.organizationId,
+				providerId: row.providerId,
+				samlConfig: row.samlConfig,
+				userId: row.userId,
+			})
+			.where(eq(ssoProvider.providerId, providerId));
+		throw error;
+	}
 	return getAdminSsoProvider(db, providerId, origin, request);
 }
 
@@ -532,12 +676,29 @@ export async function loadSsoSettingsView(db: AppDb, providerId: string) {
 	if (!row) {
 		return null;
 	}
+	const parsedMappings = parseGroupRoleMappings(row.settings.groupRoleMappings);
+	const mappedRoleIds = [
+		...new Set(parsedMappings.map(({ roleId }) => roleId)),
+	];
+	const existingRoleIds =
+		mappedRoleIds.length === 0
+			? new Set<string>()
+			: new Set(
+					(
+						await db
+							.select({ id: roles.id })
+							.from(roles)
+							.where(inArray(roles.id, mappedRoleIds))
+					).map(({ id }) => id),
+				);
 	const view: SsoProviderSettingsView = {
 		defaultRoleId: row.settings.defaultRoleId,
 		domains: parseProviderDomains(row.domain),
 		enabled: row.settings.enabled,
 		groupClaim: row.settings.groupClaim,
-		groupRoleMappings: parseGroupRoleMappings(row.settings.groupRoleMappings),
+		groupRoleMappings: parsedMappings.filter(({ roleId }) =>
+			existingRoleIds.has(roleId),
+		),
 		jitEnabled: row.settings.jitEnabled,
 		providerId: row.settings.providerId,
 	};
@@ -567,14 +728,20 @@ export async function prepareSsoAdmission(
 		.where(eq(user.email, email))
 		.limit(1);
 	const existing = existingRows[0] ?? null;
+	const admissionTime = now();
 	const inviteRows = await db
 		.select()
 		.from(adminInvites)
-		.where(and(eq(adminInvites.email, email), isNull(adminInvites.acceptedAt)))
+		.where(
+			and(
+				eq(adminInvites.email, email),
+				isNull(adminInvites.acceptedAt),
+				gt(adminInvites.expiresAt, admissionTime),
+			),
+		)
+		.orderBy(desc(adminInvites.createdAt), desc(adminInvites.id))
 		.limit(1);
-	const pendingInvite = inviteRows[0];
-	const invite =
-		pendingInvite && pendingInvite.expiresAt > now() ? pendingInvite : null;
+	const invite = inviteRows[0] ?? null;
 
 	const decision = resolveSsoAdmission({
 		email: input.email,

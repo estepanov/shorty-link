@@ -7,6 +7,7 @@ import { getPlatformProxy } from "wrangler";
 
 import {
 	adminInvites,
+	roles,
 	SYSTEM_ROLE_ADMIN,
 	SYSTEM_ROLE_OWNER,
 	schema,
@@ -188,5 +189,92 @@ describe("D1 SSO admission persistence", () => {
 		expect(
 			await db.select().from(user).where(eq(user.id, "member")),
 		).toHaveLength(0);
+	});
+
+	it("selects only live invites and deterministically prefers the newest", async () => {
+		const timestamp = Date.now();
+		await db.insert(adminInvites).values([
+			{
+				acceptedAt: null,
+				createdAt: timestamp - 30_000,
+				email: "member@acme.test",
+				expiresAt: timestamp - 1,
+				id: "expired",
+				invitedBy: "owner",
+				roleId: SYSTEM_ROLE_ADMIN,
+				ssoClaimId: null,
+				token: "expired-token",
+			},
+			{
+				acceptedAt: null,
+				createdAt: timestamp - 20_000,
+				email: "member@acme.test",
+				expiresAt: timestamp + 60_000,
+				id: "older-valid",
+				invitedBy: "owner",
+				roleId: SYSTEM_ROLE_ADMIN,
+				ssoClaimId: null,
+				token: "older-valid-token",
+			},
+			{
+				acceptedAt: null,
+				createdAt: timestamp - 10_000,
+				email: "member@acme.test",
+				expiresAt: timestamp + 60_000,
+				id: "newest-valid",
+				invitedBy: "owner",
+				roleId: SYSTEM_ROLE_ADMIN,
+				ssoClaimId: null,
+				token: "newest-valid-token",
+			},
+		]);
+
+		const prepared = await prepareSsoAdmission(db, {
+			email: "member@acme.test",
+			emailVerified: true,
+			groups: [],
+			providerId: "workforce",
+		});
+
+		expect(prepared.decision).toMatchObject({
+			action: "invite",
+			token: "newest-valid-token",
+		});
+	});
+
+	it("ignores group mappings whose role was deleted after configuration", async () => {
+		const timestamp = new Date();
+		await db.insert(roles).values({
+			createdAt: timestamp,
+			description: null,
+			id: "deleted-role",
+			isSystem: false,
+			name: "Deleted role",
+			permissions: "[]",
+			updatedAt: timestamp,
+		});
+		await db
+			.update(ssoProviderSettings)
+			.set({
+				groupRoleMappings: JSON.stringify([
+					{ group: "eng", roleId: "deleted-role" },
+				]),
+				jitEnabled: true,
+			})
+			.where(eq(ssoProviderSettings.providerId, "workforce"));
+		await db.delete(roles).where(eq(roles.id, "deleted-role"));
+
+		const prepared = await prepareSsoAdmission(db, {
+			email: "new@acme.test",
+			emailVerified: true,
+			groups: ["eng"],
+			providerId: "workforce",
+		});
+
+		expect(prepared.decision).toEqual({
+			action: "jit",
+			ok: true,
+			roleId: SYSTEM_ROLE_ADMIN,
+		});
 	});
 });
