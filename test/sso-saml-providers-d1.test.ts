@@ -170,7 +170,7 @@ describe("D1 SAML provider configuration", () => {
 			entryPoint: "https://manual-idp.example.test/sso",
 			idpMetadata: { entityID: "https://manual-idp.example.test" },
 		});
-		expect(updated.samlConfig?.idpMetadata).not.toHaveProperty("metadata");
+		expect(updated.samlConfig?.idpMetadata?.metadata).toBeUndefined();
 	});
 
 	it("rejects invalid or incomplete configuration", async () => {

@@ -403,6 +403,7 @@ export async function buildSamlJson(
 	currentJson: string | null,
 ) {
 	const current = parseConfigRecord(currentJson);
+	const currentIdpMetadata = nestedConfig(current, "idpMetadata");
 	const currentMapping = nestedConfig(current, "mapping");
 	const requestedMapping = input.samlConfig?.mapping;
 	const mapping = {
@@ -421,23 +422,24 @@ export async function buildSamlJson(
 	};
 	const requested = input.samlConfig;
 	const existingPrivateKey = configString(current, "privateKey");
-	const record: Record<string, unknown> = requested
-		? {
-				...requested,
-				callbackUrl: "/admin",
-				idpMetadata: requested.idpMetadata ?? {},
-				issuer,
-				mapping,
-				privateKey:
-					(requested.privateKey?.trim() ? requested.privateKey : undefined) ??
-					existingPrivateKey,
-			}
-		: {
-				...(current ?? {}),
-				callbackUrl: "/admin",
-				issuer,
-				mapping,
-			};
+	const replacesConnection =
+		requested !== undefined &&
+		("idpMetadata" in requested ||
+			"entryPoint" in requested ||
+			"cert" in requested);
+	const record: Record<string, unknown> = {
+		...(replacesConnection ? {} : (current ?? {})),
+		...(requested ?? {}),
+		callbackUrl: "/admin",
+		idpMetadata: replacesConnection
+			? (requested?.idpMetadata ?? {})
+			: (currentIdpMetadata ?? {}),
+		issuer,
+		mapping,
+		privateKey:
+			(requested?.privateKey?.trim() ? requested.privateKey : undefined) ??
+			existingPrivateKey,
+	};
 	assertSamlConfig(record);
 	return JSON.stringify(record);
 }
