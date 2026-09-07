@@ -31,15 +31,18 @@ describe("mcp access token verification", () => {
 		const handler = vi.fn(async () => Response.json({ keys: [{ kid: "k1" }] }));
 
 		const jwks = await loadAuthorizationServerJwks(
-			{ handler, $context: Promise.resolve({ internalAdapter: {} }) },
+			{ handler },
 			"http://localhost/api/auth",
 		);
 
 		expect(jwks.keys).toEqual([{ kid: "k1" }]);
 		expect(handler).toHaveBeenCalledTimes(1);
-		expect(new URL(handler.mock.calls[0][0].url).href).toBe(
-			"http://localhost/api/auth/jwks",
-		);
+		const request = (handler.mock.calls as unknown as unknown[][])[0]?.[0];
+		expect(request).toBeInstanceOf(Request);
+		if (!(request instanceof Request)) {
+			throw new Error("expected auth.handler to receive a Request");
+		}
+		expect(new URL(request.url).href).toBe("http://localhost/api/auth/jwks");
 	});
 
 	it("rejects a JWKS response that is not a key set", async () => {
@@ -47,7 +50,6 @@ describe("mcp access token verification", () => {
 			loadAuthorizationServerJwks(
 				{
 					handler: async () => Response.json({ error: "nope" }),
-					$context: Promise.resolve({ internalAdapter: {} }),
 				},
 				"http://localhost/api/auth",
 			),
@@ -68,7 +70,11 @@ describe("mcp access token verification", () => {
 			{
 				auth: {
 					handler,
-					$context: Promise.resolve({ internalAdapter: {} }),
+					$context: Promise.resolve({
+						internalAdapter: {
+							reserveVerificationValue: async () => true,
+						},
+					}),
 				},
 				issuer,
 				audience,

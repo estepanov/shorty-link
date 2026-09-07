@@ -157,9 +157,12 @@ describe("mcp request routing", () => {
 		expect(response?.status).toBe(401);
 		expect(fetchSpy).not.toHaveBeenCalled();
 		expect(mocks.auth.handler).toHaveBeenCalled();
-		const jwksUrls = mocks.auth.handler.mock.calls.map(
-			([request]) => new URL((request as Request).url).href,
-		);
+		const jwksUrls = (
+			mocks.auth.handler.mock.calls as unknown as unknown[][]
+		).flatMap((call) => {
+			const request = call[0];
+			return request instanceof Request ? [new URL(request.url).href] : [];
+		});
 		expect(jwksUrls).toContain("http://localhost/api/auth/jwks");
 		fetchSpy.mockRestore();
 	});
