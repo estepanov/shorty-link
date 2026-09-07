@@ -74,7 +74,12 @@ These paths are reserved and never used as short-link slugs:
 | `POST /mcp` | Stateless Streamable HTTP MCP |
 | `GET /.well-known/oauth-protected-resource` | Resource metadata (RFC 9728) |
 | `GET /.well-known/oauth-authorization-server` | Authorization-server metadata |
+| `GET /.well-known/openid-configuration` | OpenID discovery (and `/api/auth` path aliases) |
 | `/api/auth/oauth2/*` | Authorize, token, dynamic client registration, userinfo |
+
+Access-token checks load JWKS through the same Worker (`auth.handler`), not an HTTP fetch back to this hostname. Same-zone Worker fetches to the Worker's own origin fail or hang on Cloudflare.
+
+If ChatGPT finishes consent and then reports a generic connector error, confirm `GET /api/auth/jwks` returns JSON keys and `POST /mcp` without a bearer token returns JSON-RPC `401` with `WWW-Authenticate`. A Worker `500` on an authenticated `/mcp` call is a token-verify bug, not another Cloudflare challenge.
 
 Admin settings and grant revoke live under `/api/admin/mcp/*`. See [Admin API](/admin-api/#mcp).
 

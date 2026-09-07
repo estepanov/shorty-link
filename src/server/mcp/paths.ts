@@ -13,13 +13,35 @@ export function isMcpAuthCorsPath(pathname: string) {
 	);
 }
 
-export function isMcpWellKnownPath(pathname: string) {
+export function isMcpAuthorizationServerMetadataPath(pathname: string) {
 	return (
 		pathname === "/.well-known/oauth-authorization-server" ||
+		pathname === "/.well-known/oauth-authorization-server/api/auth" ||
+		pathname === "/api/auth/.well-known/oauth-authorization-server"
+	);
+}
+
+export function isMcpOpenIdConfigurationPath(pathname: string) {
+	return (
+		pathname === "/.well-known/openid-configuration" ||
+		pathname === "/.well-known/openid-configuration/api/auth" ||
+		pathname === "/api/auth/.well-known/openid-configuration"
+	);
+}
+
+export function isMcpProtectedResourceMetadataPath(pathname: string) {
+	return (
 		pathname === "/.well-known/oauth-protected-resource" ||
 		pathname.startsWith("/.well-known/oauth-protected-resource/") ||
-		pathname === "/api/auth/.well-known/oauth-authorization-server" ||
 		pathname === "/api/auth/.well-known/oauth-protected-resource"
+	);
+}
+
+export function isMcpWellKnownPath(pathname: string) {
+	return (
+		isMcpAuthorizationServerMetadataPath(pathname) ||
+		isMcpOpenIdConfigurationPath(pathname) ||
+		isMcpProtectedResourceMetadataPath(pathname)
 	);
 }
 

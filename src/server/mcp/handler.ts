@@ -1,13 +1,22 @@
-import { createMcpProtectedRequestHandler } from "@better-auth/mcp";
-import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
-import { createDpopReplayStore } from "better-auth/oauth2";
+import {
+	oauthProviderAuthServerMetadata,
+	oauthProviderOpenIdConfigMetadata,
+} from "@better-auth/oauth-provider";
 
 import { createAuth } from "../auth/auth";
 import { createDb } from "../db/client";
 import { getLogger, serializeError } from "../logging";
 import { authorizeMcpUser } from "./access";
 import { mcpOptionsResponse, mcpWwwAuthenticate, withMcpCors } from "./cors";
-import { isMcpAuthCorsPath, isMcpHandledPath, isMcpJsonRpcPath } from "./paths";
+import {
+	isMcpAuthCorsPath,
+	isMcpAuthorizationServerMetadataPath,
+	isMcpHandledPath,
+	isMcpJsonRpcPath,
+	isMcpOpenIdConfigurationPath,
+	isMcpProtectedResourceMetadataPath,
+} from "./paths";
+import { verifyMcpAccessToken } from "./verify";
 import {
 	initializeResult,
 	isJsonRpcFailure,
@@ -189,19 +198,19 @@ export async function handleMcpRequest(request: Request) {
 		return mcpOptionsResponse();
 	}
 
-	if (
-		url.pathname === "/.well-known/oauth-authorization-server" ||
-		url.pathname === "/api/auth/.well-known/oauth-authorization-server" ||
-		url.pathname === "/.well-known/oauth-protected-resource" ||
-		url.pathname === "/.well-known/oauth-protected-resource/mcp" ||
-		url.pathname === "/api/auth/.well-known/oauth-protected-resource"
-	) {
+	if (isMcpAuthorizationServerMetadataPath(url.pathname)) {
 		const auth = createAuth(request);
-		const response =
-			url.pathname === "/.well-known/oauth-authorization-server"
-				? await oauthProviderAuthServerMetadata(auth)(request)
-				: await auth.handler(request);
-		return withMcpCors(response);
+		return withMcpCors(await oauthProviderAuthServerMetadata(auth)(request));
+	}
+
+	if (isMcpOpenIdConfigurationPath(url.pathname)) {
+		const auth = createAuth(request);
+		return withMcpCors(await oauthProviderOpenIdConfigMetadata(auth)(request));
+	}
+
+	if (isMcpProtectedResourceMetadataPath(url.pathname)) {
+		const auth = createAuth(request);
+		return withMcpCors(await auth.handler(request));
 	}
 
 	if (isMcpJsonRpcPath(url.pathname)) {
@@ -213,25 +222,30 @@ export async function handleMcpRequest(request: Request) {
 				}),
 			);
 		}
+		if (!request.headers.get("authorization")) {
+			return withMcpCors(unauthorizedResponse(request));
+		}
+
 		const auth = createAuth(request);
-		const resource = `${requestOrigin(request)}/mcp`;
-		const issuer = `${requestOrigin(request)}/api/auth`;
-		const jwksUrl = `${issuer}/jwks`;
-		const { internalAdapter } = await auth.$context;
-		const protectedHandler = createMcpProtectedRequestHandler(
-			{
-				audience: resource,
-				dpop: { replayStore: createDpopReplayStore(internalAdapter) },
-				issuer,
-				jwksUrl,
-			},
-			(protectedRequest, claims) =>
-				handleJsonRpc(
-					protectedRequest,
+		const origin = requestOrigin(request);
+		try {
+			const claims = await verifyMcpAccessToken(request, {
+				audience: `${origin}/mcp`,
+				auth,
+				issuer: `${origin}/api/auth`,
+			});
+			return withMcpCors(
+				await handleJsonRpc(
+					request,
 					typeof claims.sub === "string" ? claims.sub : "",
 				),
-		);
-		return withMcpCors(await protectedHandler(request));
+			);
+		} catch (error) {
+			log.warn("mcp access token verification failed", {
+				error: serializeError(error),
+			});
+			return withMcpCors(unauthorizedResponse(request));
+		}
 	}
 
 	if (isMcpAuthCorsPath(url.pathname)) {
