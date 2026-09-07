@@ -139,8 +139,9 @@ The hosted MCP server is off until an admin enables it. Full operator notes are 
 
 1. Open **Access → MCP** and turn **MCP server enabled** on.
 2. Copy the connector URL (`https://your-host/mcp`).
-3. In Claude or ChatGPT, add a custom MCP connector with that URL.
-4. Sign in with your Shorty Link passkey and allow the consent screen.
+3. Turn off Cloudflare **Bot Fight Mode** and **Block AI Bots** on that hostname (or skip Super Bot Fight Mode for `/mcp` and `/api/auth/oauth2/*` on Pro). Otherwise ChatGPT's registration POST returns 403.
+4. In Claude or ChatGPT, add a custom MCP connector with that URL.
+5. Sign in with your Shorty Link passkey and allow the consent screen.
 
 The client only gets the tools your role already allows. To remove a client later, open **Profile → MCP access** and revoke it. Admins can also disable MCP for one user from **Access → Users**.
 

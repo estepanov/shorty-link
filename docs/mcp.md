@@ -26,6 +26,26 @@ Disabling the server rejects new OAuth and `POST /mcp` requests.
 
 The client only receives tools your role already allows. Domain and link scopes still apply.
 
+Claude and ChatGPT register OAuth clients from their own servers (dynamic client registration). Those requests never run JavaScript, so Cloudflare bot products that challenge automated traffic will make ChatGPT report `Dynamic client registration failed: registration endpoint returned 403`.
+
+On the hostname you paste into the connector:
+
+1. Turn **Bot Fight Mode** off. WAF Skip rules cannot bypass it.
+2. Set **Block AI Bots** to allow (or disable it). ChatGPT is classified as an AI client.
+3. Do not leave the zone in **I'm Under Attack**.
+
+On a Pro plan or above you can keep Super Bot Fight Mode and add a WAF custom rule that **skips** it for `/mcp` and `/api/auth/oauth2/*`. On the Free plan the only fix is to turn Bot Fight Mode off.
+
+Confirm the Worker is reachable before retrying the connector:
+
+```bash
+curl -sS -D - -o /tmp/dcr.json -X POST "$ORIGIN/api/auth/oauth2/register" \
+  -H "Content-Type: application/json" \
+  -d '{"client_name":"probe","redirect_uris":["https://chatgpt.com/connector_platform_oauth_redirect"],"token_endpoint_auth_method":"none"}'
+```
+
+A healthy response is `201` with JSON `client_id`. `403` plus `cf-mitigated: challenge` or a "Just a moment..." HTML body is still Cloudflare, not Shorty Link.
+
 ## Tools
 
 | Tool | Permission |

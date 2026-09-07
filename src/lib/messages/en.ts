@@ -463,6 +463,8 @@ export const enMessages = {
 		"The MCP server is off until you enable it. Claude and ChatGPT then connect with passkey OAuth. Tools follow each user's role and scopes.",
 	"mcp.settingsHint":
 		"No extra Cloudflare bindings are required. Save after changing the toggle, then paste the connector URL into Claude or ChatGPT.",
+	"mcp.cloudflareBotWarning":
+		"Claude and ChatGPT register from their servers. Cloudflare Bot Fight Mode, Block AI Bots, and Under Attack Mode challenge those requests, and ChatGPT then reports that registration returned 403. Turn those off on this hostname. On a Pro plan you can keep Super Bot Fight Mode if you skip it for /mcp and /api/auth/oauth2/*.",
 	"mcp.serverEnabled": "MCP server enabled",
 	"mcp.saved": "MCP settings saved.",
 	"mcp.connectorUrl": "Connector URL",

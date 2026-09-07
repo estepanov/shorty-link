@@ -67,6 +67,9 @@ function McpSettingsPage() {
 			<p className="mt-2 text-sm text-muted-foreground">
 				{t("mcp.settingsDescription")}
 			</p>
+			<div className="mt-4">
+				<Notice tone="info">{t("mcp.cloudflareBotWarning")}</Notice>
+			</div>
 			{error ? (
 				<div className="mt-4">
 					<Notice tone="error">{t(error)}</Notice>
