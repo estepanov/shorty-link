@@ -3,7 +3,7 @@ import { type CollectionEntry, getCollection } from "astro:content";
 type OrderEntry = string | { slug: string; children: string[] };
 
 const ORDER: readonly OrderEntry[] = [
-	{ slug: "overview", children: ["usage"] },
+	{ slug: "overview", children: ["usage", "mcp"] },
 	"self-hosting",
 	"configuration",
 	"analytics",

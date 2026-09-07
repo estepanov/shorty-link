@@ -5,6 +5,7 @@ import { i18n } from "@better-auth/i18n";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { mcp } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 
@@ -12,6 +13,10 @@ import { type Permission, parsePermissions } from "@/lib/permissions";
 
 import { createDb } from "../db/client";
 import { apiKey as apiKeyTable, roles, schema, user } from "../db/schema";
+import { authorizeMcpOAuthUser } from "../mcp/access";
+import { isMcpOAuthHookPath } from "../mcp/paths";
+import { getMcpSettings } from "../services/mcp-settings";
+import { resolveApiKeyFromHeaders } from "./api-key-headers";
 import {
 	completePasskeyRegistrationUser,
 	resolvePasskeyRegistrationUser,
@@ -20,6 +25,77 @@ import { getAuthSecret } from "./secret";
 import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
 
 const APIKEY_CREATE_PERMISSION: Permission = "apikeys.manage";
+
+async function getHookSession(
+	context: { headers?: HeadersInit; request?: Request },
+	origin: string,
+	fallbackPath: string,
+) {
+	const headers = resolveHookHeaders(context);
+	const authRequest =
+		context.request ?? new Request(`${origin}${fallbackPath}`, { headers });
+	return createAuth(authRequest).api.getSession({ headers });
+}
+
+async function guardMcpOAuth(
+	ctx: { path: string; headers?: HeadersInit; request?: Request },
+	db: ReturnType<typeof createDb>,
+	origin: string,
+) {
+	if (!isMcpOAuthHookPath(ctx.path)) {
+		return;
+	}
+
+	const settings = await getMcpSettings(db);
+	if (!settings.serverEnabled) {
+		throw new APIError("FORBIDDEN", {
+			message: "MCP server is disabled",
+		});
+	}
+
+	if (ctx.path !== "/mcp/authorize") {
+		return;
+	}
+
+	const session = await getHookSession(ctx, origin, "/api/auth/mcp/authorize");
+	if (!session) {
+		return;
+	}
+
+	const allowed = await authorizeMcpOAuthUser(session.user.id);
+	if (!allowed) {
+		throw new APIError("FORBIDDEN", {
+			message: "MCP access is disabled for this user",
+		});
+	}
+}
+
+async function guardApiKeyCreate(
+	ctx: { path: string; headers?: HeadersInit; request?: Request },
+	db: ReturnType<typeof createDb>,
+	origin: string,
+) {
+	if (ctx.path !== "/api-key/create") {
+		return;
+	}
+
+	const session = await getHookSession(ctx, origin, "/api/auth/api-key/create");
+	if (!session) {
+		throw new APIError("UNAUTHORIZED", {
+			message: "Authentication required",
+		});
+	}
+	const allowed = await userHasPermission(
+		db,
+		session.user.id,
+		APIKEY_CREATE_PERMISSION,
+	);
+	if (!allowed) {
+		throw new APIError("FORBIDDEN", {
+			message: "You need the 'apikeys.manage' permission to manage API keys",
+		});
+	}
+}
 
 function resolveHookHeaders(context: {
 	headers?: HeadersInit;
@@ -131,32 +207,8 @@ export function createAuth(request?: Request) {
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
-				if (ctx.path !== "/api-key/create") {
-					return;
-				}
-				const headers = resolveHookHeaders(ctx);
-				const authRequest =
-					ctx.request ??
-					new Request(`${origin}/api/auth/api-key/create`, { headers });
-				const session = await createAuth(authRequest).api.getSession({
-					headers,
-				});
-				if (!session) {
-					throw new APIError("UNAUTHORIZED", {
-						message: "Authentication required",
-					});
-				}
-				const allowed = await userHasPermission(
-					createDb(),
-					session.user.id,
-					APIKEY_CREATE_PERMISSION,
-				);
-				if (!allowed) {
-					throw new APIError("FORBIDDEN", {
-						message:
-							"You need the 'apikeys.manage' permission to manage API keys",
-					});
-				}
+				await guardMcpOAuth(ctx, db, origin);
+				await guardApiKeyCreate(ctx, db, origin);
 			}),
 		},
 		plugins: [
@@ -185,6 +237,15 @@ export function createAuth(request?: Request) {
 			apiKey({
 				apiKeyHeaders: ["x-api-key", "authorization"],
 				defaultPrefix: "sl_",
+				customAPIKeyGetter: (ctx) => {
+					const headers = ctx.headers ?? ctx.request?.headers;
+					if (!headers) {
+						return null;
+					}
+					return resolveApiKeyFromHeaders(
+						headers instanceof Headers ? headers : new Headers(headers),
+					);
+				},
 				enableSessionForAPIKeys: true,
 				requireName: true,
 				rateLimit: {
@@ -234,6 +295,15 @@ export function createAuth(request?: Request) {
 				detection: ["session", "cookie", "header"],
 				localeCookie: "shorty_locale",
 				userLocaleField: "locale",
+			}),
+			mcp({
+				loginPage: "/admin",
+				resource: `${origin}/mcp`,
+				oidcConfig: {
+					loginPage: "/admin",
+					allowDynamicClientRegistration: true,
+					consentPage: "/admin/mcp/consent",
+				},
 			}),
 			tanstackStartCookies(),
 		],

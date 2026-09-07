@@ -26,5 +26,11 @@ export function AccountTabs({ locale }: { locale?: string | null }) {
 		});
 	}
 
+	items.push({
+		to: "/admin/user/mcp",
+		label: t("nav.mcp"),
+		exact: true,
+	});
+
 	return <RouteTabs ariaLabel={t("nav.account")} items={items} />;
 }

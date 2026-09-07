@@ -152,6 +152,8 @@ function EditUserForm({
 }) {
 	const router = useRouter();
 	const { t } = useAdminAuthGuard();
+	const { hasPermission } = useRequirePermission("users.write");
+	const canManageMcp = hasPermission("mcp.manage");
 	const originalRoleId = user.roleId;
 
 	const form = useForm({
@@ -161,6 +163,7 @@ function EditUserForm({
 			locale: user.locale,
 			roleId: user.roleId,
 			isActive: user.isActive,
+			mcpAccessEnabled: user.mcpAccessEnabled,
 		},
 		onSubmit: async ({ value }) => {
 			onError(null);
@@ -172,6 +175,9 @@ function EditUserForm({
 						email: value.email,
 						locale: value.locale,
 						isActive: value.isActive,
+						...(canManageMcp
+							? { mcpAccessEnabled: value.mcpAccessEnabled }
+							: {}),
 					}),
 				);
 				if (value.roleId && value.roleId !== originalRoleId) {
@@ -278,6 +284,24 @@ function EditUserForm({
 					</ToggleTile>
 				)}
 			</form.Field>
+			{canManageMcp ? (
+				<form.Field name="mcpAccessEnabled">
+					{(field) => (
+						<div className="grid gap-2">
+							<ToggleTile
+								checked={field.state.value}
+								onCheckedChange={field.handleChange}
+								tone="green"
+							>
+								{t("mcp.userAccess")}
+							</ToggleTile>
+							<p className="text-sm text-muted-foreground">
+								{t("mcp.userAccessHint")}
+							</p>
+						</div>
+					)}
+				</form.Field>
+			) : null}
 			<FormFooter>
 				<Button className="sm:min-w-32" type="submit">
 					{t("forms.save")}

@@ -60,6 +60,8 @@ Optionally add analytics pipeline pieces if you want them. None are required. Fo
 
 8. Open `/admin` on your deployed hostname and create the first admin with a passkey.
 
+The hosted MCP server stays off until you enable it from **Access → MCP**. See [MCP](/mcp/).
+
 ## Automated Deploys
 
 The repository includes GitHub Actions for PR checks, D1 migrations, and Worker deployment.

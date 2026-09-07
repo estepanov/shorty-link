@@ -7,6 +7,7 @@ Shorty Link is a single-deploy URL shortener for Cloudflare Workers. It combines
 - Eden for type-safe admin API calls
 - Better Auth passkey-first admin authentication
 - Optional Better Auth API keys for admin API access
+- Optional hosted MCP API for Claude and ChatGPT (off until enabled)
 - Drizzle ORM on Cloudflare D1
 - Tailwind CSS v4
 
@@ -27,6 +28,7 @@ Release and operator docs:
 
 - [Self-hosting guide](docs/self-hosting.md)
 - [Configuration reference](docs/configuration.md)
+- [MCP](docs/mcp.md)
 - [Upgrade guide](docs/upgrading.md)
 - [Release policy](docs/releases.md)
 - [Changelog](CHANGELOG.md)
@@ -174,12 +176,14 @@ pnpm postman:generate      # generate OpenAPI spec + Postman collection
 ## Routes
 
 - `/admin`: admin dashboard
-
-[... existing routes list ...]
-
+- `/api/*`: Better Auth, admin API, and health
+- `/mcp`: hosted MCP Streamable HTTP (off until enabled)
+- `/.well-known/*`: OAuth discovery for MCP clients
 - `/:slug`: redirect lookup for non-reserved paths
 
-Reserved paths include `/admin`, `/api`, static asset paths, `favicon.ico`, `robots.txt`, and `manifest.webmanifest`.
+Reserved paths include `/admin`, `/api`, `/mcp`, `/.well-known`, static asset paths, `favicon.ico`, `robots.txt`, and `manifest.webmanifest`.
+
+See [MCP](docs/mcp.md) for connector setup, tools, and access controls.
 
 ## API Documentation (OpenAPI / Swagger)
 

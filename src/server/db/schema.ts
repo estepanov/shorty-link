@@ -38,6 +38,9 @@ export const user = sqliteTable(
 			.references(() => roles.id, { onDelete: "restrict" }),
 		locale: text("locale").notNull().default("en"),
 		isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+		mcpAccessEnabled: integer("mcp_access_enabled", { mode: "boolean" })
+			.notNull()
+			.default(true),
 		invitedBy: text("invited_by"),
 		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
@@ -320,6 +323,76 @@ export const redirectEvents = sqliteTable(
 	],
 );
 
+export const MCP_SETTING_ENABLED = "mcp.enabled";
+
+export const appSettings = sqliteTable("app_setting", {
+	key: text("key").primaryKey(),
+	value: text("value").notNull(),
+	updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export const oauthApplication = sqliteTable(
+	"oauthApplication",
+	{
+		id: text("id").primaryKey(),
+		name: text("name").notNull(),
+		icon: text("icon"),
+		metadata: text("metadata"),
+		clientId: text("clientId").notNull().unique(),
+		clientSecret: text("clientSecret"),
+		redirectUrls: text("redirectUrls").notNull(),
+		type: text("type").notNull(),
+		disabled: integer("disabled", { mode: "boolean" }).notNull().default(false),
+		userId: text("userId").references(() => user.id, { onDelete: "cascade" }),
+		createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+		updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [index("oauth_application_user_id_idx").on(table.userId)],
+);
+
+export const oauthAccessToken = sqliteTable(
+	"oauthAccessToken",
+	{
+		id: text("id").primaryKey(),
+		accessToken: text("accessToken").notNull().unique(),
+		refreshToken: text("refreshToken").notNull().unique(),
+		accessTokenExpiresAt: integer("accessTokenExpiresAt", {
+			mode: "timestamp",
+		}).notNull(),
+		refreshTokenExpiresAt: integer("refreshTokenExpiresAt", {
+			mode: "timestamp",
+		}).notNull(),
+		clientId: text("clientId").notNull(),
+		userId: text("userId").references(() => user.id, { onDelete: "cascade" }),
+		scopes: text("scopes").notNull(),
+		createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+		updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [
+		index("oauth_access_token_client_id_idx").on(table.clientId),
+		index("oauth_access_token_user_id_idx").on(table.userId),
+	],
+);
+
+export const oauthConsent = sqliteTable(
+	"oauthConsent",
+	{
+		id: text("id").primaryKey(),
+		clientId: text("clientId").notNull(),
+		userId: text("userId")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		scopes: text("scopes").notNull(),
+		consentGiven: integer("consentGiven", { mode: "boolean" }).notNull(),
+		createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+		updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+	},
+	(table) => [
+		index("oauth_consent_client_id_idx").on(table.clientId),
+		index("oauth_consent_user_id_idx").on(table.userId),
+	],
+);
+
 export const redirectEventDaily = sqliteTable(
 	"redirect_event_daily",
 	{
@@ -372,7 +445,11 @@ export const schema = {
 	adminInvites,
 	apiKey,
 	apikey: apiKey,
+	appSettings,
 	managedDomains,
+	oauthAccessToken,
+	oauthApplication,
+	oauthConsent,
 	passkey,
 	analyticsAggregationState,
 	redirectEventDaily,
