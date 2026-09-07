@@ -1,5 +1,3 @@
-import { appendFileSync } from "node:fs";
-
 import { createMcpProtectedRequestHandler } from "@better-auth/mcp";
 import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
 import { createDpopReplayStore } from "better-auth/oauth2";
@@ -24,26 +22,6 @@ import { callMcpTool, listMcpTools } from "./tools";
 const log = getLogger(["mcp"]);
 
 export { isMcpAuthCorsPath };
-
-function agentLog(
-	hypothesisId: string,
-	location: string,
-	message: string,
-	data: Record<string, unknown>,
-) {
-	const entry = {
-		hypothesisId,
-		location,
-		message,
-		data,
-		timestamp: Date.now(),
-	};
-	try {
-		appendFileSync("/opt/cursor/logs/debug.log", `${JSON.stringify(entry)}\n`);
-	} catch {
-		console.error(`[agent-log] ${JSON.stringify(entry)}`);
-	}
-}
 
 function requestOrigin(request: Request) {
 	return new URL(request.url).origin;
@@ -203,13 +181,6 @@ async function handleJsonRpc(request: Request, userId: string) {
 export async function handleMcpRequest(request: Request) {
 	const url = new URL(request.url);
 
-	// #region agent log
-	agentLog("A,D", "src/server/mcp/handler.ts:201", "MCP handler entry", {
-		method: request.method,
-		path: url.pathname,
-	});
-	// #endregion
-
 	if (!isMcpHandledPath(url.pathname)) {
 		return null;
 	}
@@ -226,21 +197,10 @@ export async function handleMcpRequest(request: Request) {
 		url.pathname === "/api/auth/.well-known/oauth-protected-resource"
 	) {
 		const auth = createAuth(request);
-		// #region agent log
-		agentLog("A", "src/server/mcp/handler.ts:225", "metadata dispatch", {
-			path: url.pathname,
-		});
-		// #endregion
 		const response =
 			url.pathname === "/.well-known/oauth-authorization-server"
 				? await oauthProviderAuthServerMetadata(auth)(request)
 				: await auth.handler(request);
-		// #region agent log
-		agentLog("A", "src/server/mcp/handler.ts:231", "metadata response", {
-			path: url.pathname,
-			status: response.status,
-		});
-		// #endregion
 		return withMcpCors(response);
 	}
 
@@ -258,11 +218,6 @@ export async function handleMcpRequest(request: Request) {
 		const issuer = `${requestOrigin(request)}/api/auth`;
 		const jwksUrl = `${issuer}/jwks`;
 		const { internalAdapter } = await auth.$context;
-		// #region agent log
-		agentLog("B,C,D,E", "src/server/mcp/handler.ts:250", "MCP auth setup", {
-			resource,
-		});
-		// #endregion
 		const protectedHandler = createMcpProtectedRequestHandler(
 			{
 				audience: resource,
@@ -270,38 +225,13 @@ export async function handleMcpRequest(request: Request) {
 				issuer,
 				jwksUrl,
 			},
-			async (protectedRequest, claims) => {
-				// #region agent log
-				agentLog(
-					"E",
-					"src/server/mcp/handler.ts:259",
-					"MCP protected callback entered",
-					{ hasSubject: typeof claims.sub === "string" },
-				);
-				// #endregion
-				return handleJsonRpc(
+			(protectedRequest, claims) =>
+				handleJsonRpc(
 					protectedRequest,
 					typeof claims.sub === "string" ? claims.sub : "",
-				);
-			},
+				),
 		);
-		try {
-			const response = await protectedHandler(request);
-			// #region agent log
-			agentLog("B,C,E", "src/server/mcp/handler.ts:273", "MCP auth response", {
-				status: response.status,
-			});
-			// #endregion
-			return withMcpCors(response);
-		} catch (error) {
-			// #region agent log
-			agentLog("B,C,D", "src/server/mcp/handler.ts:283", "MCP auth threw", {
-				name: error instanceof Error ? error.name : typeof error,
-				message: error instanceof Error ? error.message : String(error),
-			});
-			// #endregion
-			throw error;
-		}
+		return withMcpCors(await protectedHandler(request));
 	}
 
 	if (isMcpAuthCorsPath(url.pathname)) {
