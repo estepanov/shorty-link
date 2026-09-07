@@ -1,7 +1,7 @@
 # OIDC / SAML SSO Admin Sign-In Design
 
-**Status:** approved for implementation  
-**Date:** 2026-09-06  
+**Status:** approved for implementation
+**Date:** 2026-09-06
 **Scope:** one implementation cycle — Better Auth 1.7, OIDC and SAML, IdP-initiated SSO, encrypted secrets at rest, IdP group → role mapping, and SSO-enforced domains
 
 This spec describes how Shorty Link adds enterprise SSO so an already-bootstrapped admin can register identity providers in the admin UI, and users can sign in with those providers. It does not replace passkeys for domains that are not SSO-enforced, enable passwords, or introduce Better Auth organizations.
