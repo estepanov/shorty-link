@@ -27,6 +27,7 @@ export type SsoFormValues = {
 	issuer: string;
 	jitEnabled: boolean;
 	jwksEndpoint: string;
+	originalCertificate: string | string[] | null;
 	privateKey: string;
 	protocol: "oidc" | "saml";
 	providerId: string;
@@ -58,6 +59,7 @@ export const emptySsoFormValues: SsoFormValues = {
 	issuer: "",
 	jitEnabled: false,
 	jwksEndpoint: "",
+	originalCertificate: null,
 	privateKey: "",
 	protocol: "oidc",
 	providerId: "",
@@ -115,8 +117,16 @@ function oidcConfig(value: SsoFormValues) {
 
 function samlConfig(value: SsoFormValues) {
 	const metadata = optional(value.idpMetadata);
+	const originalCertificateText =
+		typeof value.originalCertificate === "string"
+			? value.originalCertificate
+			: (value.originalCertificate?.join("\n\n") ?? "");
+	const certificate =
+		value.originalCertificate !== null && value.cert === originalCertificateText
+			? value.originalCertificate
+			: optional(value.cert);
 	return {
-		cert: metadata ? undefined : optional(value.cert),
+		cert: metadata ? undefined : certificate,
 		entryPoint: metadata ? undefined : optional(value.entryPoint),
 		idpMetadata: metadata
 			? { metadata }
@@ -214,6 +224,7 @@ export function ssoProviderToFormValues(
 		issuer: provider.issuer,
 		jitEnabled: provider.jitEnabled,
 		jwksEndpoint: provider.oidcConfig?.jwksEndpoint ?? "",
+		originalCertificate: certificate ?? null,
 		protocol: provider.protocol,
 		providerId: provider.providerId,
 		samlEmailAttribute:

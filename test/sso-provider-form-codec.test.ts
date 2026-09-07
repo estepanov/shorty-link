@@ -145,7 +145,7 @@ describe("SSO provider form codec", () => {
 		expect(patch).toMatchObject({
 			protocol: "saml",
 			samlConfig: {
-				cert: "certificate-one\n\ncertificate-two",
+				cert: ["certificate-one", "certificate-two"],
 				entryPoint: "https://idp.example.test/sso",
 				idpMetadata: { entityID: "https://idp.example.test" },
 			},

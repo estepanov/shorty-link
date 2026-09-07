@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import {
+	ssoProviderToFormValues,
+	toSsoProviderPatch,
+} from "../src/components/sso-provider-form-codec";
 import { DEFAULT_SAML_ATTRIBUTE_MAPPING } from "../src/lib/sso-types";
 import { account, ssoProvider } from "../src/server/db/schema";
 import {
@@ -62,6 +66,58 @@ describe("D1 SAML provider configuration", () => {
 			REQUEST,
 		);
 		expect(await db.select().from(ssoProvider)).toHaveLength(2);
+	});
+
+	it("preserves canonical certificate arrays through persisted edit round-trips", async () => {
+		const created = await createSsoProvider(
+			db,
+			{
+				displayName: "Rollover SAML",
+				domain: "rollover.test",
+				issuer: "https://shorty.test/saml/rollover",
+				protocol: "saml",
+				providerId: "rollover-saml",
+				samlConfig: {
+					cert: "lower-precedence-certificate",
+					entryPoint: "https://idp.example.test/sso",
+					idpMetadata: {
+						cert: ["current-certificate", "next-certificate"],
+						entityID: "https://idp.example.test",
+					},
+				},
+			},
+			"owner",
+			ORIGIN,
+			REQUEST,
+		);
+
+		expect(created.samlConfig?.cert).toEqual([
+			"current-certificate",
+			"next-certificate",
+		]);
+		const formValues = ssoProviderToFormValues(created);
+		const patch = toSsoProviderPatch(
+			{ ...formValues, displayName: "Renamed Rollover SAML" },
+			"saml",
+		);
+		expect(patch).toMatchObject({
+			protocol: "saml",
+			samlConfig: {
+				cert: ["current-certificate", "next-certificate"],
+			},
+		});
+
+		const updated = await updateSsoProvider(
+			db,
+			"rollover-saml",
+			patch,
+			ORIGIN,
+			REQUEST,
+		);
+		expect(updated.samlConfig?.cert).toEqual([
+			"current-certificate",
+			"next-certificate",
+		]);
 	});
 
 	it("rejects manual configuration without a signing certificate", async () => {

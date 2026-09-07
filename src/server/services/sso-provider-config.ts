@@ -542,8 +542,8 @@ export function toSamlReadConfig(
 	return {
 		callbackUrl: configString(config, "callbackUrl"),
 		cert:
-			configCertificate(config, "cert") ??
-			configCertificate(idpMetadata, "cert"),
+			configCertificate(idpMetadata, "cert") ??
+			configCertificate(config, "cert"),
 		entryPoint: configString(config, "entryPoint"),
 		idpMetadata: {
 			entityID: configString(idpMetadata, "entityID"),
