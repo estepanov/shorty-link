@@ -27,7 +27,7 @@ export function mcpOptionsResponse() {
 }
 
 export function mcpResourceMetadataUrl(origin: string) {
-	return `${origin}/.well-known/oauth-protected-resource`;
+	return `${origin}/.well-known/oauth-protected-resource/mcp`;
 }
 
 export function mcpWwwAuthenticate(origin: string) {

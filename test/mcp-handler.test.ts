@@ -8,49 +8,44 @@ const mocks = vi.hoisted(() => {
 		}),
 		handler: vi.fn(async () => new Response(null, { status: 404 })),
 	};
-	const replayStore = { reserve: vi.fn(async () => true) };
-	const unauthorizedHandler = () => async () =>
-		new Response(
-			JSON.stringify({
-				jsonrpc: "2.0",
-				error: { code: -32000, message: "missing authorization header" },
-				id: null,
-			}),
-			{
-				status: 401,
-				headers: {
-					"WWW-Authenticate":
-						'Bearer resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp"',
-				},
-			},
-		);
 
 	return {
 		auth,
 		createAuth: vi.fn(() => auth),
-		createDpopReplayStore: vi.fn(() => replayStore),
-		createMcpProtectedRequestHandler: vi.fn(unauthorizedHandler),
+		createDpopReplayStore: vi.fn(() => ({
+			reserve: vi.fn(async () => true),
+		})),
 		oauthProviderAuthServerMetadata: vi.fn(
 			() => async () =>
 				Response.json({
 					issuer: "http://localhost/api/auth",
 				}),
 		),
-		replayStore,
+		oauthProviderOpenIdConfigMetadata: vi.fn(
+			() => async () =>
+				Response.json({
+					issuer: "http://localhost/api/auth",
+					userinfo_endpoint: "http://localhost/api/auth/oauth2/userinfo",
+				}),
+		),
 	};
 });
 
-vi.mock("@better-auth/mcp", () => ({
-	createMcpProtectedRequestHandler: mocks.createMcpProtectedRequestHandler,
-}));
-
 vi.mock("@better-auth/oauth-provider", () => ({
 	oauthProviderAuthServerMetadata: mocks.oauthProviderAuthServerMetadata,
+	oauthProviderOpenIdConfigMetadata: mocks.oauthProviderOpenIdConfigMetadata,
 }));
 
-vi.mock("better-auth/oauth2", () => ({
-	createDpopReplayStore: mocks.createDpopReplayStore,
-}));
+vi.mock("better-auth/oauth2", async () => {
+	const actual =
+		await vi.importActual<typeof import("better-auth/oauth2")>(
+			"better-auth/oauth2",
+		);
+	return {
+		...actual,
+		createDpopReplayStore: mocks.createDpopReplayStore,
+	};
+});
 
 vi.mock("../src/server/auth/auth", () => ({
 	createAuth: mocks.createAuth,
@@ -61,6 +56,7 @@ const { handleMcpRequest } = await import("../src/server/mcp/handler");
 describe("mcp request routing", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.auth.handler.mockResolvedValue(new Response(null, { status: 404 }));
 	});
 
 	it("does not intercept OPTIONS for non-MCP paths", async () => {
@@ -90,7 +86,36 @@ describe("mcp request routing", () => {
 		expect(mocks.auth.handler).not.toHaveBeenCalled();
 	});
 
-	it("protects MCP with request-derived issuer and JWKS URLs", async () => {
+	it.each([
+		"/.well-known/oauth-authorization-server/api/auth",
+		"/api/auth/.well-known/oauth-authorization-server",
+	])("exports authorization server metadata at %s", async (path) => {
+		const response = await handleMcpRequest(
+			new Request(`http://localhost${path}`),
+		);
+
+		expect(response?.status).toBe(200);
+		expect(mocks.oauthProviderAuthServerMetadata).toHaveBeenCalledWith(
+			mocks.auth,
+		);
+	});
+
+	it.each([
+		"/.well-known/openid-configuration",
+		"/.well-known/openid-configuration/api/auth",
+		"/api/auth/.well-known/openid-configuration",
+	])("exports OpenID configuration at %s", async (path) => {
+		const response = await handleMcpRequest(
+			new Request(`http://localhost${path}`),
+		);
+
+		expect(response?.status).toBe(200);
+		expect(mocks.oauthProviderOpenIdConfigMetadata).toHaveBeenCalledWith(
+			mocks.auth,
+		);
+	});
+
+	it("challenges unauthenticated MCP calls without loading JWKS", async () => {
 		const response = await handleMcpRequest(
 			new Request("http://localhost/mcp", {
 				method: "POST",
@@ -107,17 +132,62 @@ describe("mcp request routing", () => {
 		expect(response?.headers.get("WWW-Authenticate")).toContain(
 			'resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp"',
 		);
-		expect(mocks.createDpopReplayStore).toHaveBeenCalledWith(
-			(await mocks.auth.$context).internalAdapter,
+		expect(mocks.auth.handler).not.toHaveBeenCalled();
+	});
+
+	it("loads JWKS through the in-process auth handler instead of HTTP fetch", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
+		mocks.auth.handler.mockResolvedValue(Response.json({ keys: [] }));
+
+		const response = await handleMcpRequest(
+			new Request("http://localhost/mcp", {
+				method: "POST",
+				headers: {
+					Authorization: "Bearer eyJhbGciOiJFZERTQSJ9.e30.e30",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					jsonrpc: "2.0",
+					id: 1,
+					method: "initialize",
+				}),
+			}),
 		);
-		expect(mocks.createMcpProtectedRequestHandler).toHaveBeenCalledWith(
-			{
-				audience: "http://localhost/mcp",
-				dpop: { replayStore: mocks.replayStore },
-				issuer: "http://localhost/api/auth",
-				jwksUrl: "http://localhost/api/auth/jwks",
-			},
-			expect.any(Function),
+
+		expect(response?.status).toBe(401);
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(mocks.auth.handler).toHaveBeenCalled();
+		const jwksUrls = (
+			mocks.auth.handler.mock.calls as unknown as unknown[][]
+		).flatMap((call) => {
+			const request = call[0];
+			return request instanceof Request ? [new URL(request.url).href] : [];
+		});
+		expect(jwksUrls).toContain("http://localhost/api/auth/jwks");
+		fetchSpy.mockRestore();
+	});
+
+	it("returns 401 instead of throwing when JWKS cannot be loaded", async () => {
+		mocks.auth.handler.mockResolvedValue(new Response("nope", { status: 500 }));
+
+		const response = await handleMcpRequest(
+			new Request("http://localhost/mcp", {
+				method: "POST",
+				headers: {
+					Authorization: "Bearer eyJhbGciOiJFZERTQSJ9.e30.e30",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					jsonrpc: "2.0",
+					id: 1,
+					method: "initialize",
+				}),
+			}),
+		);
+
+		expect(response?.status).toBe(401);
+		expect(response?.headers.get("WWW-Authenticate")).toContain(
+			"resource_metadata=",
 		);
 	});
 });

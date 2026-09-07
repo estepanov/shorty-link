@@ -132,6 +132,9 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+      jose:
+        specifier: 6.2.4
+        version: 6.2.4
       openapi-to-postmanv2:
         specifier: ^6.3.0
         version: 6.3.1
