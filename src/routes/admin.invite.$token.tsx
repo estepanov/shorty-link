@@ -1,5 +1,9 @@
 import { useForm } from "@tanstack/react-form";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	useLocation,
+	useRouter,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import {
@@ -16,8 +20,10 @@ import {
 	SelectValue,
 } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
-import { getTreaty } from "@/lib/eden";
+import { getTreaty, unwrap } from "@/lib/eden";
 import { createTranslator, defaultLocale, supportedLocales } from "@/lib/i18n";
+import type { SsoPublicProvider } from "@/lib/sso-catalog";
+import { mapSsoErrorCode, parseSsoCallbackError } from "@/lib/sso-errors";
 
 export const Route = createFileRoute("/admin/invite/$token")({
 	component: Invite,
@@ -25,11 +31,19 @@ export const Route = createFileRoute("/admin/invite/$token")({
 
 function Invite() {
 	const { token } = Route.useParams();
+	const location = useLocation();
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
 	const [email, setEmail] = useState<string | null>(null);
+	const [sso, setSso] = useState<{
+		enforced: boolean;
+		providers: SsoPublicProvider[];
+	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [busy, setBusy] = useState(false);
 	const t = createTranslator(defaultLocale);
+	const callbackError = parseSsoCallbackError(location.search);
+	const visibleError = error ?? callbackError;
 	const form = useForm({
 		defaultValues: {
 			locale: String(defaultLocale),
@@ -39,7 +53,7 @@ function Invite() {
 			setError(null);
 			try {
 				const api = getTreaty();
-				const { context } = await unwrap<{ context: string }>(
+				const { context } = await unwrap(
 					await api.onboarding.invite.post({
 						...value,
 						token,
@@ -77,11 +91,39 @@ function Invite() {
 		}
 
 		const api = getTreaty();
-		void unwrap<{ email: string }>(api.invites({ token }).get()).then(
-			(invite) => setEmail(invite.email),
+		void unwrap(api.invites({ token }).get()).then(
+			(invite) => {
+				setEmail(invite.email);
+				setSso(invite.sso ?? null);
+			},
 			() => setError("errors.inviteMissing"),
 		);
 	}, [session, token]);
+
+	async function signInSso(providerId: string) {
+		setBusy(true);
+		setError(null);
+		try {
+			const result = await authClient.signIn.sso({
+				callbackURL: "/admin",
+				email: email ?? undefined,
+				errorCallbackURL: `/admin/invite/${encodeURIComponent(token)}`,
+				loginHint: email ?? undefined,
+				providerId,
+			});
+			if (result.error) {
+				setError(mapSsoErrorCode(result.error.message ?? result.error.code));
+			}
+		} catch (nextError) {
+			setError(
+				mapSsoErrorCode(
+					nextError instanceof Error ? nextError.message : undefined,
+				),
+			);
+		} finally {
+			setBusy(false);
+		}
+	}
 
 	if (session) {
 		return (
@@ -114,68 +156,72 @@ function Invite() {
 							void form.handleSubmit();
 						}}
 					>
-						<form.Field name="name">
-							{(field) => (
-								<FieldLabel>
-									{t("forms.name")}
-									<Input
-										onChange={(event) => field.handleChange(event.target.value)}
-										required
-										value={field.state.value}
-									/>
-								</FieldLabel>
-							)}
-						</form.Field>
-						<form.Field name="locale">
-							{(field) => (
-								<FieldLabel>
-									{t("forms.locale")}
-									<Select
-										onValueChange={field.handleChange}
-										value={field.state.value}
-									>
-										<SelectTrigger>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{supportedLocales.map((option) => (
-												<SelectItem key={option} value={option}>
-													{option.toUpperCase()}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</FieldLabel>
-							)}
-						</form.Field>
-						<Button disabled={!email} type="submit">
-							{t("auth.addPasskey")}
-						</Button>
+						{sso?.enforced && sso.providers.length > 0 ? null : (
+							<>
+								<form.Field name="name">
+									{(field) => (
+										<FieldLabel>
+											{t("forms.name")}
+											<Input
+												onChange={(event) =>
+													field.handleChange(event.target.value)
+												}
+												required
+												value={field.state.value}
+											/>
+										</FieldLabel>
+									)}
+								</form.Field>
+								<form.Field name="locale">
+									{(field) => (
+										<FieldLabel>
+											{t("forms.locale")}
+											<Select
+												onValueChange={field.handleChange}
+												value={field.state.value}
+											>
+												<SelectTrigger>
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													{supportedLocales.map((option) => (
+														<SelectItem key={option} value={option}>
+															{option.toUpperCase()}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</FieldLabel>
+									)}
+								</form.Field>
+							</>
+						)}
+						{sso?.enforced && sso.providers.length > 0 ? (
+							sso.providers.map((provider) => (
+								<Button
+									disabled={busy || !email}
+									key={provider.providerId}
+									onClick={() => {
+										void signInSso(provider.providerId);
+									}}
+									type="button"
+								>
+									{t("sso.signInWith")} {provider.displayName}
+								</Button>
+							))
+						) : (
+							<Button disabled={!email} type="submit">
+								{t("auth.addPasskey")}
+							</Button>
+						)}
 					</form>
-					{error ? (
+					{visibleError ? (
 						<div className="mt-4">
-							<Notice tone="error">{t(error)}</Notice>
+							<Notice tone="error">{t(visibleError)}</Notice>
 						</div>
 					) : null}
 				</Card>
 			</main>
 		</AppShell>
 	);
-}
-
-async function unwrap<T>(
-	response:
-		| Promise<{ data: unknown; error: unknown }>
-		| { data: unknown; error: unknown },
-) {
-	const resolved = await response;
-	if (resolved.error) {
-		throw new Error("errors.unknown");
-	}
-
-	if (resolved.data instanceof Response) {
-		throw new Error(await resolved.data.text().catch(() => "errors.unknown"));
-	}
-
-	return resolved.data as T;
 }

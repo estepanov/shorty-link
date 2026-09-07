@@ -183,7 +183,7 @@ export async function createAgentLoginResponse({
 		locale: url.searchParams.get("locale") ?? undefined,
 		name: url.searchParams.get("name") ?? DEFAULT_AGENT_NAME,
 	});
-	const auth = createAuth(request);
+	const auth = await createAuth(request);
 	const context = await auth.$context;
 	const session = await context.internalAdapter.createSession(
 		agentUser.id,

@@ -2,29 +2,61 @@ import { env } from "cloudflare:workers";
 import { apiKey } from "@better-auth/api-key";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { i18n } from "@better-auth/i18n";
+import { mcp } from "@better-auth/mcp";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
-import { mcp } from "better-auth/plugins";
+import { jwt } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 
 import { type Permission, parsePermissions } from "@/lib/permissions";
 
 import { createDb } from "../db/client";
-import { apiKey as apiKeyTable, roles, schema, user } from "../db/schema";
+import {
+	apiKey as apiKeyTable,
+	passkey as passkeyTable,
+	roles,
+	SYSTEM_ROLE_ADMIN,
+	schema,
+	user,
+} from "../db/schema";
 import { authorizeMcpOAuthUser } from "../mcp/access";
 import { isMcpOAuthHookPath } from "../mcp/paths";
 import { getMcpSettings } from "../services/mcp-settings";
+import {
+	assertPasskeyAllowed,
+	loadOidcProviderTrustedOrigins,
+} from "../services/sso-providers";
 import { resolveApiKeyFromHeaders } from "./api-key-headers";
 import {
 	completePasskeyRegistrationUser,
+	readOnboardingContext,
 	resolvePasskeyRegistrationUser,
 } from "./onboarding";
 import { getAuthSecret } from "./secret";
 import { resolveTrustedRequestOrigin, splitTrustedHosts } from "./security";
+import { withSsoConfigCrypto } from "./sso-adapter";
+import { createSsoIntegration } from "./sso-integration";
+import {
+	hasTrustedShortyCallbacks,
+	hasTrustedShortySource,
+	oidcProviderIdForTrustedOrigins,
+	type SsoInitiationBody,
+} from "./sso-request-security";
 
 const APIKEY_CREATE_PERMISSION: Permission = "apikeys.manage";
+const SSO_ADMIN_PATHS = new Set([
+	"/sso/register",
+	"/sso/update-provider",
+	"/sso/delete-provider",
+]);
+const SSO_INITIATION_HOOK_PATH = "/sign-in/sso";
+const MCP_USER_AUTHORIZATION_PATHS = new Set([
+	"/oauth2/authorize",
+	"/oauth2/consent",
+	"/oauth2/continue",
+]);
 
 async function getHookSession(
 	context: { headers?: HeadersInit; request?: Request },
@@ -53,11 +85,11 @@ async function guardMcpOAuth(
 		});
 	}
 
-	if (ctx.path !== "/mcp/authorize") {
+	if (!MCP_USER_AUTHORIZATION_PATHS.has(ctx.path)) {
 		return;
 	}
 
-	const session = await getHookSession(ctx, origin, "/api/auth/mcp/authorize");
+	const session = await getHookSession(ctx, origin, `/api/auth${ctx.path}`);
 	if (!session) {
 		return;
 	}
@@ -97,11 +129,57 @@ async function guardApiKeyCreate(
 	}
 }
 
+function guardSsoRequest(ctx: {
+	path: string;
+	body?: unknown;
+	request?: Request;
+}) {
+	if (ctx.path === SSO_INITIATION_HOOK_PATH && ctx.request) {
+		const requestOrigin = new URL(ctx.request.url).origin;
+		if (!hasTrustedShortySource(ctx.request, requestOrigin)) {
+			throw new APIError("FORBIDDEN", {
+				message: "Untrusted SSO initiation origin",
+			});
+		}
+		const body = ctx.body as SsoInitiationBody;
+		if (
+			body?.callbackURL !== undefined &&
+			!hasTrustedShortyCallbacks(body, requestOrigin)
+		) {
+			throw new APIError("FORBIDDEN", {
+				message: "Untrusted SSO callback URL",
+			});
+		}
+	}
+	if (SSO_ADMIN_PATHS.has(ctx.path)) {
+		throw new APIError("FORBIDDEN", {
+			message: "errors.permissionDenied",
+		});
+	}
+}
+
 function resolveHookHeaders(context: {
 	headers?: HeadersInit;
 	request?: Request;
 }) {
 	return new Headers(context.headers ?? context.request?.headers);
+}
+
+function credentialIdToString(value: unknown) {
+	if (typeof value === "string" && value) {
+		return value;
+	}
+	if (value instanceof Uint8Array) {
+		let binary = "";
+		for (const byte of value) {
+			binary += String.fromCharCode(byte);
+		}
+		return btoa(binary)
+			.replace(/\+/g, "-")
+			.replace(/\//g, "_")
+			.replace(/=+$/g, "");
+	}
+	return null;
 }
 
 async function userHasPermission(
@@ -145,11 +223,17 @@ function fallbackUrl(request?: Request) {
 		}
 	}
 
-	return "http://localhost:3000";
+	return "[REDACTED]";
 }
 
-export function createAuth(request?: Request) {
+export function createAuth(
+	request?: Request,
+	options: { allowSamlIdpInitiated?: boolean } = {},
+) {
 	const db = createDb();
+	const ssoIntegration = createSsoIntegration(db, {
+		allowSamlIdpInitiated: options.allowSamlIdpInitiated === true,
+	});
 	const allowedHosts = splitTrustedHosts(runtimeEnv.BETTER_AUTH_ALLOWED_HOSTS);
 	const configuredFallback = runtimeEnv.BETTER_AUTH_FALLBACK_URL ?? null;
 	const trustedRequestOrigin = request
@@ -177,36 +261,100 @@ export function createAuth(request?: Request) {
 				}
 			: origin,
 		secret: getAuthSecret(request),
-		trustedOrigins: (incomingRequest) => {
+		trustedOrigins: async (incomingRequest) => {
 			const nextRequestOrigin = incomingRequest
 				? resolveTrustedRequestOrigin(incomingRequest, {
 						allowedHosts,
 						fallbackOrigin: configuredFallback,
 					})
 				: origin;
-			return [...new Set([nextRequestOrigin, fallback].filter(Boolean))];
+			const shortyOrigins = [
+				...new Set([nextRequestOrigin, fallback].filter(Boolean)),
+			];
+			if (!incomingRequest || !nextRequestOrigin) {
+				return shortyOrigins;
+			}
+			const providerId = await oidcProviderIdForTrustedOrigins(
+				incomingRequest,
+				nextRequestOrigin,
+			);
+			if (!providerId) {
+				return shortyOrigins;
+			}
+			const providerOrigins = await loadOidcProviderTrustedOrigins(
+				db,
+				providerId,
+			);
+			return [...new Set([...shortyOrigins, ...providerOrigins])];
 		},
-		database: drizzleAdapter(db, {
-			provider: "sqlite",
-			schema,
-		}),
+		database: withSsoConfigCrypto(
+			drizzleAdapter(db, {
+				provider: "sqlite",
+				schema,
+			}),
+			getAuthSecret(request),
+		),
+		account: {
+			additionalFields: {
+				issuer: {
+					type: "string",
+					required: true,
+					defaultValue: "local:unknown",
+					input: false,
+				},
+			},
+			accountLinking: {
+				enabled: true,
+			},
+		},
 		emailAndPassword: {
 			enabled: false,
 		},
 		user: {
 			additionalFields: {
+				invitedBy: {
+					type: "string",
+					required: false,
+					input: false,
+				},
+				isActive: {
+					type: "boolean",
+					required: false,
+					defaultValue: true,
+					input: false,
+				},
 				locale: {
 					type: "string",
 					required: false,
 					defaultValue: "en",
 				},
+				roleId: {
+					type: "string",
+					required: false,
+					defaultValue: SYSTEM_ROLE_ADMIN,
+					input: false,
+				},
 			},
 			changeEmail: {
 				enabled: false,
 			},
+			validateUserInfo: ssoIntegration.validateUserInfo,
+		},
+		databaseHooks: {
+			account: {
+				create: {
+					before: ssoIntegration.accountCreateBefore,
+				},
+			},
+			user: {
+				create: {
+					before: ssoIntegration.userCreateBefore,
+				},
+			},
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
+				guardSsoRequest(ctx);
 				await guardMcpOAuth(ctx, db, origin);
 				await guardApiKeyCreate(ctx, db, origin);
 			}),
@@ -220,18 +368,41 @@ export function createAuth(request?: Request) {
 					requireSession: false,
 					resolveUser: async ({ context }) =>
 						resolvePasskeyRegistrationUser(db, context ?? undefined, request),
-					afterVerification: async ({ context, user }) => ({
-						userId: await completePasskeyRegistrationUser(
-							db,
-							context ?? undefined,
-							user.id,
-							request,
-						),
-					}),
+					afterVerification: async ({ context, user: passkeyUser }) => {
+						if (context) {
+							const parsed = await readOnboardingContext(context, request);
+							await assertPasskeyAllowed(db, parsed.email, parsed.type);
+						}
+						return {
+							userId: await completePasskeyRegistrationUser(
+								db,
+								context ?? undefined,
+								passkeyUser.id,
+								request,
+							),
+						};
+					},
 					extensions: { credProps: true },
 				},
 				authentication: {
 					extensions: { credProps: true },
+					afterVerification: async ({ verification }) => {
+						const credentialID = credentialIdToString(
+							verification.authenticationInfo?.credentialID,
+						);
+						if (!credentialID) {
+							return;
+						}
+						const rows = await db
+							.select({ email: user.email })
+							.from(passkeyTable)
+							.innerJoin(user, eq(passkeyTable.userId, user.id))
+							.where(eq(passkeyTable.credentialID, credentialID))
+							.limit(1);
+						if (rows[0]) {
+							await assertPasskeyAllowed(db, rows[0].email);
+						}
+					},
 				},
 			}),
 			apiKey({
@@ -276,8 +447,8 @@ export function createAuth(request?: Request) {
 						.from(user)
 						.where(eq(user.id, keys[0].referenceId))
 						.limit(1);
-					const u = rows[0];
-					if (!u || u.isActive === false) {
+					const apiUser = rows[0];
+					if (!apiUser || apiUser.isActive === false) {
 						return false;
 					}
 					return true;
@@ -296,17 +467,18 @@ export function createAuth(request?: Request) {
 				localeCookie: "shorty_locale",
 				userLocaleField: "locale",
 			}),
+			ssoIntegration.ssoPlugin,
+			jwt(),
 			mcp({
 				loginPage: "/admin",
 				resource: `${origin}/mcp`,
-				oidcConfig: {
-					loginPage: "/admin",
-					allowDynamicClientRegistration: true,
-					consentPage: "/admin/mcp/consent",
-				},
+				allowDynamicClientRegistration: true,
+				allowUnauthenticatedClientRegistration: true,
+				allowPublicClientPrelogin: true,
+				consentPage: "/admin/mcp/consent",
 			}),
 			tanstackStartCookies(),
-		],
+		] as const,
 	});
 }
 

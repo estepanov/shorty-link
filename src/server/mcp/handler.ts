@@ -1,12 +1,11 @@
-import {
-	oAuthDiscoveryMetadata,
-	oAuthProtectedResourceMetadata,
-} from "better-auth/plugins";
+import { createMcpProtectedRequestHandler } from "@better-auth/mcp";
+import { oauthProviderAuthServerMetadata } from "@better-auth/oauth-provider";
+import { createDpopReplayStore } from "better-auth/oauth2";
 
 import { createAuth } from "../auth/auth";
 import { createDb } from "../db/client";
 import { getLogger, serializeError } from "../logging";
-import { authorizeMcpBearer } from "./access";
+import { authorizeMcpUser } from "./access";
 import { mcpOptionsResponse, mcpWwwAuthenticate, withMcpCors } from "./cors";
 import { isMcpAuthCorsPath, isMcpHandledPath, isMcpJsonRpcPath } from "./paths";
 import {
@@ -57,10 +56,7 @@ function unauthorizedResponse(request: Request, id: JsonRpcId = null) {
 }
 
 function authorizationResponse(
-	status: Exclude<
-		Awaited<ReturnType<typeof authorizeMcpBearer>>["status"],
-		"ok"
-	>,
+	status: Exclude<Awaited<ReturnType<typeof authorizeMcpUser>>["status"], "ok">,
 	request: Request,
 ) {
 	switch (status) {
@@ -91,9 +87,9 @@ function authorizationResponse(
 	}
 }
 
-async function handleJsonRpc(request: Request) {
+async function handleJsonRpc(request: Request, userId: string) {
 	const db = createDb();
-	const access = await authorizeMcpBearer(db, request);
+	const access = await authorizeMcpUser(db, userId);
 	if (access.status !== "ok") {
 		return authorizationResponse(access.status, request);
 	}
@@ -195,19 +191,17 @@ export async function handleMcpRequest(request: Request) {
 
 	if (
 		url.pathname === "/.well-known/oauth-authorization-server" ||
-		url.pathname === "/api/auth/.well-known/oauth-authorization-server"
-	) {
-		const auth = createAuth(request);
-		return withMcpCors(await oAuthDiscoveryMetadata(auth)(request));
-	}
-
-	if (
+		url.pathname === "/api/auth/.well-known/oauth-authorization-server" ||
 		url.pathname === "/.well-known/oauth-protected-resource" ||
 		url.pathname === "/.well-known/oauth-protected-resource/mcp" ||
 		url.pathname === "/api/auth/.well-known/oauth-protected-resource"
 	) {
 		const auth = createAuth(request);
-		return withMcpCors(await oAuthProtectedResourceMetadata(auth)(request));
+		const response =
+			url.pathname === "/.well-known/oauth-authorization-server"
+				? await oauthProviderAuthServerMetadata(auth)(request)
+				: await auth.handler(request);
+		return withMcpCors(response);
 	}
 
 	if (isMcpJsonRpcPath(url.pathname)) {
@@ -219,7 +213,25 @@ export async function handleMcpRequest(request: Request) {
 				}),
 			);
 		}
-		return withMcpCors(await handleJsonRpc(request));
+		const auth = createAuth(request);
+		const resource = `${requestOrigin(request)}/mcp`;
+		const issuer = `${requestOrigin(request)}/api/auth`;
+		const jwksUrl = `${issuer}/jwks`;
+		const { internalAdapter } = await auth.$context;
+		const protectedHandler = createMcpProtectedRequestHandler(
+			{
+				audience: resource,
+				dpop: { replayStore: createDpopReplayStore(internalAdapter) },
+				issuer,
+				jwksUrl,
+			},
+			(protectedRequest, claims) =>
+				handleJsonRpc(
+					protectedRequest,
+					typeof claims.sub === "string" ? claims.sub : "",
+				),
+		);
+		return withMcpCors(await protectedHandler(request));
 	}
 
 	if (isMcpAuthCorsPath(url.pathname)) {

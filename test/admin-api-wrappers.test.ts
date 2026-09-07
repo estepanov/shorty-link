@@ -86,6 +86,26 @@ vi.mock("../src/server/db/client", () => ({
 	createDb: vi.fn(() => ({})),
 }));
 
+vi.mock("../src/server/services/sso-providers", () => ({
+	createSsoProvider: vi.fn(),
+	deleteSsoProvider: vi.fn(),
+	getAdminSsoProvider: vi.fn(),
+	listAdminSsoProviders: vi.fn(),
+	listPublicSsoProviders: vi.fn(async () => ({
+		hasEnforcedDomain: false,
+		providers: [
+			{
+				displayName: "Company Okta",
+				domains: ["acme.com"],
+				enforceSso: false,
+				protocol: "oidc",
+				providerId: "okta",
+			},
+		],
+	})),
+	updateSsoProvider: vi.fn(),
+}));
+
 const { app } = await import("../src/server/api/app");
 
 const FAKE_CTX = {
@@ -113,6 +133,47 @@ describe("admin api auth wrappers", () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it("returns the public SSO catalog without secrets", async () => {
+		const response = await app.fetch(
+			new Request("https://shorty.test/api/admin/sso-providers/public"),
+		);
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toEqual({
+			hasEnforcedDomain: false,
+			providers: [
+				{
+					displayName: "Company Okta",
+					domains: ["acme.com"],
+					enforceSso: false,
+					protocol: "oidc",
+					providerId: "okta",
+				},
+			],
+		});
+	});
+
+	it("rejects SSO writes without a trusted Origin", async () => {
+		const response = await app.fetch(
+			new Request("https://shorty.test/api/admin/sso-providers", {
+				body: JSON.stringify({
+					clientId: "client-id",
+					clientSecret: "client-secret",
+					displayName: "Okta",
+					domain: "acme.com",
+					issuer: "https://idp.example.com",
+					protocol: "oidc",
+					providerId: "okta",
+				}),
+				headers: {
+					"content-type": "application/json",
+					cookie: "better-auth.session=abc123",
+				},
+				method: "POST",
+			}),
+		);
+		expect(response.status).toBe(403);
 	});
 
 	it("returns the current admin profile", async () => {

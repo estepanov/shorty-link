@@ -7,7 +7,8 @@ import { authClient } from "@/lib/auth-client";
 import { getTreaty, unwrap } from "@/lib/eden";
 
 type ConsentSearch = {
-	consent_code?: string;
+	client_id?: string;
+	scope?: string;
 };
 
 type ConsentPrompt = {
@@ -18,8 +19,8 @@ type ConsentPrompt = {
 
 function validateConsentSearch(search: Record<string, unknown>): ConsentSearch {
 	return {
-		consent_code:
-			typeof search.consent_code === "string" ? search.consent_code : "",
+		client_id: typeof search.client_id === "string" ? search.client_id : "",
+		scope: typeof search.scope === "string" ? search.scope : "",
 	};
 }
 
@@ -31,22 +32,23 @@ export const Route = createFileRoute("/admin/mcp/consent")({
 function McpConsentPage() {
 	const { session, isPending, t } = useAdminAuthGuard();
 	const router = useRouter();
-	const { consent_code: consentCode = "" } = Route.useSearch();
+	const { client_id: clientId = "" } = Route.useSearch();
 	const [prompt, setPrompt] = useState<ConsentPrompt | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	useEffect(() => {
-		if (!session || !consentCode) {
+		if (!session || !clientId) {
 			setPrompt(null);
 			return;
 		}
 
 		let cancelled = false;
 		setError(null);
+		const oauthQuery = window.location.search.slice(1);
 		void unwrap<ConsentPrompt>(
 			getTreaty().admin.mcp.consent.get({
-				query: { consent_code: consentCode },
+				query: { oauth_query: oauthQuery },
 			}),
 		)
 			.then((next) => {
@@ -66,7 +68,7 @@ function McpConsentPage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [consentCode, session]);
+	}, [clientId, session]);
 
 	if (isPending) {
 		return (
@@ -90,7 +92,6 @@ function McpConsentPage() {
 			setError(null);
 			const result = await authClient.oauth2.consent({
 				accept,
-				consent_code: consentCode || undefined,
 			});
 			if (result.error) {
 				throw new Error(
@@ -102,8 +103,7 @@ function McpConsentPage() {
 						: "errors.unknown",
 				);
 			}
-			const data = result.data as { redirect?: string; url?: string } | null;
-			const redirectTo = data?.redirect ?? data?.url;
+			const redirectTo = result.data?.url;
 			if (redirectTo) {
 				window.location.assign(redirectTo);
 				return;

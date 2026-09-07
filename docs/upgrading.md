@@ -60,6 +60,15 @@ Fresh installs apply the same migration history from the beginning.
 
 `0011_hosted_mcp.sql` adds OAuth tables for the hosted MCP API, `user.mcp_access_enabled`, the `mcp.enabled` setting (default off), and the `mcp.manage` permission on system roles. After upgrading, enable the MCP server from **Access → MCP** if you want Claude or ChatGPT to connect. See [MCP](/mcp/).
 
+`0012_better_auth_1_7_mcp.sql` ports registered MCP clients to Better Auth 1.7's OAuth schema. The old 1.6 token and consent formats are incompatible, so this migration revokes existing grants; users must authorize those clients again.
+
+SSO support adds migration `0013_sso_providers.sql`: an `account.issuer` backfill for Better Auth 1.7, `ssoProvider` / `sso_provider_settings` tables, and `sso.*` permissions on the system owner and admin roles. Back up D1 before applying it on a populated database.
+
+Migration `0014_sso_invite_claim.sql` adds an internal claim identifier and a
+database trigger that atomically claims an SSO invite and activates the exact
+staged Better Auth user. It also repairs any SSO account rows that Better Auth
+initially wrote with the fallback `local:unknown` issuer.
+
 ## Rollback Expectations
 
 Worker code can usually be rolled back by checking out the previous tag and redeploying.

@@ -1,6 +1,7 @@
 import handler from "@tanstack/react-start/server-entry";
 import { app } from "./server/api/app";
 import { createAuth } from "./server/auth/auth";
+import { allowsSamlIdpInitiatedForRequest } from "./server/auth/saml-acs-policy";
 import { createDb } from "./server/db/client";
 import { getLogger, serializeError } from "./server/logging";
 import { withMcpCors } from "./server/mcp/cors";
@@ -133,7 +134,11 @@ async function handleAuthRequest(request: Request, ctx: RequestContext) {
 	authLog.debug("auth handler invoked", ctx);
 
 	try {
-		const auth = createAuth(request);
+		const allowSamlIdpInitiated = await allowsSamlIdpInitiatedForRequest(
+			request,
+			createDb(),
+		);
+		const auth = createAuth(request, { allowSamlIdpInitiated });
 		const response = await auth.handler(request);
 		const status = response.status;
 		const fields = { ...ctx, status };

@@ -115,7 +115,8 @@ export function AppShell({
 		!isAuthContextPending &&
 		(hasPermission("users.read") ||
 			hasPermission("invites.read") ||
-			hasPermission("roles.read"));
+			hasPermission("roles.read") ||
+			hasPermission("sso.read"));
 
 	// Close mobile menu on navigation.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: path reset state

@@ -1,9 +1,15 @@
 import { apiKeyClient } from "@better-auth/api-key/client";
+import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 import { passkeyClient } from "@better-auth/passkey/client";
-import { oidcClient } from "better-auth/client/plugins";
+import { ssoClient } from "@better-auth/sso/client";
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
 	baseURL: "",
-	plugins: [passkeyClient(), apiKeyClient(), oidcClient()],
+	plugins: [
+		passkeyClient(),
+		apiKeyClient(),
+		ssoClient(),
+		oauthProviderClient(),
+	],
 });

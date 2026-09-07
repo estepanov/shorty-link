@@ -30,9 +30,9 @@ Rejected alternatives:
 Claude / ChatGPT
     |  GET /.well-known/oauth-protected-resource
     |  GET /.well-known/oauth-authorization-server
-    |  POST /api/auth/mcp/register   (DCR)
-    |  GET  /api/auth/mcp/authorize  (passkey login + consent)
-    |  POST /api/auth/mcp/token
+    |  POST /api/auth/oauth2/register   (DCR)
+    |  GET  /api/auth/oauth2/authorize  (passkey login + consent)
+    |  POST /api/auth/oauth2/token
     v
 POST /mcp  Bearer access token
     -> verify token (Better Auth getMcpSession)
@@ -52,7 +52,7 @@ POST /mcp  Bearer access token
 | `GET /.well-known/oauth-authorization-server` | RFC 8414 alias of Better Auth metadata. |
 | `GET /.well-known/oauth-protected-resource` | RFC 9728 alias. Resource identifier is `{origin}/mcp`. |
 | `GET /.well-known/oauth-protected-resource/mcp` | Path-inserted RFC 9728 alias. |
-| `/api/auth/mcp/*` | Better Auth MCP authorize, token, register, userinfo, jwks. |
+| `/api/auth/oauth2/*` | Better Auth MCP authorize, token, register, userinfo. |
 | `/admin` | Existing passkey login. MCP plugin `loginPage`. |
 | `/admin/mcp/consent` | Custom consent screen. MCP plugin `consentPage`. |
 
@@ -64,7 +64,7 @@ New D1 objects:
 
 - `app_setting(key, value, updated_at)` — `mcp.enabled` defaults to `false`.
 - `user.mcp_access_enabled` — boolean, default `true`.
-- Better Auth OIDC tables: `oauthApplication`, `oauthAccessToken`, `oauthConsent`.
+- Better Auth OAuth tables: `oauthClient`, `oauthResource`, `oauthClientResource`, `oauthRefreshToken`, `oauthAccessToken`, `oauthConsent`, and `oauthClientAssertion`.
 
 New permission: `mcp.manage`. System owner and admin roles receive it. Custom roles do not unless an admin adds it.
 

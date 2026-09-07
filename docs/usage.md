@@ -4,9 +4,11 @@ This page covers day-to-day use after Shorty Link is deployed and you have an ad
 
 ## Sign in
 
-Open `/admin` on your deployed hostname. Sign in with the passkey you registered during onboarding.
+Open `/admin` on your deployed hostname. Sign in with the passkey you registered during onboarding, or with an SSO provider an admin has configured.
 
-If a teammate sent you an invite link, follow the invite URL first to register your passkey, then return to `/admin`.
+If a teammate sent you an invite link, follow the invite URL first to register your passkey or complete SSO, then return to `/admin`.
+
+If an admin turned on **Require SSO** for your email domain, passkey sign-in is rejected and you must use that provider.
 
 ## Create a link
 
@@ -53,7 +55,33 @@ To add a new hostname:
 
 ## Invite a teammate
 
-Open **Users → Invites** and click **New invite**. Send the invite link to your teammate. They open the link, register a passkey, and become an admin.
+Open **Users → Invites** and click **New invite**. Send the invite link to your teammate. They open the link, register a passkey or sign in with SSO, and become an admin.
+
+## Configure SSO
+
+Open **Access → SSO** and add an OpenID Connect or SAML provider. You will need:
+
+- Issuer (OIDC) or SP entity ID (SAML)
+- OIDC client credentials and discovered/manual endpoints, or SAML metadata XML
+  (alternatively an IdP SSO URL, entity ID, and signing certificate)
+- Email domains that should match this provider
+
+The email-domain list is an authorization boundary, not just a login-page filter. A provider can authenticate a verified email only when its domain matches that list, whether the person already has a Shorty account, is claiming an invite, or is being provisioned through JIT.
+
+Paste the shown callback URL or SAML ACS URL into the identity provider. Client secrets stay in D1, encrypted with `BETTER_AUTH_SECRET`. On admin save, Shorty fetches OIDC discovery only from the configured issuer origin. Discovered or manually configured HTTP(S) endpoints may use other origins when Better Auth classifies their hosts as publicly routable; private and reserved cross-origin hosts are rejected, while same-origin internal IdPs remain supported. Shorty stores the hydrated endpoints and adds only the selected provider's stored origins to Better Auth's request-scoped trust during sign-in.
+
+For SAML, configure the IdP attribute names that contain the email, verified-email flag, and display name. The verified-email attribute must be present and assert a true value; a signed assertion without it cannot sign in. IdP-initiated SAML responses are accepted only when **Allow IdP-initiated sign-in** is enabled on that provider.
+
+Optional per provider:
+
+- Just-in-time provisioning with a default role (never owner)
+- Group claim mapping onto Shorty roles
+- Require SSO for those email domains
+- Allow IdP-initiated sign-in
+
+After an account links through a provider, Shorty locks the external identity authority for that provider ID: the OIDC issuer or SAML IdP entity ID. You can still rotate client secrets, certificates, and protocol endpoints when that authority stays the same. To move linked users to a different authority, delete and recreate the provider; deletion also removes its linked SSO account records so users explicitly relink on their next sign-in.
+
+> **Operator security:** Treat `sso.write` as a high-trust permission equivalent to controlling authentication for every domain assigned to a provider. It intentionally permits credential, endpoint, metadata, and certificate rotation because those are required to operate an IdP without breaking linked accounts. Grant it only to administrators trusted to control those domains; linked-account OIDC issuer and SAML entity-ID safeguards still prevent silently changing the external identity authority.
 
 To revoke an unused invite, delete it from the invites list.
 

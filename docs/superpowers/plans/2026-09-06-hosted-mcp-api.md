@@ -58,8 +58,8 @@
 - Modify: `src/server.ts`
 - Modify: `src/server/api/app.ts`
 
-- [ ] Register `mcp({ loginPage: "/admin", resource, oidcConfig: { allowDynamicClientRegistration: true, consentPage: "/admin/mcp/consent" } })`.
-- [ ] Block `/mcp/authorize`, `/mcp/token`, and `/mcp/register` when the server is disabled.
+- [ ] Register the Better Auth 1.7 `mcp({ loginPage: "/admin", resource, allowDynamicClientRegistration: true, allowUnauthenticatedClientRegistration: true, consentPage: "/admin/mcp/consent" })` plugin with `jwt()`.
+- [ ] Block `/oauth2/authorize`, `/oauth2/token`, and `/oauth2/register` when the server is disabled.
 - [ ] Route `/.well-known/*` and `/mcp` before redirects. Add CORS on those paths.
 - [ ] Add `/api/admin/mcp/settings` and `/api/admin/mcp/grants`.
 

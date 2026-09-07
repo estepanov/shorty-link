@@ -12,7 +12,7 @@ One Worker handles redirects, the admin UI, the admin API, and authentication. O
 
 - **Edge-fast redirects.** Lookups run inside Cloudflare Workers next to your users. Writes happen in `waitUntil` so analytics never block the redirect.
 - **Single deployable.** No separate redirector service, no separate admin app, no message bus. The whole thing is one Worker bundle and one D1 database.
-- **Passwordless from day one.** Authentication is passkey-only via Better Auth and WebAuthn. Password login and signup are disabled out of the box.
+- **Passwordless from day one.** Authentication is passkey-first via Better Auth and WebAuthn. Password login and signup are disabled out of the box. Admins can optionally add OIDC or SAML SSO providers.
 - **Multi-domain by design.** Route any number of hostnames to the Worker. Redirect resolution checks the exact hostname plus slug first, then falls back to a default-host entry — so the same slug can mean different things on different brands.
 - **Your data, your account.** Everything lives in your Cloudflare D1 database. Fork the repo, deploy to your account, own the schema.
 - **Open source, MIT.** Read the code. Audit the auth. Ship a fork.
@@ -33,7 +33,8 @@ One Worker handles redirects, the admin UI, the admin API, and authentication. O
 
 ### Auth & Access
 - Passkey registration and sign-in via Better Auth.
-- Invite-based onboarding for additional admins.
+- Optional admin-configured OIDC and SAML SSO, including IdP-initiated flows.
+- Invite-based onboarding for additional admins. SSO can JIT-provision users or require an invite.
 - Session management with revoke-current and revoke-other-sessions.
 - API keys with optional expiry for programmatic access (`x-api-key` or `Authorization`).
 - Role-aware admin UI for users, invites, and permissions.

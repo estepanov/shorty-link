@@ -208,7 +208,7 @@ For local development:
 cp .dev.vars.example .dev.vars
 ```
 
-Then set a local `BETTER_AUTH_SECRET` in `.dev.vars`. `pnpm dev` serves on port **3000**. Add host `localhost` with that port to `BETTER_AUTH_ALLOWED_HOSTS` if you use the admin UI there.
+Then set a local `BETTER_AUTH_SECRET` in `.dev.vars`. The same secret signs auth tokens and encrypts SSO client secrets and SAML private keys stored in D1. `pnpm dev` serves on port **3000**. Add host `localhost` with that port to `BETTER_AUTH_ALLOWED_HOSTS` if you use the admin UI there.
 
 Optional analytics pieces stay commented until you uncomment them. Queue and cron can be validated locally without creating Cloudflare account resources. Analytics Engine cannot. See [Validate locally](/analytics/#validate-locally).
 

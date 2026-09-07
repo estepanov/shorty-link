@@ -1,7 +1,6 @@
 import { type AuthContext, loadAuthContextForUser } from "../auth/session";
 import type { AppDb } from "../db/client";
 import { getMcpSettings } from "../services/mcp-settings";
-import { getMcpBearerSession } from "./session";
 
 export type McpAuthorization =
 	| { status: "ok"; ctx: AuthContext }
@@ -9,21 +8,20 @@ export type McpAuthorization =
 	| { status: "unauth" }
 	| { status: "denied" };
 
-export async function authorizeMcpBearer(
+export async function authorizeMcpUser(
 	db: AppDb,
-	request: Request,
+	userId: string,
 ): Promise<McpAuthorization> {
 	const settings = await getMcpSettings(db);
 	if (!settings.serverEnabled) {
 		return { status: "disabled" };
 	}
 
-	const session = await getMcpBearerSession(db, request);
-	if (!session?.userId) {
+	if (!userId) {
 		return { status: "unauth" };
 	}
 
-	const ctx = await loadAuthContextForUser(session.userId, {
+	const ctx = await loadAuthContextForUser(userId, {
 		requireMcpAccess: true,
 	});
 	if (!ctx) {

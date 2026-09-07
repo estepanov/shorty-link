@@ -15,6 +15,7 @@ import {
 	isRedirectStatusCode,
 	type RedirectStatusCode,
 } from "@/lib/redirect-status";
+import { isSsoEnforcedForEmail, matchingSsoProviders } from "@/lib/sso-catalog";
 import pkg from "../../../package.json";
 import { createAgentLoginResponse } from "../auth/agent-login";
 import { createAuth } from "../auth/auth";
@@ -28,7 +29,6 @@ import {
 	assertDomainInScope,
 	buildDomainScopeForCtx,
 	buildLinkScopeForCtx,
-	getSession,
 } from "../auth/session";
 import { createDb } from "../db/client";
 import { DEFAULT_HOSTNAME, SYSTEM_ROLE_ADMIN, user } from "../db/schema";
@@ -72,6 +72,7 @@ import {
 	fetchLinkInScope,
 	updateLinkForCtx,
 } from "../services/scoped-links";
+import { listPublicSsoProviders } from "../services/sso-providers";
 import {
 	assignUserRole,
 	deleteInvite,
@@ -82,12 +83,14 @@ import {
 	listUsers,
 	updateUser,
 } from "../services/users";
-import { mcpAdminRoutes } from "./mcp-admin";
 import {
 	requireAuthOrError,
 	requirePermissionOrError,
 	requireSecurePermissionOrError,
-} from "./require-auth";
+	requireSignedOutInviteRequest,
+} from "./guards";
+import { mcpAdminRoutes } from "./mcp-admin";
+import { ssoAdminRoutes } from "./sso-routes";
 
 type AiBinding = {
 	run: (model: string, input: Record<string, unknown>) => Promise<unknown>;
@@ -278,12 +281,6 @@ async function jsonError(error: unknown, request: Request) {
 	);
 }
 
-async function requireSignedOutInviteRequest(request: Request) {
-	if (await getSession(request)) {
-		throw new Response("errors.inviteRequiresSignOut", { status: 403 });
-	}
-}
-
 async function suggestSlugWithAi(targetUrl: string) {
 	const fallback = suggestSlugFromUrl(targetUrl);
 
@@ -353,7 +350,7 @@ function managedDomainRedirectResponse(
 async function signOutResponse(request: Request) {
 	const url = new URL("/api/auth/sign-out", request.url);
 
-	return createAuth(request).handler(
+	return (await createAuth(request)).handler(
 		new Request(url, {
 			headers: request.headers,
 			method: "POST",
@@ -459,6 +456,7 @@ export const app = new Elysia({
 			}),
 		},
 	)
+	.use(ssoAdminRoutes)
 	.group("/api/admin", (admin) =>
 		admin
 			.use(mcpAdminRoutes)
@@ -970,7 +968,7 @@ export const app = new Elysia({
 				"/sessions",
 				async ({ request }) => {
 					await requirePermissionOrError(request, "sessions.manage");
-					return createAuth(request).api.listSessions({
+					return (await createAuth(request)).api.listSessions({
 						headers: request.headers,
 					});
 				},
@@ -982,7 +980,7 @@ export const app = new Elysia({
 				"/sessions/revoke",
 				async ({ body, request }) => {
 					await requireSecurePermissionOrError(request, "sessions.manage");
-					return createAuth(request).api.revokeSession({
+					return (await createAuth(request)).api.revokeSession({
 						body,
 						headers: request.headers,
 					});
@@ -998,7 +996,7 @@ export const app = new Elysia({
 				"/sessions/revoke-other",
 				async ({ request }) => {
 					await requireSecurePermissionOrError(request, "sessions.manage");
-					return createAuth(request).api.revokeOtherSessions({
+					return (await createAuth(request)).api.revokeOtherSessions({
 						headers: request.headers,
 					});
 				},
@@ -1021,7 +1019,7 @@ export const app = new Elysia({
 				"/api-keys",
 				async ({ query, request }) => {
 					await requirePermissionOrError(request, "apikeys.manage");
-					return createAuth(request).api.listApiKeys({
+					return (await createAuth(request)).api.listApiKeys({
 						headers: request.headers,
 						query: {
 							limit: query.limit ?? 100,
@@ -1040,7 +1038,7 @@ export const app = new Elysia({
 				"/api-keys",
 				async ({ body, request }) => {
 					await requireSecurePermissionOrError(request, "apikeys.manage");
-					return createAuth(request).api.createApiKey({
+					return (await createAuth(request)).api.createApiKey({
 						body: {
 							expiresIn: expiresInSeconds(body.expiresInDays),
 							name: body.name,
@@ -1057,7 +1055,7 @@ export const app = new Elysia({
 				"/api-keys/:id",
 				async ({ body, params, request }) => {
 					await requireSecurePermissionOrError(request, "apikeys.manage");
-					return createAuth(request).api.updateApiKey({
+					return (await createAuth(request)).api.updateApiKey({
 						body: {
 							enabled: body.enabled,
 							expiresIn:
@@ -1080,7 +1078,7 @@ export const app = new Elysia({
 				"/api-keys/:id",
 				async ({ params, request }) => {
 					await requireSecurePermissionOrError(request, "apikeys.manage");
-					return createAuth(request).api.deleteApiKey({
+					return (await createAuth(request)).api.deleteApiKey({
 						body: { keyId: params.id },
 						headers: request.headers,
 					});
@@ -1268,10 +1266,17 @@ export const app = new Elysia({
 			if (!invite) {
 				throw new Error("errors.inviteMissing");
 			}
+			const catalog = await listPublicSsoProviders(db);
+			const providers = matchingSsoProviders(catalog, invite.email);
+			const enforced = isSsoEnforcedForEmail(invite.email, catalog.providers);
 			return {
 				email: invite.email,
 				expiresAt: invite.expiresAt,
 				token: invite.token,
+				sso: {
+					enforced,
+					providers,
+				},
 			};
 		},
 		{

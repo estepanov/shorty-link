@@ -54,7 +54,7 @@ These paths are reserved and never used as short-link slugs:
 | `POST /mcp` | Stateless Streamable HTTP MCP |
 | `GET /.well-known/oauth-protected-resource` | Resource metadata (RFC 9728) |
 | `GET /.well-known/oauth-authorization-server` | Authorization-server metadata |
-| `/api/auth/mcp/*` | Authorize, token, dynamic client registration, userinfo |
+| `/api/auth/oauth2/*` | Authorize, token, dynamic client registration, userinfo |
 
 Admin settings and grant revoke live under `/api/admin/mcp/*`. See [Admin API](/admin-api/#mcp).
 

@@ -20,6 +20,7 @@ const allTabs: Array<{
 		| "access.tabs.users"
 		| "access.tabs.invites"
 		| "access.tabs.roles"
+		| "access.tabs.sso"
 		| "access.tabs.mcp";
 	permission: Permission;
 }> = [
@@ -37,6 +38,11 @@ const allTabs: Array<{
 		path: "/admin/access/roles",
 		labelKey: "access.tabs.roles",
 		permission: "roles.read" as Permission,
+	},
+	{
+		path: "/admin/access/sso",
+		labelKey: "access.tabs.sso",
+		permission: "sso.read" as Permission,
 	},
 	{
 		path: "/admin/access/mcp",

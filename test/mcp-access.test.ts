@@ -8,8 +8,9 @@ import { getPlatformProxy } from "wrangler";
 import { ALL_PERMISSIONS } from "../src/lib/permissions";
 import {
 	oauthAccessToken,
-	oauthApplication,
+	oauthClient,
 	oauthConsent,
+	oauthRefreshToken,
 	roles,
 	SYSTEM_ROLE_OWNER,
 	schema,
@@ -53,13 +54,14 @@ async function seedGrant(
 	input: { userId: string; clientId: string; grantId: string },
 ) {
 	const ts = new Date();
-	await db.insert(oauthApplication).values({
+	await db.insert(oauthClient).values({
 		id: `app-${input.clientId}`,
 		name: "Claude",
 		clientId: input.clientId,
 		clientSecret: "secret",
-		redirectUrls: "https://claude.ai/callback",
-		type: "web",
+		redirectUris: ["https://claude.ai/callback"],
+		applicationType: "web",
+		tokenEndpointAuthMethod: "client_secret_basic",
 		disabled: false,
 		createdAt: ts,
 		updatedAt: ts,
@@ -68,22 +70,27 @@ async function seedGrant(
 		id: input.grantId,
 		clientId: input.clientId,
 		userId: input.userId,
-		scopes: "openid profile",
-		consentGiven: true,
+		scopes: ["openid", "profile"],
 		createdAt: ts,
 		updatedAt: ts,
 	});
-	await db.insert(oauthAccessToken).values({
-		id: `tok-${input.grantId}`,
-		accessToken: `access-${input.grantId}`,
-		refreshToken: `refresh-${input.grantId}`,
-		accessTokenExpiresAt: new Date(Date.now() + 60_000),
-		refreshTokenExpiresAt: new Date(Date.now() + 120_000),
+	await db.insert(oauthRefreshToken).values({
+		id: `refresh-${input.grantId}`,
+		token: `refresh-token-${input.grantId}`,
 		clientId: input.clientId,
 		userId: input.userId,
-		scopes: "openid profile",
+		expiresAt: new Date(Date.now() + 120_000),
+		scopes: ["openid", "profile"],
 		createdAt: ts,
-		updatedAt: ts,
+	});
+	await db.insert(oauthAccessToken).values({
+		id: `tok-${input.grantId}`,
+		token: `access-${input.grantId}`,
+		clientId: input.clientId,
+		userId: input.userId,
+		scopes: ["openid", "profile"],
+		expiresAt: new Date(Date.now() + 60_000),
+		createdAt: ts,
 	});
 }
 
