@@ -16,7 +16,6 @@ import {
 	isMcpOpenIdConfigurationPath,
 	isMcpProtectedResourceMetadataPath,
 } from "./paths";
-import { verifyMcpAccessToken } from "./verify";
 import {
 	initializeResult,
 	isJsonRpcFailure,
@@ -27,6 +26,7 @@ import {
 	parseJsonRpcRequest,
 } from "./protocol";
 import { callMcpTool, listMcpTools } from "./tools";
+import { verifyMcpAccessToken } from "./verify";
 
 const log = getLogger(["mcp"]);
 
