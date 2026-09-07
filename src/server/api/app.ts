@@ -66,13 +66,13 @@ import {
 	listRoles,
 	updateRole,
 } from "../services/roles";
-import { listPublicSsoProviders } from "../services/sso-providers";
 import {
 	createLinkForCtx,
 	deleteLinkForCtx,
 	fetchLinkInScope,
 	updateLinkForCtx,
 } from "../services/scoped-links";
+import { listPublicSsoProviders } from "../services/sso-providers";
 import {
 	assignUserRole,
 	deleteInvite,
@@ -83,13 +83,13 @@ import {
 	listUsers,
 	updateUser,
 } from "../services/users";
-import { mcpAdminRoutes } from "./mcp-admin";
 import {
 	requireAuthOrError,
 	requirePermissionOrError,
 	requireSecurePermissionOrError,
 	requireSignedOutInviteRequest,
 } from "./guards";
+import { mcpAdminRoutes } from "./mcp-admin";
 import { ssoAdminRoutes } from "./sso-routes";
 
 type AiBinding = {
