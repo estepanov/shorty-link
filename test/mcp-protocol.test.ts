@@ -24,6 +24,16 @@ describe("mcp protocol", () => {
 		});
 	});
 
+	it("rejects invalid json-rpc ids", () => {
+		expect(() =>
+			parseJsonRpcRequest({
+				jsonrpc: "2.0",
+				id: { spoofed: true },
+				method: "initialize",
+			}),
+		).toThrow();
+	});
+
 	it("rejects invalid json-rpc payloads", () => {
 		expect(() => parseJsonRpcRequest({ method: "initialize" })).toThrow();
 		try {

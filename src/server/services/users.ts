@@ -21,7 +21,7 @@ import {
 	session,
 	user,
 } from "../db/schema";
-import { revokeUserMcpTokens } from "./mcp-settings";
+import { revokeUserMcpTokens } from "./mcp-grants";
 import { escapeLikePattern, likeEscaped } from "./utils";
 
 export async function listUsers(

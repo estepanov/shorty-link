@@ -1,30 +1,72 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, Card, Notice, PageHeader } from "@/components/ui";
 import { useAdminAuthGuard } from "@/lib/admin-auth";
 import { authClient } from "@/lib/auth-client";
+import { getTreaty, unwrap } from "@/lib/eden";
+
+type ConsentSearch = {
+	consent_code?: string;
+};
+
+type ConsentPrompt = {
+	clientId: string;
+	clientName: string;
+	scopes: string[];
+};
+
+function validateConsentSearch(search: Record<string, unknown>): ConsentSearch {
+	return {
+		consent_code:
+			typeof search.consent_code === "string" ? search.consent_code : "",
+	};
+}
 
 export const Route = createFileRoute("/admin/mcp/consent")({
 	component: McpConsentPage,
+	validateSearch: validateConsentSearch,
 });
 
 function McpConsentPage() {
 	const { session, isPending, t } = useAdminAuthGuard();
 	const router = useRouter();
+	const { consent_code: consentCode = "" } = Route.useSearch();
+	const [prompt, setPrompt] = useState<ConsentPrompt | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
-	const params = useMemo(() => {
-		if (typeof window === "undefined") {
-			return { clientId: "", consentCode: "", scope: "" };
+
+	useEffect(() => {
+		if (!session || !consentCode) {
+			setPrompt(null);
+			return;
 		}
-		const search = new URLSearchParams(window.location.search);
-		return {
-			clientId: search.get("client_id") ?? "",
-			consentCode: search.get("consent_code") ?? "",
-			scope: search.get("scope") ?? "",
+
+		let cancelled = false;
+		setError(null);
+		void unwrap<ConsentPrompt>(
+			getTreaty().admin.mcp.consent.get({
+				query: { consent_code: consentCode },
+			}),
+		)
+			.then((next) => {
+				if (!cancelled) {
+					setPrompt(next);
+				}
+			})
+			.catch((nextError: unknown) => {
+				if (!cancelled) {
+					setPrompt(null);
+					setError(
+						nextError instanceof Error ? nextError.message : "errors.unknown",
+					);
+				}
+			});
+
+		return () => {
+			cancelled = true;
 		};
-	}, []);
+	}, [consentCode, session]);
 
 	if (isPending) {
 		return (
@@ -48,7 +90,7 @@ function McpConsentPage() {
 			setError(null);
 			const result = await authClient.oauth2.consent({
 				accept,
-				consent_code: params.consentCode || undefined,
+				consent_code: consentCode || undefined,
 			});
 			if (result.error) {
 				throw new Error(
@@ -88,21 +130,31 @@ function McpConsentPage() {
 						<Notice tone="error">{t(error)}</Notice>
 					</div>
 				) : null}
-				<p className="text-sm text-muted-foreground">
-					{t("mcp.consentClient")}{" "}
-					<span className="font-mono text-foreground">
-						{params.clientId || t("mcp.unknownClient")}
-					</span>
-				</p>
-				{params.scope ? (
-					<p className="mt-2 text-sm text-muted-foreground">
-						{t("mcp.consentScopes")}{" "}
-						<span className="font-mono text-foreground">{params.scope}</span>
+				{prompt ? (
+					<>
+						<p className="text-sm text-muted-foreground">
+							{t("mcp.consentClient")}{" "}
+							<span className="font-mono text-foreground">
+								{prompt.clientName}
+							</span>
+						</p>
+						{prompt.scopes.length > 0 ? (
+							<p className="mt-2 text-sm text-muted-foreground">
+								{t("mcp.consentScopes")}{" "}
+								<span className="font-mono text-foreground">
+									{prompt.scopes.join(" ")}
+								</span>
+							</p>
+						) : null}
+					</>
+				) : (
+					<p className="text-sm text-muted-foreground">
+						{t("loading.dashboard")}
 					</p>
-				) : null}
+				)}
 				<div className="mt-6 flex flex-wrap gap-3">
 					<Button
-						disabled={busy}
+						disabled={busy || !prompt}
 						onClick={() => void decide(true)}
 						type="button"
 					>

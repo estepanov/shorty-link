@@ -57,6 +57,16 @@ export function jsonRpcResult(id: JsonRpcId, result: unknown): JsonRpcSuccess {
 	return { jsonrpc: "2.0", id, result };
 }
 
+function parseJsonRpcId(value: unknown): JsonRpcId {
+	if (value === null || typeof value === "string") {
+		return value;
+	}
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return value;
+	}
+	throw jsonRpcError(null, JsonRpcErrorCode.invalidRequest, "Invalid Request");
+}
+
 export function parseJsonRpcRequest(value: unknown): JsonRpcRequest {
 	if (!value || typeof value !== "object") {
 		throw jsonRpcError(
@@ -73,10 +83,9 @@ export function parseJsonRpcRequest(value: unknown): JsonRpcRequest {
 			"Invalid Request",
 		);
 	}
-	const id = "id" in record ? (record.id as JsonRpcId) : undefined;
 	return {
 		jsonrpc: "2.0",
-		id,
+		id: "id" in record ? parseJsonRpcId(record.id) : undefined,
 		method: record.method,
 		params: record.params,
 	};

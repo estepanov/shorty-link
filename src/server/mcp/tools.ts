@@ -1,20 +1,16 @@
 import type { Permission } from "@/lib/permissions";
 import type { AuthContext } from "../auth/session";
-import {
-	assertHostnameInScope,
-	assertLinkInScope,
-	buildDomainScopeForCtx,
-	buildLinkScopeForCtx,
-} from "../auth/session";
 import type { AppDb } from "../db/client";
-import { getLinkStats } from "../services/analytics/stats";
+import { getLinkById } from "../services/links";
 import {
-	deleteLink,
-	getLinkById,
-	listDomains,
-	listShortLinks,
-	saveLink,
-} from "../services/links";
+	createLinkForCtx,
+	deleteLinkForCtx,
+	fetchLinkInScope,
+	getLinkStatsForCtx,
+	listDomainsForCtx,
+	listLinksForCtx,
+	updateLinkForCtx,
+} from "../services/scoped-links";
 
 export type McpToolContent = { type: "text"; text: string };
 
@@ -30,7 +26,7 @@ export type McpToolDefinition = {
 	permission?: Permission;
 };
 
-export type McpToolHandler = (input: {
+type McpToolHandler = (input: {
 	args: Record<string, unknown>;
 	ctx: AuthContext;
 	db: AppDb;
@@ -61,6 +57,54 @@ function asNumber(value: unknown) {
 	return typeof value === "number" && Number.isFinite(value)
 		? value
 		: undefined;
+}
+
+function requiredString(value: unknown, field: string) {
+	const parsed = asString(value);
+	if (!parsed) {
+		return { ok: false as const, error: `${field} is required` };
+	}
+	return { ok: true as const, value: parsed };
+}
+
+function parseLinkWriteArgs(args: Record<string, unknown>, requireId = false) {
+	const targetUrl = requiredString(args.targetUrl, "targetUrl");
+	if (!targetUrl.ok) {
+		return targetUrl;
+	}
+	if (requireId) {
+		const id = requiredString(args.id, "id");
+		if (!id.ok) {
+			return id;
+		}
+		return {
+			ok: true as const,
+			value: {
+				id: id.value,
+				targetUrl: targetUrl.value,
+				slug: asString(args.slug),
+				hostname: asString(args.hostname),
+				title: asString(args.title),
+				notes: asString(args.notes),
+				statusCode: asNumber(args.statusCode),
+				preserveQueryParams: asBoolean(args.preserveQueryParams),
+				isActive: asBoolean(args.isActive),
+			},
+		};
+	}
+	return {
+		ok: true as const,
+		value: {
+			targetUrl: targetUrl.value,
+			slug: asString(args.slug),
+			hostname: asString(args.hostname),
+			title: asString(args.title),
+			notes: asString(args.notes),
+			statusCode: asNumber(args.statusCode),
+			preserveQueryParams: asBoolean(args.preserveQueryParams),
+			isActive: asBoolean(args.isActive),
+		},
+	};
 }
 
 async function readErrorMessage(error: unknown) {
@@ -114,24 +158,19 @@ const toolCatalog: Array<McpToolDefinition & { handler: McpToolHandler }> = [
 			additionalProperties: false,
 		},
 		handler: async ({ args, ctx, db }) => {
-			const scope = await buildLinkScopeForCtx(ctx);
-			const result = await listShortLinks(
-				db,
-				{
+			const active = args.active;
+			return textResult(
+				await listLinksForCtx(db, ctx, {
 					search: asString(args.search),
 					hostname: asString(args.hostname),
 					page: asNumber(args.page),
 					pageSize: asNumber(args.pageSize),
 					active:
-						args.active === "active" ||
-						args.active === "inactive" ||
-						args.active === "all"
-							? args.active
+						active === "active" || active === "inactive" || active === "all"
+							? active
 							: "all",
-				},
-				scope,
+				}),
 			);
-			return textResult(result);
 		},
 	},
 	{
@@ -147,16 +186,11 @@ const toolCatalog: Array<McpToolDefinition & { handler: McpToolHandler }> = [
 			additionalProperties: false,
 		},
 		handler: async ({ args, ctx, db }) => {
-			const id = asString(args.id);
-			if (!id) {
-				return textResult("id is required", true);
+			const id = requiredString(args.id, "id");
+			if (!id.ok) {
+				return textResult(id.error, true);
 			}
-			const link = await getLinkById(db, id);
-			if (!link) {
-				return textResult("errors.linkMissing", true);
-			}
-			await assertLinkInScope(ctx, link);
-			return textResult(link);
+			return textResult(await fetchLinkInScope(db, ctx, id.value));
 		},
 	},
 	{
@@ -179,29 +213,12 @@ const toolCatalog: Array<McpToolDefinition & { handler: McpToolHandler }> = [
 			additionalProperties: false,
 		},
 		handler: async ({ args, ctx, db }) => {
-			const targetUrl = asString(args.targetUrl);
-			if (!targetUrl) {
-				return textResult("targetUrl is required", true);
+			const parsed = parseLinkWriteArgs(args);
+			if (!parsed.ok) {
+				return textResult(parsed.error, true);
 			}
-			const hostname = asString(args.hostname);
-			if (hostname) {
-				await assertHostnameInScope(ctx, hostname);
-			} else if (ctx.domainScope) {
-				return textResult("errors.linkScopeRequiresDomain", true);
-			}
-			const id = await saveLink(db, {
-				targetUrl,
-				slug: asString(args.slug),
-				hostname,
-				title: asString(args.title),
-				notes: asString(args.notes),
-				statusCode: asNumber(args.statusCode),
-				preserveQueryParams: asBoolean(args.preserveQueryParams),
-				isActive: asBoolean(args.isActive),
-				createdBy: ctx.user.id,
-			});
-			const link = await getLinkById(db, id);
-			return textResult(link);
+			const id = await createLinkForCtx(db, ctx, parsed.value);
+			return textResult(await getLinkById(db, id));
 		},
 	},
 	{
@@ -225,31 +242,16 @@ const toolCatalog: Array<McpToolDefinition & { handler: McpToolHandler }> = [
 			additionalProperties: false,
 		},
 		handler: async ({ args, ctx, db }) => {
-			const id = asString(args.id);
-			const targetUrl = asString(args.targetUrl);
-			if (!id || !targetUrl) {
-				return textResult("id and targetUrl are required", true);
+			const parsed = parseLinkWriteArgs(args, true);
+			if (!parsed.ok) {
+				return textResult(parsed.error, true);
 			}
-			const existing = await getLinkById(db, id);
-			if (!existing) {
-				return textResult("errors.linkMissing", true);
+			const id = "id" in parsed.value ? parsed.value.id : undefined;
+			if (!id) {
+				return textResult("id is required", true);
 			}
-			await assertLinkInScope(ctx, existing);
-			const hostname = asString(args.hostname) ?? existing.hostname;
-			await assertHostnameInScope(ctx, hostname);
-			await saveLink(db, {
-				id,
-				targetUrl,
-				slug: asString(args.slug),
-				hostname,
-				title: asString(args.title),
-				notes: asString(args.notes),
-				statusCode: asNumber(args.statusCode),
-				preserveQueryParams: asBoolean(args.preserveQueryParams),
-				isActive: asBoolean(args.isActive),
-			});
-			const link = await getLinkById(db, id);
-			return textResult(link);
+			await updateLinkForCtx(db, ctx, id, parsed.value);
+			return textResult(await getLinkById(db, id));
 		},
 	},
 	{
@@ -265,17 +267,11 @@ const toolCatalog: Array<McpToolDefinition & { handler: McpToolHandler }> = [
 			additionalProperties: false,
 		},
 		handler: async ({ args, ctx, db }) => {
-			const id = asString(args.id);
-			if (!id) {
-				return textResult("id is required", true);
+			const id = requiredString(args.id, "id");
+			if (!id.ok) {
+				return textResult(id.error, true);
 			}
-			const existing = await getLinkById(db, id);
-			if (!existing) {
-				return textResult("errors.linkMissing", true);
-			}
-			await assertLinkInScope(ctx, existing);
-			await deleteLink(db, id);
-			return textResult({ ok: true, id });
+			return textResult(await deleteLinkForCtx(db, ctx, id.value));
 		},
 	},
 	{
@@ -287,10 +283,8 @@ const toolCatalog: Array<McpToolDefinition & { handler: McpToolHandler }> = [
 			properties: {},
 			additionalProperties: false,
 		},
-		handler: async ({ ctx, db }) => {
-			const domains = await listDomains(db, buildDomainScopeForCtx(ctx));
-			return textResult(domains);
-		},
+		handler: async ({ ctx, db }) =>
+			textResult(await listDomainsForCtx(db, ctx)),
 	},
 	{
 		name: "get_link_stats",
@@ -306,17 +300,13 @@ const toolCatalog: Array<McpToolDefinition & { handler: McpToolHandler }> = [
 			additionalProperties: false,
 		},
 		handler: async ({ args, ctx, db }) => {
-			const id = asString(args.id);
-			if (!id) {
-				return textResult("id is required", true);
+			const id = requiredString(args.id, "id");
+			if (!id.ok) {
+				return textResult(id.error, true);
 			}
-			const link = await getLinkById(db, id);
-			if (!link) {
-				return textResult("errors.linkMissing", true);
-			}
-			await assertLinkInScope(ctx, link);
-			const stats = await getLinkStats(db, id, { days: asNumber(args.days) });
-			return textResult({ link, stats });
+			return textResult(
+				await getLinkStatsForCtx(db, ctx, id.value, asNumber(args.days)),
+			);
 		},
 	},
 ];

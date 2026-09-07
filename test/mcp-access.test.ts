@@ -23,9 +23,9 @@ import {
 	getMcpSettings,
 	getUserMcpAccess,
 	setMcpServerEnabled,
-	setUserMcpAccess,
 } from "../src/server/services/mcp-settings";
 import { getRoleById } from "../src/server/services/roles";
+import { updateUser } from "../src/server/services/users";
 import { applyD1Migrations } from "./apply-d1-migrations";
 
 async function seedUser(
@@ -144,7 +144,7 @@ describe("mcp access controls", () => {
 			grantId: "grant-1",
 		});
 
-		await setUserMcpAccess(db, "owner-1", false);
+		await updateUser(db, "owner-1", { mcpAccessEnabled: false });
 		await expect(getUserMcpAccess(db, "owner-1")).resolves.toEqual({
 			exists: true,
 			allowed: false,

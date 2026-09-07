@@ -128,6 +128,20 @@ describe("mcp tools", () => {
 		expect(created.content[0]?.text).toContain("new-link");
 	});
 
+	it("refuses create_link when the role is link-scoped only", async () => {
+		const result = await callMcpTool(
+			"create_link",
+			{ targetUrl: "https://example.com/scoped" },
+			context({
+				permissions: new Set(["links.write"]),
+				linkScope: new Set(["existing-link"]),
+			}),
+			db,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0]?.text).toBe("errors.linkScopeRequiresDomain");
+	});
+
 	it("hides out-of-scope links from readers", async () => {
 		const allowedId = await saveLink(db, {
 			targetUrl: "https://example.com/allowed",

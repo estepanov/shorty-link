@@ -83,6 +83,7 @@ Supported redirect status codes for link create, update, and filtering are `301`
 
 Operator guide: [MCP](/mcp/).
 
+- `GET /api/admin/mcp/consent?consent_code=` — current user's consent prompt (server-bound client and scopes)
 - `GET /api/admin/mcp/settings` — requires `mcp.manage`
 - `PUT /api/admin/mcp/settings` with body `{ "enabled": true }` — requires `mcp.manage`
 - `GET /api/admin/mcp/grants` — current user's authorized MCP clients

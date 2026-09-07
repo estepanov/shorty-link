@@ -1,17 +1,26 @@
 import { eq } from "drizzle-orm";
 
 import type { AppDb } from "../db/client";
-import {
-	appSettings,
-	MCP_SETTING_ENABLED,
-	oauthAccessToken,
-	oauthConsent,
-	user,
-} from "../db/schema";
+import { appSettings, MCP_SETTING_ENABLED, user } from "../db/schema";
 
 export type McpSettings = {
 	serverEnabled: boolean;
 };
+
+export function mcpPublicUrls(origin: string) {
+	return {
+		mcpUrl: `${origin}/mcp`,
+		authorizationServerUrl: `${origin}/.well-known/oauth-authorization-server`,
+		protectedResourceUrl: `${origin}/.well-known/oauth-protected-resource`,
+	};
+}
+
+export function toMcpSettingsResponse(settings: McpSettings, origin: string) {
+	return {
+		enabled: settings.serverEnabled,
+		...mcpPublicUrls(origin),
+	};
+}
 
 export async function getMcpSettings(db: AppDb): Promise<McpSettings> {
 	const rows = await db
@@ -57,47 +66,4 @@ export async function getUserMcpAccess(db: AppDb, userId: string) {
 		exists: true as const,
 		allowed: row.isActive !== false && row.mcpAccessEnabled !== false,
 	};
-}
-
-export async function revokeUserMcpTokens(db: AppDb, userId: string) {
-	await db.delete(oauthAccessToken).where(eq(oauthAccessToken.userId, userId));
-	await db.delete(oauthConsent).where(eq(oauthConsent.userId, userId));
-}
-
-export async function setUserMcpAccess(
-	db: AppDb,
-	userId: string,
-	mcpAccessEnabled: boolean,
-) {
-	const rows = await db
-		.select({ id: user.id })
-		.from(user)
-		.where(eq(user.id, userId))
-		.limit(1);
-	if (!rows[0]) {
-		throw new Error("errors.userMissing");
-	}
-
-	await db
-		.update(user)
-		.set({ mcpAccessEnabled, updatedAt: new Date() })
-		.where(eq(user.id, userId));
-
-	if (!mcpAccessEnabled) {
-		await revokeUserMcpTokens(db, userId);
-	}
-}
-
-export async function assertMcpServerEnabled(db: AppDb) {
-	const settings = await getMcpSettings(db);
-	if (!settings.serverEnabled) {
-		throw new Error("errors.mcpDisabled");
-	}
-}
-
-export async function assertMcpUserAllowed(db: AppDb, userId: string) {
-	const access = await getUserMcpAccess(db, userId);
-	if (!access.exists || !access.allowed) {
-		throw new Error("errors.mcpAccessDenied");
-	}
 }

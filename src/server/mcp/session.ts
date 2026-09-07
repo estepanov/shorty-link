@@ -5,8 +5,6 @@ import { oauthAccessToken } from "../db/schema";
 
 export type McpBearerSession = {
 	userId: string;
-	scopes: string;
-	clientId: string;
 };
 
 export function extractBearerToken(request: Request): string | null {
@@ -35,8 +33,6 @@ export async function getMcpBearerSession(
 	const rows = await db
 		.select({
 			userId: oauthAccessToken.userId,
-			scopes: oauthAccessToken.scopes,
-			clientId: oauthAccessToken.clientId,
 			accessTokenExpiresAt: oauthAccessToken.accessTokenExpiresAt,
 		})
 		.from(oauthAccessToken)
@@ -48,9 +44,5 @@ export async function getMcpBearerSession(
 		return null;
 	}
 
-	return {
-		userId: row.userId,
-		scopes: row.scopes,
-		clientId: row.clientId,
-	};
+	return { userId: row.userId };
 }

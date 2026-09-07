@@ -4,7 +4,7 @@ import { createAuth } from "./server/auth/auth";
 import { createDb } from "./server/db/client";
 import { getLogger, serializeError } from "./server/logging";
 import { withMcpCors } from "./server/mcp/cors";
-import { handleMcpRequest, isMcpPublicPath } from "./server/mcp/handler";
+import { handleMcpRequest, isMcpAuthCorsPath } from "./server/mcp/handler";
 import { aggregateAnalytics } from "./server/services/analytics/aggregate";
 import { consumeAnalyticsBatch } from "./server/services/analytics/record-click";
 import { readRetentionDays } from "./server/services/analytics/retention";
@@ -210,7 +210,7 @@ export default {
 
 			if (ctx.path.startsWith("/api/auth/")) {
 				const response = await handleAuthRequest(request, ctx);
-				if (isMcpPublicPath(ctx.path)) {
+				if (isMcpAuthCorsPath(ctx.path)) {
 					return withMcpCors(response);
 				}
 				return response;

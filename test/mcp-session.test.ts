@@ -87,8 +87,6 @@ describe("mcp bearer session", () => {
 		);
 		expect(session).toEqual({
 			userId: "owner-1",
-			clientId: "claude",
-			scopes: "openid profile",
 		});
 	});
 

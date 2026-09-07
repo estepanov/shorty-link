@@ -47,6 +47,7 @@ export async function getSession(request: Request) {
 
 export async function loadAuthContextForUser(
 	userId: string,
+	options?: { requireMcpAccess?: boolean },
 ): Promise<AuthContext | null> {
 	const db = createDb();
 	const rows = await db
@@ -69,6 +70,9 @@ export async function loadAuthContextForUser(
 
 	const row = rows[0];
 	if (!row || row.isActive === false) {
+		return null;
+	}
+	if (options?.requireMcpAccess && row.mcpAccessEnabled === false) {
 		return null;
 	}
 

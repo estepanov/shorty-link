@@ -26,14 +26,9 @@ import { assertTrustedAdminWrite } from "../auth/security";
 import {
 	type AuthContext,
 	assertDomainInScope,
-	assertHostnameInScope,
-	assertLinkInScope,
 	buildDomainScopeForCtx,
 	buildLinkScopeForCtx,
 	getSession,
-	requireAuth,
-	requirePermissionContext,
-	requireSecurePermission,
 } from "../auth/session";
 import { createDb } from "../db/client";
 import { DEFAULT_HOSTNAME, SYSTEM_ROLE_ADMIN, user } from "../db/schema";
@@ -46,30 +41,23 @@ import {
 } from "../services/analytics/target";
 import {
 	appendDomainToRoleScopeIfScoped,
-	appendLinkToRoleScopeIfScoped,
 	buildInviteUrl,
 	buildRedirectTarget,
 	createInvite,
 	deleteDomain,
-	deleteLink,
 	getBootstrapState,
 	getDashboardData,
 	getDomainById,
 	getInviteByToken,
-	getLinkById,
 	getManagedDomainByHostname,
 	listDomains,
 	listShortLinks,
-	normalizeHostname,
 	resolveExactRedirect,
 	resolveRedirect,
 	saveDomain,
-	saveLink,
 	suggestSlugFromUrl,
 	updateInvite,
 } from "../services/links";
-import { listMcpGrants, revokeMcpGrant } from "../services/mcp-grants";
-import { getMcpSettings, setMcpServerEnabled } from "../services/mcp-settings";
 import {
 	createRole,
 	deleteRole,
@@ -78,6 +66,12 @@ import {
 	listRoles,
 	updateRole,
 } from "../services/roles";
+import {
+	createLinkForCtx,
+	deleteLinkForCtx,
+	fetchLinkInScope,
+	updateLinkForCtx,
+} from "../services/scoped-links";
 import {
 	assignUserRole,
 	deleteInvite,
@@ -88,6 +82,12 @@ import {
 	listUsers,
 	updateUser,
 } from "../services/users";
+import { mcpAdminRoutes } from "./mcp-admin";
+import {
+	requireAuthOrError,
+	requirePermissionOrError,
+	requireSecurePermissionOrError,
+} from "./require-auth";
 
 type AiBinding = {
 	run: (model: string, input: Record<string, unknown>) => Promise<unknown>;
@@ -278,45 +278,6 @@ async function jsonError(error: unknown, request: Request) {
 	);
 }
 
-async function requireAuthOrError(request: Request) {
-	try {
-		return await requireAuth(request);
-	} catch (error) {
-		if (error instanceof Response) {
-			throw error;
-		}
-		throw new Response("errors.unauthorized", { status: 401 });
-	}
-}
-
-async function requirePermissionOrError(
-	request: Request,
-	permission: Permission | Permission[],
-) {
-	try {
-		return await requirePermissionContext(request, permission);
-	} catch (error) {
-		if (error instanceof Response) {
-			throw error;
-		}
-		throw new Response("errors.unauthorized", { status: 401 });
-	}
-}
-
-async function requireSecurePermissionOrError(
-	request: Request,
-	permission: Permission | Permission[],
-) {
-	try {
-		return await requireSecurePermission(request, permission);
-	} catch (error) {
-		if (error instanceof Response) {
-			throw error;
-		}
-		throw new Response("errors.unauthorized", { status: 401 });
-	}
-}
-
 async function requireSignedOutInviteRequest(request: Request) {
 	if (await getSession(request)) {
 		throw new Response("errors.inviteRequiresSignOut", { status: 403 });
@@ -398,19 +359,6 @@ async function signOutResponse(request: Request) {
 			method: "POST",
 		}),
 	);
-}
-
-async function fetchLinkInScope(
-	db: ReturnType<typeof createDb>,
-	ctx: AuthContext,
-	id: string,
-) {
-	const link = await getLinkById(db, id);
-	if (!link) {
-		throw new Response("errors.linkMissing", { status: 404 });
-	}
-	await assertLinkInScope(ctx, link);
-	return link;
 }
 
 async function fetchDomainInScope(
@@ -513,6 +461,7 @@ export const app = new Elysia({
 	)
 	.group("/api/admin", (admin) =>
 		admin
+			.use(mcpAdminRoutes)
 			.get("/bootstrap", ({ db }) => getBootstrapState(db), {
 				detail: { tags: ["Onboarding"], summary: "Check bootstrap state" },
 			})
@@ -668,21 +617,9 @@ export const app = new Elysia({
 						request,
 						"links.write",
 					);
-					const targetHost = normalizeHostname(body.hostname);
-					if (ctx.domainScope) {
-						await assertHostnameInScope(ctx, targetHost);
-					} else if (ctx.linkScope) {
-						// Link-only scope (no domain scope) cannot create new links.
-						throw new Response("errors.linkScopeRequiresDomain", {
-							status: 403,
-						});
-					}
-					const id = await saveLink(db, {
-						...body,
-						createdBy: ctx.user.id,
-					});
-					await appendLinkToRoleScopeIfScoped(db, ctx.role.id, id);
-					return { id };
+					return {
+						id: await createLinkForCtx(db, ctx, body),
+					};
 				},
 				{
 					detail: { tags: ["Links"], summary: "Create link" },
@@ -728,17 +665,8 @@ export const app = new Elysia({
 						request,
 						"links.write",
 					);
-					await fetchLinkInScope(db, ctx, params.id);
-					const targetHost = normalizeHostname(body.hostname);
-					if (ctx.domainScope) {
-						await assertHostnameInScope(ctx, targetHost);
-					}
 					return {
-						id: await saveLink(db, {
-							...body,
-							id: params.id,
-							createdBy: ctx.user.id,
-						}),
+						id: await updateLinkForCtx(db, ctx, params.id, body),
 					};
 				},
 				{
@@ -754,8 +682,7 @@ export const app = new Elysia({
 						request,
 						"links.delete",
 					);
-					await fetchLinkInScope(db, ctx, params.id);
-					await deleteLink(db, params.id);
+					await deleteLinkForCtx(db, ctx, params.id);
 					return { ok: true };
 				},
 				{
@@ -1214,67 +1141,6 @@ export const app = new Elysia({
 				{
 					detail: { tags: ["Invites"], summary: "Delete invite" },
 					body: t.Object({ id: t.String({ minLength: 1 }) }),
-				},
-			)
-			.get(
-				"/mcp/settings",
-				async ({ db, request }) => {
-					await requirePermissionOrError(request, "mcp.manage");
-					const settings = await getMcpSettings(db);
-					const origin = new URL(request.url).origin;
-					return {
-						enabled: settings.serverEnabled,
-						mcpUrl: `${origin}/mcp`,
-						authorizationServerUrl: `${origin}/.well-known/oauth-authorization-server`,
-						protectedResourceUrl: `${origin}/.well-known/oauth-protected-resource`,
-					};
-				},
-				{
-					detail: { tags: ["MCP"], summary: "Get MCP server settings" },
-				},
-			)
-			.put(
-				"/mcp/settings",
-				async ({ body, db, request }) => {
-					await requireSecurePermissionOrError(request, "mcp.manage");
-					await setMcpServerEnabled(db, body.enabled);
-					const settings = await getMcpSettings(db);
-					const origin = new URL(request.url).origin;
-					return {
-						enabled: settings.serverEnabled,
-						mcpUrl: `${origin}/mcp`,
-						authorizationServerUrl: `${origin}/.well-known/oauth-authorization-server`,
-						protectedResourceUrl: `${origin}/.well-known/oauth-protected-resource`,
-					};
-				},
-				{
-					detail: { tags: ["MCP"], summary: "Update MCP server settings" },
-					body: t.Object({
-						enabled: t.Boolean(),
-					}),
-				},
-			)
-			.get(
-				"/mcp/grants",
-				async ({ db, request }) => {
-					const ctx = await requireAuthOrError(request);
-					return listMcpGrants(db, ctx.user.id);
-				},
-				{
-					detail: { tags: ["MCP"], summary: "List current user MCP grants" },
-				},
-			)
-			.delete(
-				"/mcp/grants/:id",
-				async ({ db, params, request }) => {
-					assertTrustedAdminWrite(request);
-					const ctx = await requireAuthOrError(request);
-					await revokeMcpGrant(db, ctx.user.id, params.id);
-					return { ok: true };
-				},
-				{
-					detail: { tags: ["MCP"], summary: "Revoke a current user MCP grant" },
-					params: t.Object({ id: t.String({ minLength: 1 }) }),
 				},
 			)
 			.get(

@@ -4,14 +4,11 @@ import {
 } from "better-auth/plugins";
 
 import { createAuth } from "../auth/auth";
-import { loadAuthContextForUser } from "../auth/session";
 import { createDb } from "../db/client";
 import { getLogger, serializeError } from "../logging";
-import {
-	assertMcpServerEnabled,
-	assertMcpUserAllowed,
-} from "../services/mcp-settings";
+import { authorizeMcpBearer } from "./access";
 import { mcpOptionsResponse, mcpWwwAuthenticate, withMcpCors } from "./cors";
+import { isMcpAuthCorsPath, isMcpHandledPath, isMcpJsonRpcPath } from "./paths";
 import {
 	initializeResult,
 	isJsonRpcFailure,
@@ -21,10 +18,11 @@ import {
 	jsonRpcResult,
 	parseJsonRpcRequest,
 } from "./protocol";
-import { getMcpBearerSession } from "./session";
 import { callMcpTool, listMcpTools } from "./tools";
 
 const log = getLogger(["mcp"]);
+
+export { isMcpAuthCorsPath };
 
 function requestOrigin(request: Request) {
 	return new URL(request.url).origin;
@@ -58,67 +56,46 @@ function unauthorizedResponse(request: Request, id: JsonRpcId = null) {
 	);
 }
 
-function isMcpOAuthPath(pathname: string) {
-	return (
-		pathname.startsWith("/api/auth/mcp/") ||
-		pathname.startsWith("/api/auth/.well-known/")
-	);
-}
-
-export function isMcpPublicPath(pathname: string) {
-	return (
-		pathname === "/mcp" ||
-		pathname.startsWith("/mcp/") ||
-		pathname === "/.well-known/oauth-authorization-server" ||
-		pathname === "/.well-known/oauth-protected-resource" ||
-		pathname.startsWith("/.well-known/oauth-protected-resource/") ||
-		isMcpOAuthPath(pathname)
-	);
+function authorizationResponse(
+	status: Exclude<
+		Awaited<ReturnType<typeof authorizeMcpBearer>>["status"],
+		"ok"
+	>,
+	request: Request,
+) {
+	switch (status) {
+		case "disabled":
+			return jsonResponse(
+				jsonRpcError(
+					null,
+					JsonRpcErrorCode.unavailable,
+					"MCP server is disabled",
+				),
+				503,
+			);
+		case "unauth":
+			return unauthorizedResponse(request);
+		case "denied":
+			return jsonResponse(
+				jsonRpcError(
+					null,
+					JsonRpcErrorCode.forbidden,
+					"MCP access is disabled for this user",
+				),
+				403,
+			);
+		default: {
+			const _never: never = status;
+			return _never;
+		}
+	}
 }
 
 async function handleJsonRpc(request: Request) {
 	const db = createDb();
-	try {
-		await assertMcpServerEnabled(db);
-	} catch {
-		return jsonResponse(
-			jsonRpcError(
-				null,
-				JsonRpcErrorCode.unavailable,
-				"MCP server is disabled",
-			),
-			503,
-		);
-	}
-
-	const session = await getMcpBearerSession(db, request);
-	if (!session?.userId) {
-		return unauthorizedResponse(request);
-	}
-
-	try {
-		await assertMcpUserAllowed(db, session.userId);
-	} catch {
-		return jsonResponse(
-			jsonRpcError(
-				null,
-				JsonRpcErrorCode.forbidden,
-				"MCP access is disabled for this user",
-			),
-			403,
-		);
-	}
-
-	const ctx = await loadAuthContextForUser(session.userId);
-	if (!ctx) {
-		return jsonResponse(
-			jsonRpcError(
-				null,
-				JsonRpcErrorCode.forbidden,
-				"MCP access is disabled for this user",
-			),
-			403,
-		);
+	const access = await authorizeMcpBearer(db, request);
+	if (access.status !== "ok") {
+		return authorizationResponse(access.status, request);
 	}
 
 	let payload: unknown;
@@ -157,7 +134,7 @@ async function handleJsonRpc(request: Request) {
 				return jsonResponse(jsonRpcResult(id, {}), 200);
 			case "tools/list":
 				return jsonResponse(
-					jsonRpcResult(id, { tools: listMcpTools(ctx.permissions) }),
+					jsonRpcResult(id, { tools: listMcpTools(access.ctx.permissions) }),
 					200,
 				);
 			case "tools/call": {
@@ -179,7 +156,7 @@ async function handleJsonRpc(request: Request) {
 					params.arguments && typeof params.arguments === "object"
 						? (params.arguments as Record<string, unknown>)
 						: {};
-				const result = await callMcpTool(params.name, args, ctx, db);
+				const result = await callMcpTool(params.name, args, access.ctx, db);
 				return jsonResponse(jsonRpcResult(id, result), 200);
 			}
 			case "resources/list":
@@ -208,6 +185,10 @@ async function handleJsonRpc(request: Request) {
 export async function handleMcpRequest(request: Request) {
 	const url = new URL(request.url);
 
+	if (!isMcpHandledPath(url.pathname)) {
+		return null;
+	}
+
 	if (request.method === "OPTIONS") {
 		return mcpOptionsResponse();
 	}
@@ -229,7 +210,7 @@ export async function handleMcpRequest(request: Request) {
 		return withMcpCors(await oAuthProtectedResourceMetadata(auth)(request));
 	}
 
-	if (url.pathname === "/mcp" || url.pathname === "/mcp/") {
+	if (isMcpJsonRpcPath(url.pathname)) {
 		if (request.method !== "POST") {
 			return withMcpCors(
 				new Response("Method Not Allowed", {
@@ -241,8 +222,8 @@ export async function handleMcpRequest(request: Request) {
 		return withMcpCors(await handleJsonRpc(request));
 	}
 
-	if (isMcpOAuthPath(url.pathname) && request.method === "OPTIONS") {
-		return mcpOptionsResponse();
+	if (isMcpAuthCorsPath(url.pathname)) {
+		return null;
 	}
 
 	return null;

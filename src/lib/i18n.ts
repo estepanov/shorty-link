@@ -384,6 +384,8 @@ export const messages = {
 		"errors.mcpDisabled": "The MCP server is disabled.",
 		"errors.mcpAccessDenied": "MCP access is disabled for this user.",
 		"errors.mcpGrantMissing": "That MCP authorization was not found.",
+		"errors.mcpConsentMissing":
+			"That MCP consent request was not found or has expired.",
 		"mcp.settingsTitle": "Hosted MCP",
 		"mcp.settingsDescription":
 			"The MCP server is off until you enable it. Claude and ChatGPT then connect with passkey OAuth. Tools follow each user's role and scopes.",
@@ -826,6 +828,8 @@ export const messages = {
 		"errors.mcpAccessDenied":
 			"El acceso MCP esta desactivado para este usuario.",
 		"errors.mcpGrantMissing": "No se encontro esa autorizacion MCP.",
+		"errors.mcpConsentMissing":
+			"No se encontro esa solicitud de consentimiento MCP o ya expiro.",
 		"mcp.settingsTitle": "MCP alojado",
 		"mcp.settingsDescription":
 			"El servidor MCP esta desactivado hasta que lo actives. Claude y ChatGPT se conectan entonces con OAuth de passkey. Las herramientas respetan el rol y el alcance de cada usuario.",
