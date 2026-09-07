@@ -2,9 +2,11 @@ import { env } from "cloudflare:workers";
 import { apiKey } from "@better-auth/api-key";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { i18n } from "@better-auth/i18n";
+import { mcp } from "@better-auth/mcp";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { jwt } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 
@@ -19,10 +21,14 @@ import {
 	schema,
 	user,
 } from "../db/schema";
+import { authorizeMcpOAuthUser } from "../mcp/access";
+import { isMcpOAuthHookPath } from "../mcp/paths";
+import { getMcpSettings } from "../services/mcp-settings";
 import {
 	assertPasskeyAllowed,
 	loadOidcProviderTrustedOrigins,
 } from "../services/sso-providers";
+import { resolveApiKeyFromHeaders } from "./api-key-headers";
 import {
 	completePasskeyRegistrationUser,
 	readOnboardingContext,
@@ -46,6 +52,110 @@ const SSO_ADMIN_PATHS = new Set([
 	"/sso/delete-provider",
 ]);
 const SSO_INITIATION_HOOK_PATH = "/sign-in/sso";
+
+async function getHookSession(
+	context: { headers?: HeadersInit; request?: Request },
+	origin: string,
+	fallbackPath: string,
+) {
+	const headers = resolveHookHeaders(context);
+	const authRequest =
+		context.request ?? new Request(`${origin}${fallbackPath}`, { headers });
+	return createAuth(authRequest).api.getSession({ headers });
+}
+
+async function guardMcpOAuth(
+	ctx: { path: string; headers?: HeadersInit; request?: Request },
+	db: ReturnType<typeof createDb>,
+	origin: string,
+) {
+	if (!isMcpOAuthHookPath(ctx.path)) {
+		return;
+	}
+
+	const settings = await getMcpSettings(db);
+	if (!settings.serverEnabled) {
+		throw new APIError("FORBIDDEN", {
+			message: "MCP server is disabled",
+		});
+	}
+
+	if (ctx.path !== "/oauth2/authorize") {
+		return;
+	}
+
+	const session = await getHookSession(
+		ctx,
+		origin,
+		"/api/auth/oauth2/authorize",
+	);
+	if (!session) {
+		return;
+	}
+
+	const allowed = await authorizeMcpOAuthUser(session.user.id);
+	if (!allowed) {
+		throw new APIError("FORBIDDEN", {
+			message: "MCP access is disabled for this user",
+		});
+	}
+}
+
+async function guardApiKeyCreate(
+	ctx: { path: string; headers?: HeadersInit; request?: Request },
+	db: ReturnType<typeof createDb>,
+	origin: string,
+) {
+	if (ctx.path !== "/api-key/create") {
+		return;
+	}
+
+	const session = await getHookSession(ctx, origin, "/api/auth/api-key/create");
+	if (!session) {
+		throw new APIError("UNAUTHORIZED", {
+			message: "Authentication required",
+		});
+	}
+	const allowed = await userHasPermission(
+		db,
+		session.user.id,
+		APIKEY_CREATE_PERMISSION,
+	);
+	if (!allowed) {
+		throw new APIError("FORBIDDEN", {
+			message: "You need the 'apikeys.manage' permission to manage API keys",
+		});
+	}
+}
+
+function guardSsoRequest(ctx: {
+	path: string;
+	body?: unknown;
+	request?: Request;
+}) {
+	if (ctx.path === SSO_INITIATION_HOOK_PATH && ctx.request) {
+		const requestOrigin = new URL(ctx.request.url).origin;
+		if (!hasTrustedShortySource(ctx.request, requestOrigin)) {
+			throw new APIError("FORBIDDEN", {
+				message: "Untrusted SSO initiation origin",
+			});
+		}
+		const body = ctx.body as SsoInitiationBody;
+		if (
+			body?.callbackURL !== undefined &&
+			!hasTrustedShortyCallbacks(body, requestOrigin)
+		) {
+			throw new APIError("FORBIDDEN", {
+				message: "Untrusted SSO callback URL",
+			});
+		}
+	}
+	if (SSO_ADMIN_PATHS.has(ctx.path)) {
+		throw new APIError("FORBIDDEN", {
+			message: "errors.permissionDenied",
+		});
+	}
+}
 
 function resolveHookHeaders(context: {
 	headers?: HeadersInit;
@@ -243,54 +353,9 @@ export function createAuth(
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
-				const headers = resolveHookHeaders(ctx);
-				if (ctx.path === SSO_INITIATION_HOOK_PATH && ctx.request) {
-					const requestOrigin = new URL(ctx.request.url).origin;
-					if (!hasTrustedShortySource(ctx.request, requestOrigin)) {
-						throw new APIError("FORBIDDEN", {
-							message: "Untrusted SSO initiation origin",
-						});
-					}
-					const body = ctx.body as SsoInitiationBody;
-					if (
-						body?.callbackURL !== undefined &&
-						!hasTrustedShortyCallbacks(body, requestOrigin)
-					) {
-						throw new APIError("FORBIDDEN", {
-							message: "Untrusted SSO callback URL",
-						});
-					}
-				}
-				if (SSO_ADMIN_PATHS.has(ctx.path)) {
-					throw new APIError("FORBIDDEN", {
-						message: "errors.permissionDenied",
-					});
-				}
-				if (ctx.path !== "/api-key/create") {
-					return;
-				}
-				const authRequest =
-					ctx.request ??
-					new Request(`${origin}/api/auth/api-key/create`, { headers });
-				const session = await createAuth(authRequest).api.getSession({
-					headers,
-				});
-				if (!session) {
-					throw new APIError("UNAUTHORIZED", {
-						message: "Authentication required",
-					});
-				}
-				const allowed = await userHasPermission(
-					createDb(),
-					session.user.id,
-					APIKEY_CREATE_PERMISSION,
-				);
-				if (!allowed) {
-					throw new APIError("FORBIDDEN", {
-						message:
-							"You need the 'apikeys.manage' permission to manage API keys",
-					});
-				}
+				guardSsoRequest(ctx);
+				await guardMcpOAuth(ctx, db, origin);
+				await guardApiKeyCreate(ctx, db, origin);
 			}),
 		},
 		plugins: [
@@ -342,6 +407,15 @@ export function createAuth(
 			apiKey({
 				apiKeyHeaders: ["x-api-key", "authorization"],
 				defaultPrefix: "sl_",
+				customAPIKeyGetter: (ctx) => {
+					const headers = ctx.headers ?? ctx.request?.headers;
+					if (!headers) {
+						return null;
+					}
+					return resolveApiKeyFromHeaders(
+						headers instanceof Headers ? headers : new Headers(headers),
+					);
+				},
 				enableSessionForAPIKeys: true,
 				requireName: true,
 				rateLimit: {
@@ -393,6 +467,14 @@ export function createAuth(
 				userLocaleField: "locale",
 			}),
 			ssoIntegration.ssoPlugin,
+			jwt(),
+			mcp({
+				loginPage: "/admin",
+				resource: `${origin}/mcp`,
+				allowDynamicClientRegistration: true,
+				allowUnauthenticatedClientRegistration: true,
+				consentPage: "/admin/mcp/consent",
+			}),
 			tanstackStartCookies(),
 		] as const,
 	});

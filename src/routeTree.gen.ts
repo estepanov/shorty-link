@@ -17,6 +17,7 @@ import { Route as AdminLinksRouteImport } from './routes/admin.links'
 import { Route as AdminUserRouteImport } from './routes/admin.user'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminAccessInvitesRouteImport } from './routes/admin.access.invites'
+import { Route as AdminAccessMcpRouteImport } from './routes/admin.access.mcp'
 import { Route as AdminAccessRolesRouteImport } from './routes/admin.access.roles'
 import { Route as AdminAccessSsoRouteImport } from './routes/admin.access.sso'
 import { Route as AdminAccessUsersRouteImport } from './routes/admin.access.users'
@@ -25,8 +26,10 @@ import { Route as AdminInviteTokenRouteImport } from './routes/admin.invite.$tok
 import { Route as AdminInvitesNewRouteImport } from './routes/admin.invites.new'
 import { Route as AdminLinksIdRouteImport } from './routes/admin.links.$id'
 import { Route as AdminLinksNewRouteImport } from './routes/admin.links.new'
+import { Route as AdminMcpConsentRouteImport } from './routes/admin.mcp.consent'
 import { Route as AdminRolesNewRouteImport } from './routes/admin.roles.new'
 import { Route as AdminUserApiKeysRouteImport } from './routes/admin.user.api-keys'
+import { Route as AdminUserMcpRouteImport } from './routes/admin.user.mcp'
 import { Route as AdminUserProfileRouteImport } from './routes/admin.user.profile'
 import { Route as AdminUserSessionsRouteImport } from './routes/admin.user.sessions'
 import { Route as AdminAccessRolesIdRouteImport } from './routes/admin.access.roles.$id'
@@ -79,6 +82,11 @@ const AdminAccessInvitesRoute = AdminAccessInvitesRouteImport.update({
   path: '/invites',
   getParentRoute: () => AdminAccessRoute,
 } as any)
+const AdminAccessMcpRoute = AdminAccessMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => AdminAccessRoute,
+} as any)
 const AdminAccessRolesRoute = AdminAccessRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
@@ -119,6 +127,11 @@ const AdminLinksNewRoute = AdminLinksNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AdminLinksRoute,
 } as any)
+const AdminMcpConsentRoute = AdminMcpConsentRouteImport.update({
+  id: '/mcp/consent',
+  path: '/mcp/consent',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRolesNewRoute = AdminRolesNewRouteImport.update({
   id: '/roles/new',
   path: '/roles/new',
@@ -127,6 +140,11 @@ const AdminRolesNewRoute = AdminRolesNewRouteImport.update({
 const AdminUserApiKeysRoute = AdminUserApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
+  getParentRoute: () => AdminUserRoute,
+} as any)
+const AdminUserMcpRoute = AdminUserMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => AdminUserRoute,
 } as any)
 const AdminUserProfileRoute = AdminUserProfileRouteImport.update({
@@ -195,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/admin/user': typeof AdminUserRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
+  '/admin/access/mcp': typeof AdminAccessMcpRoute
   '/admin/access/roles': typeof AdminAccessRolesRouteWithChildren
   '/admin/access/sso': typeof AdminAccessSsoRouteWithChildren
   '/admin/access/users': typeof AdminAccessUsersRouteWithChildren
@@ -203,8 +222,10 @@ export interface FileRoutesByFullPath {
   '/admin/invites/new': typeof AdminInvitesNewRoute
   '/admin/links/$id': typeof AdminLinksIdRouteWithChildren
   '/admin/links/new': typeof AdminLinksNewRoute
+  '/admin/mcp/consent': typeof AdminMcpConsentRoute
   '/admin/roles/new': typeof AdminRolesNewRoute
   '/admin/user/api-keys': typeof AdminUserApiKeysRoute
+  '/admin/user/mcp': typeof AdminUserMcpRoute
   '/admin/user/profile': typeof AdminUserProfileRoute
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
@@ -226,6 +247,7 @@ export interface FileRoutesByTo {
   '/admin/user': typeof AdminUserRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
+  '/admin/access/mcp': typeof AdminAccessMcpRoute
   '/admin/access/roles': typeof AdminAccessRolesRouteWithChildren
   '/admin/access/sso': typeof AdminAccessSsoRouteWithChildren
   '/admin/access/users': typeof AdminAccessUsersRouteWithChildren
@@ -234,8 +256,10 @@ export interface FileRoutesByTo {
   '/admin/invites/new': typeof AdminInvitesNewRoute
   '/admin/links/$id': typeof AdminLinksIdRouteWithChildren
   '/admin/links/new': typeof AdminLinksNewRoute
+  '/admin/mcp/consent': typeof AdminMcpConsentRoute
   '/admin/roles/new': typeof AdminRolesNewRoute
   '/admin/user/api-keys': typeof AdminUserApiKeysRoute
+  '/admin/user/mcp': typeof AdminUserMcpRoute
   '/admin/user/profile': typeof AdminUserProfileRoute
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
@@ -258,6 +282,7 @@ export interface FileRoutesById {
   '/admin/user': typeof AdminUserRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/admin/access/invites': typeof AdminAccessInvitesRoute
+  '/admin/access/mcp': typeof AdminAccessMcpRoute
   '/admin/access/roles': typeof AdminAccessRolesRouteWithChildren
   '/admin/access/sso': typeof AdminAccessSsoRouteWithChildren
   '/admin/access/users': typeof AdminAccessUsersRouteWithChildren
@@ -266,8 +291,10 @@ export interface FileRoutesById {
   '/admin/invites/new': typeof AdminInvitesNewRoute
   '/admin/links/$id': typeof AdminLinksIdRouteWithChildren
   '/admin/links/new': typeof AdminLinksNewRoute
+  '/admin/mcp/consent': typeof AdminMcpConsentRoute
   '/admin/roles/new': typeof AdminRolesNewRoute
   '/admin/user/api-keys': typeof AdminUserApiKeysRoute
+  '/admin/user/mcp': typeof AdminUserMcpRoute
   '/admin/user/profile': typeof AdminUserProfileRoute
   '/admin/user/sessions': typeof AdminUserSessionsRoute
   '/admin/access/roles/$id': typeof AdminAccessRolesIdRoute
@@ -291,6 +318,7 @@ export interface FileRouteTypes {
     | '/admin/user'
     | '/admin/users'
     | '/admin/access/invites'
+    | '/admin/access/mcp'
     | '/admin/access/roles'
     | '/admin/access/sso'
     | '/admin/access/users'
@@ -299,8 +327,10 @@ export interface FileRouteTypes {
     | '/admin/invites/new'
     | '/admin/links/$id'
     | '/admin/links/new'
+    | '/admin/mcp/consent'
     | '/admin/roles/new'
     | '/admin/user/api-keys'
+    | '/admin/user/mcp'
     | '/admin/user/profile'
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
@@ -322,6 +352,7 @@ export interface FileRouteTypes {
     | '/admin/user'
     | '/admin/users'
     | '/admin/access/invites'
+    | '/admin/access/mcp'
     | '/admin/access/roles'
     | '/admin/access/sso'
     | '/admin/access/users'
@@ -330,8 +361,10 @@ export interface FileRouteTypes {
     | '/admin/invites/new'
     | '/admin/links/$id'
     | '/admin/links/new'
+    | '/admin/mcp/consent'
     | '/admin/roles/new'
     | '/admin/user/api-keys'
+    | '/admin/user/mcp'
     | '/admin/user/profile'
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
@@ -353,6 +386,7 @@ export interface FileRouteTypes {
     | '/admin/user'
     | '/admin/users'
     | '/admin/access/invites'
+    | '/admin/access/mcp'
     | '/admin/access/roles'
     | '/admin/access/sso'
     | '/admin/access/users'
@@ -361,8 +395,10 @@ export interface FileRouteTypes {
     | '/admin/invites/new'
     | '/admin/links/$id'
     | '/admin/links/new'
+    | '/admin/mcp/consent'
     | '/admin/roles/new'
     | '/admin/user/api-keys'
+    | '/admin/user/mcp'
     | '/admin/user/profile'
     | '/admin/user/sessions'
     | '/admin/access/roles/$id'
@@ -439,6 +475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAccessInvitesRouteImport
       parentRoute: typeof AdminAccessRoute
     }
+    '/admin/access/mcp': {
+      id: '/admin/access/mcp'
+      path: '/mcp'
+      fullPath: '/admin/access/mcp'
+      preLoaderRoute: typeof AdminAccessMcpRouteImport
+      parentRoute: typeof AdminAccessRoute
+    }
     '/admin/access/roles': {
       id: '/admin/access/roles'
       path: '/roles'
@@ -495,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLinksNewRouteImport
       parentRoute: typeof AdminLinksRoute
     }
+    '/admin/mcp/consent': {
+      id: '/admin/mcp/consent'
+      path: '/mcp/consent'
+      fullPath: '/admin/mcp/consent'
+      preLoaderRoute: typeof AdminMcpConsentRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/roles/new': {
       id: '/admin/roles/new'
       path: '/roles/new'
@@ -507,6 +557,13 @@ declare module '@tanstack/react-router' {
       path: '/api-keys'
       fullPath: '/admin/user/api-keys'
       preLoaderRoute: typeof AdminUserApiKeysRouteImport
+      parentRoute: typeof AdminUserRoute
+    }
+    '/admin/user/mcp': {
+      id: '/admin/user/mcp'
+      path: '/mcp'
+      fullPath: '/admin/user/mcp'
+      preLoaderRoute: typeof AdminUserMcpRouteImport
       parentRoute: typeof AdminUserRoute
     }
     '/admin/user/profile': {
@@ -638,6 +695,7 @@ const AdminAccessUsersRouteWithChildren =
 
 interface AdminAccessRouteChildren {
   AdminAccessInvitesRoute: typeof AdminAccessInvitesRoute
+  AdminAccessMcpRoute: typeof AdminAccessMcpRoute
   AdminAccessRolesRoute: typeof AdminAccessRolesRouteWithChildren
   AdminAccessSsoRoute: typeof AdminAccessSsoRouteWithChildren
   AdminAccessUsersRoute: typeof AdminAccessUsersRouteWithChildren
@@ -645,6 +703,7 @@ interface AdminAccessRouteChildren {
 
 const AdminAccessRouteChildren: AdminAccessRouteChildren = {
   AdminAccessInvitesRoute: AdminAccessInvitesRoute,
+  AdminAccessMcpRoute: AdminAccessMcpRoute,
   AdminAccessRolesRoute: AdminAccessRolesRouteWithChildren,
   AdminAccessSsoRoute: AdminAccessSsoRouteWithChildren,
   AdminAccessUsersRoute: AdminAccessUsersRouteWithChildren,
@@ -696,12 +755,14 @@ const AdminLinksRouteWithChildren = AdminLinksRoute._addFileChildren(
 
 interface AdminUserRouteChildren {
   AdminUserApiKeysRoute: typeof AdminUserApiKeysRoute
+  AdminUserMcpRoute: typeof AdminUserMcpRoute
   AdminUserProfileRoute: typeof AdminUserProfileRoute
   AdminUserSessionsRoute: typeof AdminUserSessionsRoute
 }
 
 const AdminUserRouteChildren: AdminUserRouteChildren = {
   AdminUserApiKeysRoute: AdminUserApiKeysRoute,
+  AdminUserMcpRoute: AdminUserMcpRoute,
   AdminUserProfileRoute: AdminUserProfileRoute,
   AdminUserSessionsRoute: AdminUserSessionsRoute,
 }
@@ -718,6 +779,7 @@ interface AdminRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   AdminInviteTokenRoute: typeof AdminInviteTokenRoute
   AdminInvitesNewRoute: typeof AdminInvitesNewRoute
+  AdminMcpConsentRoute: typeof AdminMcpConsentRoute
   AdminRolesNewRoute: typeof AdminRolesNewRoute
   AdminInvitesIdEditRoute: typeof AdminInvitesIdEditRoute
   AdminRolesIdEditRoute: typeof AdminRolesIdEditRoute
@@ -731,6 +793,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   AdminInviteTokenRoute: AdminInviteTokenRoute,
   AdminInvitesNewRoute: AdminInvitesNewRoute,
+  AdminMcpConsentRoute: AdminMcpConsentRoute,
   AdminRolesNewRoute: AdminRolesNewRoute,
   AdminInvitesIdEditRoute: AdminInvitesIdEditRoute,
   AdminRolesIdEditRoute: AdminRolesIdEditRoute,

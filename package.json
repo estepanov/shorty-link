@@ -35,9 +35,12 @@
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.3",
+		"@better-auth/cimd": "^1.7.3",
 		"@better-auth/core": "1.7.3",
 		"@better-auth/drizzle-adapter": "^1.7.3",
 		"@better-auth/i18n": "^1.7.3",
+		"@better-auth/mcp": "^1.7.3",
+		"@better-auth/oauth-provider": "^1.7.3",
 		"@better-auth/passkey": "^1.7.3",
 		"@better-auth/sso": "1.7.3",
 		"@elysiajs/eden": "^1.4.0",

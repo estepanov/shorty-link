@@ -61,6 +61,7 @@ const mocks = vi.hoisted(() => {
 		getSession,
 		i18n: vi.fn(() => ({ id: "i18n-plugin" })),
 		loadOidcProviderTrustedOrigins,
+		mcp: vi.fn(() => ({ id: "mcp-plugin" })),
 		passkey: vi.fn(() => ({ id: "passkey-plugin" })),
 		sso: vi.fn((_options: Record<string, unknown>) => ({
 			id: "sso-plugin",
@@ -100,6 +101,10 @@ vi.mock("better-auth/api", () => ({
 
 vi.mock("better-auth/tanstack-start", () => ({
 	tanstackStartCookies: mocks.tanstackStartCookies,
+}));
+
+vi.mock("better-auth/plugins", () => ({
+	mcp: mocks.mcp,
 }));
 
 vi.mock("../src/server/auth/onboarding", () => ({
@@ -164,11 +169,12 @@ describe("api key auth hook", () => {
 		});
 		const firstCall = mocks.getSession.mock.calls[0];
 		expect(firstCall).toBeDefined();
-		expect(
-			(firstCall?.[0] as { headers: Headers } | undefined)?.headers.get(
-				"cookie",
-			),
-		).toBe("better-auth.session_token=session-token");
+		if (!firstCall) {
+			return;
+		}
+		expect((firstCall[0] as { headers: Headers }).headers.get("cookie")).toBe(
+			"better-auth.session_token=session-token",
+		);
 	});
 
 	it("rejects Better Auth SSO admin routes unconditionally", async () => {
@@ -352,5 +358,39 @@ describe("api key auth hook", () => {
 			saml?: { allowIdpInitiated?: boolean };
 		};
 		expect(allowedOptions.saml?.allowIdpInitiated).toBe(true);
+	});
+
+	it("does not treat MCP OAuth bearer tokens as API keys", () => {
+		createAuth(new Request("http://localhost/api/auth/session"));
+		const lastCall = mocks.apiKey.mock.calls.at(-1) as
+			| [
+					{
+						customAPIKeyGetter?: (ctx: {
+							headers?: Headers;
+							request?: Request;
+						}) => string | null;
+					},
+			  ]
+			| undefined;
+		const apiKeyOptions = lastCall?.[0];
+		expect(apiKeyOptions).toBeDefined();
+		if (!apiKeyOptions) {
+			return;
+		}
+		expect(apiKeyOptions.customAPIKeyGetter).toBeTypeOf("function");
+		expect(
+			apiKeyOptions.customAPIKeyGetter?.({
+				headers: new Headers({
+					authorization: "Bearer AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+				}),
+			}),
+		).toBeNull();
+		expect(
+			apiKeyOptions.customAPIKeyGetter?.({
+				headers: new Headers({
+					authorization: "Bearer sl_admin_key",
+				}),
+			}),
+		).toBe("sl_admin_key");
 	});
 });

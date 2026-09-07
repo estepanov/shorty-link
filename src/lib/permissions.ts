@@ -22,6 +22,7 @@ export const PERMISSIONS = [
 	"sso.write",
 	"sso.delete",
 	"analytics.read",
+	"mcp.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -45,6 +46,7 @@ export const PERMISSION_GROUPS: Record<string, readonly Permission[]> = {
 		"sso.delete",
 	],
 	analytics: ["analytics.read"],
+	integrations: ["mcp.manage"],
 };
 
 export function isPermission(value: unknown): value is Permission {

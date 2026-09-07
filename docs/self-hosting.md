@@ -62,6 +62,8 @@ Optionally add analytics pipeline pieces if you want them. None are required. Fo
 
 9. Optional: after bootstrap, open **Access → SSO** to register an OIDC or SAML provider. Add the callback URL `{origin}/api/auth/sso/callback/{providerId}` or the SAML ACS URL `{origin}/api/auth/sso/saml2/sp/acs/{providerId}` at your identity provider. Configure every email domain that the provider is authorized to assert: Shorty enforces this allowlist for existing accounts, invite claims, and JIT provisioning. SAML providers must map an IdP attribute that asserts the email is verified; IdP-initiated SAML responses additionally require the provider's **Allow IdP-initiated sign-in** setting. `BETTER_AUTH_SECRET` also encrypts stored SSO client secrets. OIDC discovery runs on admin write against the configured issuer origin. Hydrated cross-origin endpoints must be HTTP(S) on publicly routable hosts, and only the selected provider's stored origins enter request-scoped sign-in trust.
 
+10. The hosted MCP server stays off until you enable it from **Access → MCP**. See [MCP](/mcp/).
+
 ## Automated Deploys
 
 The repository includes GitHub Actions for PR checks, D1 migrations, and Worker deployment.

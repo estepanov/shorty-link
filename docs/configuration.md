@@ -212,6 +212,10 @@ Then set a local `BETTER_AUTH_SECRET` in `.dev.vars`. The same secret signs auth
 
 Optional analytics pieces stay commented until you uncomment them. Queue and cron can be validated locally without creating Cloudflare account resources. Analytics Engine cannot. See [Validate locally](/analytics/#validate-locally).
 
+## Hosted MCP
+
+The hosted MCP API uses the same Worker and D1 database. It needs no extra bindings or secrets. The server stays off until an admin enables it from **Access → MCP**. See [MCP](/mcp/).
+
 ## Binding Type Generation
 
 After changing Wrangler bindings, regenerate Cloudflare environment types:

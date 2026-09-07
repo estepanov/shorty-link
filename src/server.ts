@@ -4,6 +4,8 @@ import { createAuth } from "./server/auth/auth";
 import { allowsSamlIdpInitiatedForRequest } from "./server/auth/saml-acs-policy";
 import { createDb } from "./server/db/client";
 import { getLogger, serializeError } from "./server/logging";
+import { withMcpCors } from "./server/mcp/cors";
+import { handleMcpRequest, isMcpAuthCorsPath } from "./server/mcp/handler";
 import { aggregateAnalytics } from "./server/services/analytics/aggregate";
 import { consumeAnalyticsBatch } from "./server/services/analytics/record-click";
 import { readRetentionDays } from "./server/services/analytics/retention";
@@ -16,12 +18,20 @@ const cronLog = getLogger(["analytics-cron"]);
 const RESERVED_EXACT_PATHS = new Set([
 	"/admin",
 	"/api",
+	"/mcp",
 	"/favicon.ico",
 	"/robots.txt",
 	"/manifest.webmanifest",
 ]);
 
-const RESERVED_PREFIXES = ["/admin/", "/api/", "/assets/", "/_build/"];
+const RESERVED_PREFIXES = [
+	"/admin/",
+	"/api/",
+	"/mcp/",
+	"/.well-known/",
+	"/assets/",
+	"/_build/",
+];
 
 const HTML_CONTENT_SECURITY_POLICY = [
 	"default-src 'self'",
@@ -198,8 +208,17 @@ export default {
 		serverLog.debug(`${ctx.path}`, ctx);
 
 		try {
+			const mcpResponse = await handleMcpRequest(request);
+			if (mcpResponse) {
+				return applySecurityHeaders(request, mcpResponse);
+			}
+
 			if (ctx.path.startsWith("/api/auth/")) {
-				return await handleAuthRequest(request, ctx);
+				const response = await handleAuthRequest(request, ctx);
+				if (isMcpAuthCorsPath(ctx.path)) {
+					return withMcpCors(response);
+				}
+				return response;
 			}
 
 			if (shouldUseElysia(request)) {
