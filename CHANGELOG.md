@@ -4,6 +4,19 @@ All notable changes to Shorty Link will be documented in this file.
 
 This project uses [Semantic Versioning](https://semver.org/) for tagged application releases. Release Please maintains this file from Conventional Commits.
 
+## [0.3.0](https://github.com/estepanov/shorty-link/compare/v0.2.0...v0.3.0) (2026-09-07)
+
+
+### Features
+
+* add OIDC and SAML SSO with encrypted secrets and domain enforcement ([#6](https://github.com/estepanov/shorty-link/issues/6)) ([02ceb3c](https://github.com/estepanov/shorty-link/commit/02ceb3cb9b0458b2d405945ae9c8806616c55290))
+* hosted MCP API with OAuth, permissions, and access controls ([#7](https://github.com/estepanov/shorty-link/issues/7)) ([76c39b7](https://github.com/estepanov/shorty-link/commit/76c39b77319701197c87f9901575f68bc45b5079))
+
+
+### Bug Fixes
+
+* ChatGPT MCP return fails after OAuth (in-process JWKS) ([#10](https://github.com/estepanov/shorty-link/issues/10)) ([136d9f6](https://github.com/estepanov/shorty-link/commit/136d9f6d9ab025e5f7b7a244f04c65701efd5de2))
+
 ## [0.2.0](https://github.com/estepanov/shorty-link/compare/v0.1.0...v0.2.0) (2026-07-24)
 
 
