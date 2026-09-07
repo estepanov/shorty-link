@@ -37,13 +37,11 @@ const mocks = vi.hoisted(() => {
 				}),
 		),
 		replayStore,
-		requireMcpAuth: vi.fn(unauthorizedHandler),
 	};
 });
 
 vi.mock("@better-auth/mcp", () => ({
 	createMcpProtectedRequestHandler: mocks.createMcpProtectedRequestHandler,
-	requireMcpAuth: mocks.requireMcpAuth,
 }));
 
 vi.mock("@better-auth/oauth-provider", () => ({
