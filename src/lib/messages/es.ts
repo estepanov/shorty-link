@@ -472,6 +472,8 @@ export const esMessages = {
 		"El servidor MCP esta desactivado hasta que lo actives. Claude y ChatGPT se conectan entonces con OAuth de passkey. Las herramientas respetan el rol y el alcance de cada usuario.",
 	"mcp.settingsHint":
 		"No se necesitan bindings extra de Cloudflare. Guarda despues de cambiar el interruptor y pega la URL del conector en Claude o ChatGPT.",
+	"mcp.cloudflareBotWarning":
+		"Claude y ChatGPT registran clientes desde sus servidores. Bot Fight Mode, Bloquear bots de IA y Modo Bajo Ataque de Cloudflare desafian esas peticiones, y ChatGPT informa que el registro devolvio 403. Desactivalos en este hostname. En un plan Pro puedes mantener Super Bot Fight Mode si lo omites para /mcp y /api/auth/oauth2/*.",
 	"mcp.serverEnabled": "Servidor MCP activado",
 	"mcp.saved": "Configuracion MCP guardada.",
 	"mcp.connectorUrl": "URL del conector",

@@ -214,7 +214,7 @@ Optional analytics pieces stay commented until you uncomment them. Queue and cro
 
 ## Hosted MCP
 
-The hosted MCP API uses the same Worker and D1 database. It needs no extra bindings or secrets. The server stays off until an admin enables it from **Access → MCP**. See [MCP](/mcp/).
+The hosted MCP API uses the same Worker and D1 database. It needs no extra bindings or secrets. The server stays off until an admin enables it from **Access → MCP**. Claude and ChatGPT call `/mcp` and `/api/auth/oauth2/*` from their servers, so Cloudflare Bot Fight Mode and Block AI Bots on the custom domain will 403 those requests. See [MCP](/mcp/).
 
 ## Binding Type Generation
 
