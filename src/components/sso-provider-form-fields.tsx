@@ -250,6 +250,7 @@ export function SsoProtocolFields({
 										rows={6}
 										value={field.state.value}
 									/>
+									<FieldDescription>{t("sso.certHint")}</FieldDescription>
 								</Field>
 							)}
 						</form.Field>

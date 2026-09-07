@@ -285,6 +285,7 @@ export const enMessages = {
 	"sso.entryPoint": "IdP SSO URL",
 	"sso.idpEntityId": "IdP entity ID",
 	"sso.cert": "IdP signing certificate",
+	"sso.certHint": "Separate multiple signing certificates with a blank line.",
 	"sso.privateKey": "SP private key",
 	"sso.samlEmailAttribute": "SAML email attribute",
 	"sso.samlEmailVerifiedAttribute": "SAML verified-email attribute",

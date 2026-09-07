@@ -150,5 +150,19 @@ describe("SSO provider form codec", () => {
 				idpMetadata: { entityID: "https://idp.example.test" },
 			},
 		});
+
+		const modifiedPatch = toSsoProviderPatch(
+			{
+				...formValues,
+				cert: "certificate-one\n\ncertificate-three",
+			},
+			"saml",
+		);
+		expect(modifiedPatch).toMatchObject({
+			protocol: "saml",
+			samlConfig: {
+				cert: ["certificate-one", "certificate-three"],
+			},
+		});
 	});
 });

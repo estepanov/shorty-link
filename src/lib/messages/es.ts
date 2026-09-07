@@ -288,6 +288,8 @@ export const esMessages = {
 	"sso.entryPoint": "URL SSO del IdP",
 	"sso.idpEntityId": "ID de entidad del IdP",
 	"sso.cert": "Certificado de firma del IdP",
+	"sso.certHint":
+		"Separa varios certificados de firma con una linea en blanco.",
 	"sso.privateKey": "Clave privada del SP",
 	"sso.samlEmailAttribute": "Atributo SAML de email",
 	"sso.samlEmailVerifiedAttribute": "Atributo SAML de email verificado",

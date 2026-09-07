@@ -27,7 +27,6 @@ export type SsoFormValues = {
 	issuer: string;
 	jitEnabled: boolean;
 	jwksEndpoint: string;
-	originalCertificate: string | string[] | null;
 	privateKey: string;
 	protocol: "oidc" | "saml";
 	providerId: string;
@@ -59,7 +58,6 @@ export const emptySsoFormValues: SsoFormValues = {
 	issuer: "",
 	jitEnabled: false,
 	jwksEndpoint: "",
-	originalCertificate: null,
 	privateKey: "",
 	protocol: "oidc",
 	providerId: "",
@@ -73,6 +71,15 @@ export const emptySsoFormValues: SsoFormValues = {
 
 function optional(value: string) {
 	return value.trim() ? value : undefined;
+}
+
+function certificates(value: string): string | string[] | undefined {
+	const entries = value
+		.trim()
+		.split(/\n\s*\n+/)
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+	return entries.length > 1 ? entries : entries[0];
 }
 
 function parseMappings(value: string) {
@@ -117,16 +124,8 @@ function oidcConfig(value: SsoFormValues) {
 
 function samlConfig(value: SsoFormValues) {
 	const metadata = optional(value.idpMetadata);
-	const originalCertificateText =
-		typeof value.originalCertificate === "string"
-			? value.originalCertificate
-			: (value.originalCertificate?.join("\n\n") ?? "");
-	const certificate =
-		value.originalCertificate !== null && value.cert === originalCertificateText
-			? value.originalCertificate
-			: optional(value.cert);
 	return {
-		cert: metadata ? undefined : certificate,
+		cert: metadata ? undefined : certificates(value.cert),
 		entryPoint: metadata ? undefined : optional(value.entryPoint),
 		idpMetadata: metadata
 			? { metadata }
@@ -224,7 +223,6 @@ export function ssoProviderToFormValues(
 		issuer: provider.issuer,
 		jitEnabled: provider.jitEnabled,
 		jwksEndpoint: provider.oidcConfig?.jwksEndpoint ?? "",
-		originalCertificate: certificate ?? null,
 		protocol: provider.protocol,
 		providerId: provider.providerId,
 		samlEmailAttribute:
