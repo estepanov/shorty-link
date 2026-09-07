@@ -1,12 +1,9 @@
 import { Elysia, t } from "elysia";
 
+import { createAuth } from "../auth/auth";
 import { assertTrustedAdminWrite } from "../auth/security";
 import { createDb } from "../db/client";
-import {
-	getMcpConsentPrompt,
-	listMcpGrants,
-	revokeMcpGrant,
-} from "../services/mcp-grants";
+import { listMcpGrants, revokeMcpGrant } from "../services/mcp-grants";
 import {
 	getMcpSettings,
 	setMcpServerEnabled,
@@ -50,7 +47,27 @@ export const mcpAdminRoutes = new Elysia({ name: "mcp-admin" })
 		"/mcp/consent",
 		async ({ query, request }) => {
 			await requireAuthOrError(request);
-			return getMcpConsentPrompt(createDb(), query.client_id, query.scope);
+			const signedQuery = new URLSearchParams(query.oauth_query);
+			const clientId = signedQuery.get("client_id");
+			if (!clientId) {
+				throw new Error("errors.mcpConsentMissing");
+			}
+			const client = await createAuth(request).api.getOAuthClientPublicPrelogin(
+				{
+					body: {
+						client_id: clientId,
+						oauth_query: query.oauth_query,
+					},
+				},
+			);
+			return {
+				clientId,
+				clientName: client.client_name?.trim() || clientId,
+				scopes: (signedQuery.get("scope") ?? "")
+					.split(/\s+/)
+					.map((scope) => scope.trim())
+					.filter(Boolean),
+			};
 		},
 		{
 			detail: {
@@ -58,8 +75,7 @@ export const mcpAdminRoutes = new Elysia({ name: "mcp-admin" })
 				summary: "Load MCP consent details for the current user",
 			},
 			query: t.Object({
-				client_id: t.String({ minLength: 1 }),
-				scope: t.Optional(t.String()),
+				oauth_query: t.String({ minLength: 1 }),
 			}),
 		},
 	)

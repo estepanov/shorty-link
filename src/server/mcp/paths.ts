@@ -1,19 +1,9 @@
-export const MCP_OAUTH_HOOK_PATHS = [
-	"/oauth2/authorize",
-	"/oauth2/consent",
-	"/oauth2/introspect",
-	"/oauth2/register",
-	"/oauth2/revoke",
-	"/oauth2/token",
-	"/oauth2/userinfo",
-] as const;
-
 export function isMcpJsonRpcPath(pathname: string) {
 	return pathname === "/mcp" || pathname === "/mcp/";
 }
 
 export function isMcpOAuthHookPath(pathname: string) {
-	return (MCP_OAUTH_HOOK_PATHS as readonly string[]).includes(pathname);
+	return pathname === "/oauth2" || pathname.startsWith("/oauth2/");
 }
 
 export function isMcpAuthCorsPath(pathname: string) {

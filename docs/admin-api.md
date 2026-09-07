@@ -95,7 +95,7 @@ Client secrets and SAML private keys are stored in D1 `oidcConfig` / `samlConfig
 
 Operator guide: [MCP](/mcp/).
 
-- `GET /api/admin/mcp/consent?client_id=&scope=` — current user's consent prompt
+- `GET /api/admin/mcp/consent?oauth_query=` — validates Better Auth's signed OAuth query and returns the current user's consent prompt
 - `GET /api/admin/mcp/settings` — requires `mcp.manage`
 - `PUT /api/admin/mcp/settings` with body `{ "enabled": true }` — requires `mcp.manage`
 - `GET /api/admin/mcp/grants` — current user's authorized MCP clients

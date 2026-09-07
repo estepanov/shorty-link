@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => {
 				? ["https://idp.example.test", "https://tokens.example.test"]
 				: [],
 	);
+	const authorizeMcpOAuthUser = vi.fn(async () => true);
+	const getMcpSettings = vi.fn(async () => ({ serverEnabled: true }));
 	const betterAuth = vi.fn((options: Record<string, unknown>) => ({
 		api: {
 			getSession,
@@ -45,6 +47,7 @@ const mocks = vi.hoisted(() => {
 	return {
 		APIError: MockApiError,
 		apiKey: vi.fn(() => ({ id: "api-key-plugin" })),
+		authorizeMcpOAuthUser,
 		betterAuth,
 		createAuthMiddleware: vi.fn(
 			(
@@ -59,7 +62,9 @@ const mocks = vi.hoisted(() => {
 		),
 		createDb,
 		getSession,
+		getMcpSettings,
 		i18n: vi.fn(() => ({ id: "i18n-plugin" })),
+		jwt: vi.fn(() => ({ id: "jwt-plugin" })),
 		loadOidcProviderTrustedOrigins,
 		mcp: vi.fn(() => ({ id: "mcp-plugin" })),
 		passkey: vi.fn(() => ({ id: "passkey-plugin" })),
@@ -80,6 +85,10 @@ vi.mock("@better-auth/drizzle-adapter", () => ({
 
 vi.mock("@better-auth/i18n", () => ({
 	i18n: mocks.i18n,
+}));
+
+vi.mock("@better-auth/mcp", () => ({
+	mcp: mocks.mcp,
 }));
 
 vi.mock("@better-auth/passkey", () => ({
@@ -104,7 +113,7 @@ vi.mock("better-auth/tanstack-start", () => ({
 }));
 
 vi.mock("better-auth/plugins", () => ({
-	mcp: mocks.mcp,
+	jwt: mocks.jwt,
 }));
 
 vi.mock("../src/server/auth/onboarding", () => ({
@@ -116,6 +125,14 @@ vi.mock("../src/server/auth/onboarding", () => ({
 vi.mock("../src/server/services/sso-providers", () => ({
 	assertPasskeyAllowed: vi.fn(),
 	loadOidcProviderTrustedOrigins: mocks.loadOidcProviderTrustedOrigins,
+}));
+
+vi.mock("../src/server/mcp/access", () => ({
+	authorizeMcpOAuthUser: mocks.authorizeMcpOAuthUser,
+}));
+
+vi.mock("../src/server/services/mcp-settings", () => ({
+	getMcpSettings: mocks.getMcpSettings,
 }));
 
 vi.mock("../src/server/auth/secret", () => ({
@@ -193,6 +210,41 @@ describe("api key auth hook", () => {
 		await expect(
 			options.hooks.before({ path: "/sso/delete-provider" }),
 		).rejects.toMatchObject({ status: "FORBIDDEN" });
+	});
+
+	it("composes MCP availability and user-access guards with the SSO guards", async () => {
+		await createAuth(new Request("http://localhost:8787/api/auth/session"));
+		const options = mocks.betterAuth.mock.calls[0]?.[0] as {
+			hooks: {
+				before: (context: {
+					headers?: HeadersInit;
+					path: string;
+					request?: Request;
+				}) => Promise<unknown>;
+			};
+		};
+
+		mocks.getMcpSettings.mockResolvedValueOnce({ serverEnabled: false });
+		await expect(
+			options.hooks.before({ path: "/oauth2/token" }),
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			message: "MCP server is disabled",
+		});
+
+		mocks.getSession.mockResolvedValueOnce({ user: { id: "owner-1" } });
+		mocks.authorizeMcpOAuthUser.mockResolvedValueOnce(false);
+		await expect(
+			options.hooks.before({
+				headers: new Headers({
+					cookie: "better-auth.session_token=session-token",
+				}),
+				path: "/oauth2/continue",
+			}),
+		).rejects.toMatchObject({
+			status: "FORBIDDEN",
+			message: "MCP access is disabled for this user",
+		});
 	});
 
 	it("adds persisted OIDC origins for validated initiation and provider callbacks", async () => {

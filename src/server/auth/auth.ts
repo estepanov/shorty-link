@@ -52,6 +52,11 @@ const SSO_ADMIN_PATHS = new Set([
 	"/sso/delete-provider",
 ]);
 const SSO_INITIATION_HOOK_PATH = "/sign-in/sso";
+const MCP_USER_AUTHORIZATION_PATHS = new Set([
+	"/oauth2/authorize",
+	"/oauth2/consent",
+	"/oauth2/continue",
+]);
 
 async function getHookSession(
 	context: { headers?: HeadersInit; request?: Request },
@@ -80,15 +85,11 @@ async function guardMcpOAuth(
 		});
 	}
 
-	if (ctx.path !== "/oauth2/authorize") {
+	if (!MCP_USER_AUTHORIZATION_PATHS.has(ctx.path)) {
 		return;
 	}
 
-	const session = await getHookSession(
-		ctx,
-		origin,
-		"/api/auth/oauth2/authorize",
-	);
+	const session = await getHookSession(ctx, origin, `/api/auth${ctx.path}`);
 	if (!session) {
 		return;
 	}
@@ -473,6 +474,7 @@ export function createAuth(
 				resource: `${origin}/mcp`,
 				allowDynamicClientRegistration: true,
 				allowUnauthenticatedClientRegistration: true,
+				allowPublicClientPrelogin: true,
 				consentPage: "/admin/mcp/consent",
 			}),
 			tanstackStartCookies(),

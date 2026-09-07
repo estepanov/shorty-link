@@ -32,7 +32,7 @@ export const Route = createFileRoute("/admin/mcp/consent")({
 function McpConsentPage() {
 	const { session, isPending, t } = useAdminAuthGuard();
 	const router = useRouter();
-	const { client_id: clientId = "", scope = "" } = Route.useSearch();
+	const { client_id: clientId = "" } = Route.useSearch();
 	const [prompt, setPrompt] = useState<ConsentPrompt | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
@@ -45,9 +45,10 @@ function McpConsentPage() {
 
 		let cancelled = false;
 		setError(null);
+		const oauthQuery = window.location.search.slice(1);
 		void unwrap<ConsentPrompt>(
 			getTreaty().admin.mcp.consent.get({
-				query: { client_id: clientId, scope },
+				query: { oauth_query: oauthQuery },
 			}),
 		)
 			.then((next) => {
@@ -67,7 +68,7 @@ function McpConsentPage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [clientId, scope, session]);
+	}, [clientId, session]);
 
 	if (isPending) {
 		return (
@@ -102,8 +103,7 @@ function McpConsentPage() {
 						: "errors.unknown",
 				);
 			}
-			const data = result.data as { redirect?: string; url?: string } | null;
-			const redirectTo = data?.redirect ?? data?.url;
+			const redirectTo = result.data?.url;
 			if (redirectTo) {
 				window.location.assign(redirectTo);
 				return;

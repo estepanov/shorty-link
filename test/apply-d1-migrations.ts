@@ -140,11 +140,21 @@ export function migrationStatements(sql: string) {
 	return statements;
 }
 
-/** Applies every `migrations/*.sql` in lexical order so test D1 matches production DDL. */
-export async function applyD1Migrations(database: D1Database) {
+type MigrationRange = {
+	from?: string;
+	through?: string;
+};
+
+/** Applies `migrations/*.sql` in lexical order so test D1 matches production DDL. */
+export async function applyD1Migrations(
+	database: D1Database,
+	range: MigrationRange = {},
+) {
 	const dir = join(process.cwd(), "migrations");
 	const files = readdirSync(dir)
 		.filter((name) => name.endsWith(".sql"))
+		.filter((name) => !range.from || name >= range.from)
+		.filter((name) => !range.through || name <= range.through)
 		.sort();
 	for (const file of files) {
 		const sql = readFileSync(join(dir, file), "utf8");

@@ -8,12 +8,6 @@ import {
 	oauthRefreshToken,
 } from "../db/schema";
 
-export type McpConsentPrompt = {
-	clientId: string;
-	clientName: string;
-	scopes: string[];
-};
-
 export type McpGrant = {
 	id: string;
 	clientId: string;
@@ -22,13 +16,6 @@ export type McpGrant = {
 	createdAt: Date;
 	updatedAt: Date;
 };
-
-function parseScopes(value: string) {
-	return value
-		.split(/[,\s]+/)
-		.map((scope) => scope.trim())
-		.filter(Boolean);
-}
 
 export async function listMcpGrants(
 	db: AppDb,
@@ -64,32 +51,6 @@ export async function revokeUserMcpTokens(db: AppDb, userId: string) {
 		.delete(oauthRefreshToken)
 		.where(eq(oauthRefreshToken.userId, userId));
 	await db.delete(oauthConsent).where(eq(oauthConsent.userId, userId));
-}
-
-export async function getMcpConsentPrompt(
-	db: AppDb,
-	clientId: string,
-	scope: string | undefined,
-): Promise<McpConsentPrompt> {
-	const normalizedClientId = clientId.trim();
-	if (!normalizedClientId) {
-		throw new Error("errors.mcpConsentMissing");
-	}
-
-	const clients = await db
-		.select({ name: oauthClient.name })
-		.from(oauthClient)
-		.where(eq(oauthClient.clientId, normalizedClientId))
-		.limit(1);
-	if (!clients[0]) {
-		throw new Error("errors.mcpConsentMissing");
-	}
-
-	return {
-		clientId: normalizedClientId,
-		clientName: clients[0].name?.trim() || normalizedClientId,
-		scopes: parseScopes(scope ?? ""),
-	};
 }
 
 export async function revokeMcpGrant(
