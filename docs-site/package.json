@@ -11,9 +11,11 @@
 		"build": "astro build",
 		"preview": "astro preview",
 		"precheck": "astro sync",
-		"check": "astro check"
+		"check": "astro check",
+		"test:layout": "node --test test/rehype-docs.test.mjs test/reflow.test.mjs"
 	},
 	"dependencies": {
+		"@astrojs/markdown-satteri": "0.3.4",
 		"@tailwindcss/vite": "^4.3.3",
 		"astro": "^7.1.1",
 		"tailwindcss": "^4.3.3"
