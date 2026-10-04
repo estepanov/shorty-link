@@ -11,9 +11,10 @@ export const Route = createFileRoute("/admin/domains/new")({
 function NewDomain() {
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("domains.write");
+	const { isAuthorized, isPending: isPermissionPending } =
+		useRequirePermission("domains.write");
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 

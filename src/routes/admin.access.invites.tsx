@@ -84,7 +84,7 @@ const defaultFilters: InviteFilters = {
 
 function InvitesTab() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { hasPermission } = useAuthContext();
+	const { hasPermission, isPending: isPermissionPending } = useAuthContext();
 	const [data, setData] = useState<InviteListData | null>(null);
 	const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 	const search = Route.useSearch();
@@ -157,7 +157,7 @@ function InvitesTab() {
 		page,
 	]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 

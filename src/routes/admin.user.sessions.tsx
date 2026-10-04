@@ -20,7 +20,8 @@ export const Route = createFileRoute("/admin/user/sessions")({
 
 function Sessions() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("sessions.manage");
+	const { isAuthorized, isPending: isPermissionPending } =
+		useRequirePermission("sessions.manage");
 	const [sessions, setSessions] = useState<AdminSession[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
@@ -44,7 +45,7 @@ function Sessions() {
 		}
 	}, [session?.user.id]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return (
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>{t("loading.app")}</Card>

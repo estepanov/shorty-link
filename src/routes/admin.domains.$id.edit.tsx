@@ -20,7 +20,8 @@ function EditDomain() {
 	const { id } = Route.useParams();
 	const router = useRouter();
 	const { session, isPending, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("domains.write");
+	const { isAuthorized, isPending: isPermissionPending } =
+		useRequirePermission("domains.write");
 	const [domain, setDomain] = useState<AdminDomain | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +48,7 @@ function EditDomain() {
 		void loadDomain();
 	}, [id, session?.user.id]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 

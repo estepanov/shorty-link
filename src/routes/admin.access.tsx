@@ -53,13 +53,13 @@ const allTabs: Array<{
 
 function AccessLayout() {
 	const { session, isPending, t } = useAdminAuthGuard();
-	const { hasPermission } = useAuthContext();
+	const { hasPermission, isPending: isPermissionPending } = useAuthContext();
 	const location = useLocation();
 	const currentPath = location.pathname;
 
 	const visibleTabs = allTabs.filter((tab) => hasPermission(tab.permission));
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return (
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>{t("loading.app")}</Card>

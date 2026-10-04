@@ -30,7 +30,8 @@ export const Route = createFileRoute("/admin/user/api-keys")({
 
 function ApiKeys() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("apikeys.manage");
+	const { isAuthorized, isPending: isPermissionPending } =
+		useRequirePermission("apikeys.manage");
 	const [keys, setKeys] = useState<AdminApiKey[]>([]);
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -86,7 +87,7 @@ function ApiKeys() {
 		}
 	}, [session?.user.id]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return (
 			<div className="mx-auto grid w-full max-w-7xl gap-6">
 				<Card>{t("loading.app")}</Card>
