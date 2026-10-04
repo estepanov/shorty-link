@@ -65,7 +65,7 @@ const defaultFilters: RoleFilters = {
 function RolesTab() {
 	const location = useLocation();
 	const { session, isPending, t } = useAdminAuthGuard();
-	const { hasPermission } = useAuthContext();
+	const { hasPermission, isPending: isPermissionPending } = useAuthContext();
 	const isRolesListRoute =
 		location.pathname === "/admin/access/roles" ||
 		location.pathname === "/admin/access/roles/";
@@ -141,7 +141,7 @@ function RolesTab() {
 		return <Outlet />;
 	}
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 

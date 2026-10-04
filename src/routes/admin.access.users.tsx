@@ -108,7 +108,8 @@ const defaultFilters: UserFilters = {
 function UsersTab() {
 	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized } = useRequirePermission("users.read");
+	const { isAuthorized, isPending: isPermissionPending } =
+		useRequirePermission("users.read");
 	const { hasPermission } = useAuthContext();
 	const canWriteUsers = hasPermission("users.write");
 	const canDeleteUsers = hasPermission("users.delete");
@@ -196,7 +197,7 @@ function UsersTab() {
 		return <Outlet />;
 	}
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 

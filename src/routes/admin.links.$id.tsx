@@ -49,7 +49,11 @@ function LinkDetails() {
 	const { id } = Route.useParams();
 	const location = useLocation();
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { isAuthorized, hasPermission } = useRequirePermission("links.read");
+	const {
+		isAuthorized,
+		hasPermission,
+		isPending: isPermissionPending,
+	} = useRequirePermission("links.read");
 	const [data, setData] = useState<LinkStatsResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const isDetailsRoute =
@@ -84,7 +88,7 @@ function LinkDetails() {
 		return <Outlet />;
 	}
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 

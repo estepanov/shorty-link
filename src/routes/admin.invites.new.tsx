@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/invites/new")({
 
 function NewInvite() {
 	const { session, isPending, t } = useAdminAuthGuard();
-	const { hasPermission } = useAuthContext();
+	const { hasPermission, isPending: isPermissionPending } = useAuthContext();
 	const router = useRouter();
 	const [roles, setRoles] = useState<AssignableRole[]>([]);
 
@@ -33,7 +33,7 @@ function NewInvite() {
 		})();
 	}, [session?.user.id]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 

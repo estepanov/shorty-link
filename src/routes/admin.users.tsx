@@ -35,7 +35,7 @@ type InviteWithStatus = AdminInvite & {
 
 function UsersPage() {
 	const { session, isPending, locale, t } = useAdminAuthGuard();
-	const { hasPermission } = useAuthContext();
+	const { hasPermission, isPending: isPermissionPending } = useAuthContext();
 	const [users, setUsers] = useState<AdminUser[]>([]);
 	const [invites, setInvites] = useState<AdminInvite[]>([]);
 	const [roles, setRoles] = useState<AssignableRole[]>([]);
@@ -70,7 +70,7 @@ function UsersPage() {
 		}
 	}, [session?.user.id]);
 
-	if (isPending) {
+	if (isPending || isPermissionPending) {
 		return <Card>{t("loading.app")}</Card>;
 	}
 
