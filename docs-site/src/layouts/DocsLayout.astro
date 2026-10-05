@@ -23,169 +23,375 @@ const isAncestor = (itemSlug: string) =>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>{title} · Shorty Link</title>
 		<meta name="description" content={`${title} — Shorty Link documentation`} />
 		<link rel="icon" href="data:," />
 		<script is:inline>
 			(() => {
-				const stored = localStorage.getItem("docs-theme");
-				const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-				const dark = stored ? stored === "dark" : prefersDark;
-				if (dark) document.documentElement.classList.add("dark");
+				document.documentElement.classList.add("js");
+				try {
+					const stored = localStorage.getItem("docs-theme");
+					const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+					const dark = stored ? stored === "dark" : prefersDark;
+					if (dark) document.documentElement.classList.add("dark");
+				} catch {
+					/* Storage can be blocked; the system theme still applies on the next visit. */
+				}
 			})();
 		</script>
 	</head>
 	<body>
-		<div class="mx-auto grid max-w-6xl gap-10 px-6 py-10 lg:grid-cols-[15rem_1fr_13rem] lg:gap-12">
-			<aside class="lg:sticky lg:top-10 lg:h-[calc(100dvh-5rem)]">
-				<div class="flex items-center justify-between">
-					<a href="/" class="font-display text-lg font-medium tracking-tight">
-						Shorty Link
-					</a>
-					<button
-						type="button"
-						id="theme-toggle"
-						aria-label="Toggle theme"
-						class="rounded-md border border-[color:var(--border)] px-2 py-1 text-xs text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-					>
-						<span class="hidden dark:inline">Light</span>
-						<span class="inline dark:hidden">Dark</span>
-					</button>
-				</div>
-				<p class="eyebrow mt-1">Docs</p>
-				<div
-					class="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--muted)] px-3 py-2 text-xs text-[color:var(--muted-foreground)]"
-					role="note"
+		<div class="docs-shell">
+			<a class="skip-link" href="#content">Skip to content</a>
+			<header class="docs-toolbar">
+				<button
+					type="button"
+					id="nav-toggle"
+					class="docs-icon-button"
+					aria-expanded="false"
+					aria-controls="docs-nav"
 				>
-					<p class="font-medium text-[color:var(--foreground)]">Pre-1.0 — not yet stable</p>
-					<p class="mt-1 leading-relaxed">
-						Minor releases may contain breaking changes. Pin to a tagged release and read the notes before upgrading.
-					</p>
-				</div>
-				<nav class="mt-6">
-					<ul class="space-y-1 text-sm">
-						{nav.map((item) => {
-							const active = isActive(item.slug);
-							const expanded = active || isAncestor(item.slug);
-							return (
-								<li>
-									<a
-										href={item.href}
-										class:list={[
-											"block rounded-md px-2.5 py-1.5 transition-colors",
-											active
-												? "bg-[color:var(--muted)] font-medium text-[color:var(--foreground)]"
-												: "text-[color:var(--muted-foreground)] hover:bg-[color:var(--muted)] hover:text-[color:var(--foreground)]",
-										]}
-										aria-current={active ? "page" : undefined}
-									>
-										{item.title}
-									</a>
-									{item.children && item.children.length > 0 && (
-										<ul
-											class:list={[
-												"ml-3 mt-1 space-y-1 border-l border-[color:var(--border)] pl-2",
-												expanded ? "" : "hidden",
-											]}
-										>
-											{item.children.map((child) => {
-												const childActive = isActive(child.slug);
-												return (
-													<li>
-														<a
-															href={child.href}
-															class:list={[
-																"block rounded-md px-2.5 py-1 text-[0.85rem] transition-colors",
-																childActive
-																	? "bg-[color:var(--muted)] font-medium text-[color:var(--foreground)]"
-																	: "text-[color:var(--muted-foreground)] hover:bg-[color:var(--muted)] hover:text-[color:var(--foreground)]",
-															]}
-															aria-current={childActive ? "page" : undefined}
-														>
-															{child.title}
-														</a>
-													</li>
-												);
-											})}
-										</ul>
-									)}
-								</li>
-							);
-						})}
-					</ul>
-				</nav>
-				<div class="mt-8 flex flex-col gap-2 border-t border-[color:var(--border)] pt-4 text-sm">
-					<a
-						href="https://github.com/estepanov/shorty-link"
-						target="_blank"
-						rel="noreferrer"
-						class="flex items-center gap-2 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
+					<svg
+						aria-hidden="true"
+						xmlns="http://www.w3.org/2000/svg"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
-						GitHub
-					</a>
-					<a
-						href="https://buymeacoffee.com/estepanov"
-						target="_blank"
-						rel="noreferrer"
-						class="flex items-center gap-2 text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
-						Buy me a coffee
-					</a>
-				</div>
-			</aside>
-
-			<main>
-				<article class="prose">
-					<slot />
-				</article>
-				<footer class="mt-16 flex flex-col gap-2 border-t border-[color:var(--border)] pt-6 text-xs text-[color:var(--muted-foreground)] sm:flex-row sm:items-center sm:justify-between">
-					<a
-						href={`https://github.com/estepanov/shorty-link/edit/main/docs/${slug}.md`}
-						class="hover:text-[color:var(--foreground)]"
-					>
-						Edit this page on GitHub
-					</a>
-					<p>
-						Artisanally crafted by{" "}
-						<a
-							href="https://evansstepanov.com?utm_source=shorty-link-docs&utm_medium=footer&utm_campaign=crafted_by"
-							class="hover:text-[color:var(--foreground)]"
-							target="_blank"
-							rel="noreferrer"
+						<path d="M4 7h16M4 12h16M4 17h16"></path>
+					</svg>
+					<span class="sr-only">Open menu</span>
+				</button>
+				<a href="/" class="docs-brand">Shorty Link</a>
+				<button
+					type="button"
+					class="theme-toggle docs-icon-button"
+					aria-pressed="false"
+					aria-label="Switch to dark theme"
+				>
+					<span class="hidden dark:inline">Light</span>
+					<span class="inline dark:hidden">Dark</span>
+				</button>
+			</header>
+			<button
+				type="button"
+				id="docs-backdrop"
+				class="docs-backdrop"
+				tabindex="-1"
+				hidden
+				aria-label="Close menu"
+			></button>
+			<div class="docs-frame">
+				<aside id="docs-nav" class="docs-sidebar" aria-label="Documentation">
+					<div class="docs-sidebar-head">
+						<a href="/" class="docs-brand">Shorty Link</a>
+						<button
+							type="button"
+							id="nav-close"
+							class="docs-icon-button docs-close"
 						>
-							Evans
+							Close
+						</button>
+						<button
+							type="button"
+							class="theme-toggle docs-icon-button docs-theme-desktop"
+							aria-pressed="false"
+							aria-label="Switch to dark theme"
+						>
+							<span class="hidden dark:inline">Light</span>
+							<span class="inline dark:hidden">Dark</span>
+						</button>
+					</div>
+					<p class="eyebrow mt-1">Docs</p>
+					<div
+						class="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--muted)] px-3 py-2 text-sm text-[color:var(--muted-foreground)]"
+						role="note"
+					>
+						<p class="font-medium text-[color:var(--foreground)]">Pre-1.0 — not yet stable</p>
+						<p class="mt-1 leading-relaxed">
+							Minor releases may contain breaking changes. Pin to a tagged release and read the notes before upgrading.
+						</p>
+					</div>
+					<nav class="mt-6" aria-label="Pages">
+						<ul class="docs-nav-list">
+							{nav.map((item) => {
+								const active = isActive(item.slug);
+								const expanded = active || isAncestor(item.slug);
+								return (
+									<li>
+										<a
+											href={item.href}
+											class:list={["docs-link", active && "is-current"]}
+											aria-current={active ? "page" : undefined}
+										>
+											{item.title}
+										</a>
+										{item.children && item.children.length > 0 && (
+											<ul class:list={["docs-nav-sublist", !expanded && "is-collapsed"]}>
+												{item.children.map((child) => {
+													const childActive = isActive(child.slug);
+													return (
+														<li>
+															<a
+																href={child.href}
+																class:list={["docs-link", childActive && "is-current"]}
+																aria-current={childActive ? "page" : undefined}
+															>
+																{child.title}
+															</a>
+														</li>
+													);
+												})}
+											</ul>
+										)}
+									</li>
+								);
+							})}
+						</ul>
+					</nav>
+					<div class="docs-sidebar-links">
+						<a
+							href="https://github.com/estepanov/shorty-link"
+							target="_blank"
+							rel="noreferrer noopener"
+						>
+							<svg
+								aria-hidden="true"
+								xmlns="http://www.w3.org/2000/svg"
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"
+								></path>
+								<path d="M9 18c-4.51 2-5-2-7-2"></path>
+							</svg>
+							GitHub
+							<span class="sr-only"> (opens in a new tab)</span>
 						</a>
-					</p>
-				</footer>
-			</main>
-
-			{tocHeadings.length > 0 && (
-				<aside class="hidden lg:sticky lg:top-10 lg:block lg:h-fit">
-					<p class="eyebrow">On this page</p>
-					<ul class="mt-3 space-y-2 text-sm">
-						{tocHeadings.map((h) => (
-							<li>
-								<a
-									href={`#${h.slug}`}
-									class="block text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)]"
-								>
-									{h.text}
-								</a>
-							</li>
-						))}
-					</ul>
+						<a
+							href="https://buymeacoffee.com/estepanov"
+							target="_blank"
+							rel="noreferrer noopener"
+						>
+							<svg
+								aria-hidden="true"
+								xmlns="http://www.w3.org/2000/svg"
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path>
+								<path d="M12 18V6"></path>
+							</svg>
+							Buy me a coffee
+							<span class="sr-only"> (opens in a new tab)</span>
+						</a>
+					</div>
 				</aside>
-			)}
+
+				<main id="content" class="docs-main" tabindex="-1">
+					{tocHeadings.length > 0 && (
+						<nav class="docs-toc-mobile" aria-label="On this page">
+							<details>
+								<summary>On this page</summary>
+								<ul>
+									{tocHeadings.map((h) => (
+										<li>
+											<a href={`#${h.slug}`}>{h.text}</a>
+										</li>
+									))}
+								</ul>
+							</details>
+						</nav>
+					)}
+					<article class="prose">
+						<slot />
+					</article>
+					<footer class="docs-footer">
+						<a
+							href={`https://github.com/estepanov/shorty-link/edit/main/docs/${slug}.md`}
+							target="_blank"
+							rel="noreferrer noopener"
+						>
+							Edit this page on GitHub
+							<span class="sr-only"> (opens in a new tab)</span>
+						</a>
+						<p>
+							Artisanally crafted by{" "}
+							<a
+								href="https://evansstepanov.com?utm_source=shorty-link-docs&utm_medium=footer&utm_campaign=crafted_by"
+								target="_blank"
+								rel="noreferrer noopener"
+							>
+								Evans
+								<span class="sr-only"> (opens in a new tab)</span>
+							</a>
+						</p>
+					</footer>
+				</main>
+
+				{tocHeadings.length > 0 && (
+					<aside class="docs-toc" aria-label="On this page">
+						<p class="eyebrow">On this page</p>
+						<ul>
+							{tocHeadings.map((h) => (
+								<li>
+									<a href={`#${h.slug}`}>{h.text}</a>
+								</li>
+							))}
+						</ul>
+					</aside>
+				)}
+			</div>
 		</div>
 
 		<script is:inline>
-			document.getElementById("theme-toggle")?.addEventListener("click", () => {
-				const next = document.documentElement.classList.toggle("dark");
-				localStorage.setItem("docs-theme", next ? "dark" : "light");
-			});
+			(() => {
+				const toggle = document.getElementById("nav-toggle");
+				const sidebar = document.getElementById("docs-nav");
+				const closeButton = document.getElementById("nav-close");
+				const backdrop = document.getElementById("docs-backdrop");
+				const main = document.getElementById("content");
+				const desktopQuery = window.matchMedia("(min-width: 64rem)");
+				const themeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+				function syncThemeButtons() {
+					const dark = document.documentElement.classList.contains("dark");
+					for (const button of document.querySelectorAll(".theme-toggle")) {
+						button.setAttribute("aria-pressed", String(dark));
+						button.setAttribute(
+							"aria-label",
+							dark ? "Switch to light theme" : "Switch to dark theme",
+						);
+					}
+				}
+
+				function setMenuLabel(open) {
+					const label = toggle?.querySelector(".sr-only");
+					if (label) label.textContent = open ? "Close menu" : "Open menu";
+				}
+
+				function focusable(container) {
+					return [...container.querySelectorAll("a[href], button:not([disabled])")].filter(
+						(element) => element.getClientRects().length > 0,
+					);
+				}
+
+				function openNav() {
+					if (!toggle || !sidebar || desktopQuery.matches) return;
+					sidebar.classList.add("is-open");
+					sidebar.setAttribute("role", "dialog");
+					sidebar.setAttribute("aria-modal", "true");
+					toggle.setAttribute("aria-expanded", "true");
+					setMenuLabel(true);
+					backdrop?.removeAttribute("hidden");
+					main?.setAttribute("inert", "");
+					document.body.classList.add("nav-open");
+					closeButton?.focus();
+				}
+
+				function closeNav(restoreFocus) {
+					if (!toggle || !sidebar) return;
+					sidebar.classList.remove("is-open");
+					sidebar.removeAttribute("role");
+					sidebar.removeAttribute("aria-modal");
+					toggle.setAttribute("aria-expanded", "false");
+					setMenuLabel(false);
+					backdrop?.setAttribute("hidden", "");
+					main?.removeAttribute("inert");
+					document.body.classList.remove("nav-open");
+					if (restoreFocus && !desktopQuery.matches) toggle.focus();
+				}
+
+				function syncScrollRegions() {
+					for (const element of document.querySelectorAll("pre, .table-scroll")) {
+						const overflows = element.scrollWidth > element.clientWidth + 1;
+						if (overflows) element.tabIndex = 0;
+						else element.removeAttribute("tabindex");
+					}
+				}
+
+				toggle?.addEventListener("click", () => {
+					if (sidebar?.classList.contains("is-open")) closeNav(true);
+					else openNav();
+				});
+				closeButton?.addEventListener("click", () => closeNav(true));
+				backdrop?.addEventListener("click", () => closeNav(true));
+				document.addEventListener("keydown", (event) => {
+					if (!sidebar?.classList.contains("is-open")) return;
+					if (event.key === "Escape") {
+						event.preventDefault();
+						closeNav(true);
+						return;
+					}
+					if (event.key !== "Tab") return;
+					const items = focusable(sidebar);
+					if (items.length === 0) return;
+					const first = items[0];
+					const last = items[items.length - 1];
+					const active = document.activeElement;
+					if (event.shiftKey && (active === first || !sidebar.contains(active))) {
+						event.preventDefault();
+						last.focus();
+					} else if (!event.shiftKey && active === last) {
+						event.preventDefault();
+						first.focus();
+					}
+				});
+				desktopQuery.addEventListener("change", (event) => {
+					if (event.matches) closeNav(false);
+				});
+				document.addEventListener("click", (event) => {
+					const target = event.target;
+					if (!(target instanceof Element)) return;
+					const button = target.closest(".theme-toggle");
+					if (!button) return;
+					const next = document.documentElement.classList.toggle("dark");
+					try {
+						localStorage.setItem("docs-theme", next ? "dark" : "light");
+					} catch {
+						/* Ignore storage failures; the toggle still updates this view. */
+					}
+					syncThemeButtons();
+				});
+				themeQuery.addEventListener("change", (event) => {
+					let stored = null;
+					try {
+						stored = localStorage.getItem("docs-theme");
+					} catch {
+						stored = null;
+					}
+					if (stored) return;
+					document.documentElement.classList.toggle("dark", event.matches);
+					syncThemeButtons();
+				});
+				sidebar?.addEventListener("click", (event) => {
+					const target = event.target;
+					if (!(target instanceof Element)) return;
+					if (target.closest("a") && !desktopQuery.matches) closeNav(false);
+				});
+				syncThemeButtons();
+				syncScrollRegions();
+				document.fonts?.ready.then(syncScrollRegions);
+				window.addEventListener("resize", syncScrollRegions);
+			})();
 		</script>
 	</body>
 </html>
